@@ -269,7 +269,8 @@ def intraday():
             "intraday.html", active="intraday",
             error="intraday.db not found — run intraday_sim.py first.",
             days=[], trades=[], chart=None,
-            equity=0, cum_net=0, ret_pct=0, n_trades=0, win_rate=None)
+            equity=0, cum_net=0, ret_pct=0, n_trades=0, win_rate=None,
+            by_symbol=[], by_side=[])
 
     cash = conn.execute("SELECT cash FROM account WHERE id = 1").fetchone()
     equity = cash["cash"] if cash else 0.0
@@ -289,6 +290,18 @@ def intraday():
     cum_net  = agg["net"]
     win_rate = (agg["wins"] / n_trades * 100) if n_trades else None
 
+    # Per-symbol and long-vs-short breakdowns (win% computed in the template)
+    by_symbol = [dict(r) for r in conn.execute(
+        "SELECT symbol, COUNT(*) n, "
+        "SUM(CASE WHEN net_pnl > 0 THEN 1 ELSE 0 END) wins, "
+        "COALESCE(SUM(net_pnl),0) net FROM trades "
+        "GROUP BY symbol ORDER BY net DESC")]
+    by_side = [dict(r) for r in conn.execute(
+        "SELECT side, COUNT(*) n, "
+        "SUM(CASE WHEN net_pnl > 0 THEN 1 ELSE 0 END) wins, "
+        "COALESCE(SUM(net_pnl),0) net FROM trades "
+        "GROUP BY side ORDER BY side")]
+
     # Cumulative net P&L by day (oldest → newest) for the chart
     rows = conn.execute(
         "SELECT trade_date, net_pnl FROM days ORDER BY trade_date").fetchall()
@@ -305,7 +318,8 @@ def intraday():
         "intraday.html", active="intraday", error=None,
         days=days, trades=trades, chart=chart,
         equity=equity, cum_net=cum_net, ret_pct=ret_pct,
-        n_trades=n_trades, win_rate=win_rate)
+        n_trades=n_trades, win_rate=win_rate,
+        by_symbol=by_symbol, by_side=by_side)
 
 
 # ── Candlestick charts (data/*.csv) ───────────────────────────────────────────

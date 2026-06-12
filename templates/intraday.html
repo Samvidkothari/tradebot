@@ -36,6 +36,40 @@
     </section>
     {% endif %}
 
+    {% if by_side %}
+    <section>
+      <h2>Long vs Short</h2>
+      <table>
+        <tr><th>Side</th><th>Trades</th><th>Win %</th><th>Net P&amp;L</th></tr>
+        {% for s in by_side %}
+        <tr>
+          <td class="{{ 'green' if s.side == 'LONG' else 'red' }}">{{ s.side }}</td>
+          <td>{{ s.n }}</td>
+          <td>{{ "%.0f"|format(s.wins / s.n * 100) ~ "%" if s.n else "—" }}</td>
+          <td class="{{ 'green' if s.net >= 0 else 'red' }}">{{ "+" if s.net >= 0 }}{{ "{:,.0f}".format(s.net) }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+    </section>
+    {% endif %}
+
+    {% if by_symbol %}
+    <section>
+      <h2>Performance by Symbol</h2>
+      <table>
+        <tr><th>Symbol</th><th>Trades</th><th>Win %</th><th>Net P&amp;L</th></tr>
+        {% for s in by_symbol %}
+        <tr>
+          <td>{{ s.symbol }}</td>
+          <td>{{ s.n }}</td>
+          <td>{{ "%.0f"|format(s.wins / s.n * 100) ~ "%" if s.n else "—" }}</td>
+          <td class="{{ 'green' if s.net >= 0 else 'red' }}">{{ "+" if s.net >= 0 }}{{ "{:,.0f}".format(s.net) }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+    </section>
+    {% endif %}
+
     <section>
       <h2>Daily Summary</h2>
       {% if days %}
