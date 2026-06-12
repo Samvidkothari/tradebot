@@ -3,11 +3,14 @@ review.py — Read-only summary of the paper-trading history in portfolio.db.
 
 Run any time (you don't need to have run paper_trader.py today). It:
   1. Lists every simulated trade (fills)
-  2. Reconstructs the paper equity curve from stored data, run by run
+  2. Reconstructs a DAILY paper equity curve by replaying fills against fetched
+     daily closes (handles the low-vol model's partial trims / top-ups)
   3. Values current open positions at live prices
-  4. Compares the paper portfolio's return to NIFTY 50 over the same window
+  4. Compares the paper portfolio's return + drawdown to NIFTY 50 over the
+     same window
 
 Read-only: it never writes to the database and never places orders.
+Matches the low-volatility paper_trader (monthly rebalances, partial fills).
 """
 
 import sqlite3
@@ -29,48 +32,64 @@ def load_db():
     return conn
 
 
-# ── Equity-curve reconstruction ───────────────────────────────────────────────
+def _ticker_for(symbol):
+    """yfinance ticker for a NIFTY symbol (same rule as paper_trader.universe)."""
+    return f"{symbol}.NS"
+
+
+# ── Equity-curve reconstruction (daily, partial-fill aware) ───────────────────
+
+def build_price_panel(symbols):
+    """Fetch a daily-close panel (index=dates, cols=symbols) for the given names."""
+    closes = {}
+    for s in symbols:
+        ser = fetch_live(_ticker_for(s))
+        if ser is not None and not ser.empty:
+            closes[s] = ser
+    return pd.DataFrame(closes).sort_index() if closes else pd.DataFrame()
+
 
 def reconstruct_equity_curve(conn):
     """
-    Rebuild total equity (cash + holdings) as of each run date, using only
-    data already stored in the DB:
-      • cash      = STARTING_CAPITAL + cumulative fill cash_deltas up to that date
-      • holdings  = open positions on that date, valued at that date's signal close
-    Returns a list of (run_date, equity) sorted by date.
+    Rebuild total equity (cash + holdings) for every trading day from the first
+    fill onward, using only stored fills + fetched daily closes:
+      • cash(d)     = STARTING_CAPITAL + cumulative fill cash_deltas with run_date <= d
+      • qty(d, sym) = cumulative (BUY qty − SELL qty) with run_date <= d
+      • holdings(d) = Σ qty(d,sym) × close(d,sym)   (ffill'd; gaps carried forward)
+    Returns a list of (date_str, equity) at daily granularity.
     """
-    run_dates = [r["run_date"] for r in conn.execute(
-        "SELECT DISTINCT run_date FROM signals ORDER BY run_date").fetchall()]
-    if not run_dates:
+    fills = conn.execute(
+        "SELECT run_date, symbol, side, qty, cash_delta FROM fills ORDER BY id"
+    ).fetchall()
+    if not fills:
         return []
 
-    fills = conn.execute(
-        "SELECT run_date, symbol, side, qty, cash_delta FROM fills "
-        "ORDER BY id").fetchall()
+    symbols   = sorted({f["symbol"] for f in fills})
+    panel     = build_price_panel(symbols).ffill()
+    first_day = min(f["run_date"] for f in fills)
+    if panel.empty:
+        return []
 
-    # close price per (run_date, symbol) for valuing holdings on each date
-    closes = {(r["run_date"], r["symbol"]): r["close"]
-              for r in conn.execute("SELECT run_date, symbol, close FROM signals")}
-
+    days = panel.index[panel.index >= pd.Timestamp(first_day)]
     curve = []
-    for d in run_dates:
-        cash = STARTING_CAPITAL
-        positions = {}   # symbol -> qty
+    for d in days:
+        d_str = str(d.date())
+        cash  = STARTING_CAPITAL
+        qty   = {}
         for f in fills:
-            if f["run_date"] > d:
+            if f["run_date"] > d_str:
                 break
             cash += f["cash_delta"]
-            if f["side"] == "BUY":
-                positions[f["symbol"]] = f["qty"]
-            elif f["side"] == "SELL":
-                positions.pop(f["symbol"], None)
+            delta = f["qty"] if f["side"] == "BUY" else -f["qty"]
+            qty[f["symbol"]] = qty.get(f["symbol"], 0) + delta
 
         holdings_value = 0.0
-        for sym, qty in positions.items():
-            price = closes.get((d, sym))
-            if price is not None:
-                holdings_value += qty * price
-        curve.append((d, cash + holdings_value))
+        for sym, q in qty.items():
+            if q > 0 and sym in panel.columns:
+                px = panel.loc[d, sym]
+                if pd.notna(px):
+                    holdings_value += q * px
+        curve.append((d_str, cash + holdings_value))
 
     return curve
 
@@ -124,7 +143,7 @@ def print_positions(conn):
     holdings_value = 0.0
     for p in positions:
         live = fetch_live(_ticker_for(p["symbol"]))
-        ltp = float(live.iloc[-1]["close"]) if live is not None else p["avg_price"]
+        ltp = float(live.iloc[-1]) if live is not None and not live.empty else p["avg_price"]
         value = p["qty"] * ltp
         unreal = (ltp - p["avg_price"]) * p["qty"]
         holdings_value += value
@@ -134,20 +153,18 @@ def print_positions(conn):
     return holdings_value
 
 
-def _ticker_for(symbol):
-    from paper_trader import TICKERS
-    return TICKERS[symbol]
-
-
 def print_performance(conn, curve, live_holdings_value):
     cash = conn.execute("SELECT cash FROM account WHERE id = 1").fetchone()["cash"]
     realised = conn.execute(
         "SELECT COALESCE(SUM(realised_pnl), 0) AS r FROM fills WHERE side='SELL'"
     ).fetchone()["r"]
 
+    if not curve:
+        print("\n── Performance ──\n  (no fills yet — nothing to chart)")
+        return
+
     start_date = curve[0][0]
     end_date   = str(date.today())
-    n_runs     = len(curve)
 
     # Live current equity (cash + live-valued holdings)
     cur_equity = cash + live_holdings_value
@@ -158,12 +175,13 @@ def print_performance(conn, curve, live_holdings_value):
     nifty = fetch_live("^NSEI")
     nifty_ret = None
     if nifty is not None and not nifty.empty:
-        window = nifty[nifty["date"] >= pd.Timestamp(start_date)]
+        window = nifty[nifty.index >= pd.Timestamp(start_date)]
         if len(window) >= 2:
-            nifty_ret = float(window["close"].iloc[-1] / window["close"].iloc[0] - 1)
+            nifty_ret = float(window.iloc[-1] / window.iloc[0] - 1)
 
     print("\n── Performance ──")
-    print(f"  Window:          {start_date} → {end_date}  ({n_runs} run(s) logged)")
+    print(f"  Window:          {start_date} → {end_date}  "
+          f"({len(curve)} trading day(s))")
     print(f"  Starting capital:{rupees(STARTING_CAPITAL):>18}")
     print(f"  Current equity:  {rupees(cur_equity):>18}")
     s = "+" if paper_ret >= 0 else ""
@@ -191,12 +209,12 @@ def main():
         print("No portfolio.db yet — run  python paper_trader.py  first.")
         return
 
-    runs = conn.execute("SELECT COUNT(DISTINCT run_date) AS n FROM signals").fetchone()["n"]
-    if runs == 0:
-        print("No runs logged yet — run  python paper_trader.py  first.")
+    n_fills = conn.execute("SELECT COUNT(*) AS n FROM fills").fetchone()["n"]
+    if n_fills == 0:
+        print("No trades logged yet — run  python paper_trader.py  first.")
         return
 
-    print("═══ Paper-Trading Review ═══")
+    print("═══ Paper-Trading Review (low-volatility strategy) ═══")
 
     print_trades(conn)
     live_holdings = print_positions(conn)
