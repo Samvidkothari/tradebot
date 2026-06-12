@@ -1,8 +1,10 @@
 """
 strategy.py — SMA crossover signal generation.
-Kept separate so Phase 3 can import generate_signals() directly
-into a live signal loop without pulling in any backtest code.
+Kept separate so the backtest and the Phase 3 live loop share the
+exact same signal logic without duplicating it.
 """
+
+import pandas as pd
 
 # ── Strategy parameters ───────────────────────────────────────────────────────
 FAST_PERIOD = 20   # days
@@ -36,3 +38,34 @@ def generate_signals(df, fast=FAST_PERIOD, slow=SLOW_PERIOD):
     df.loc[both_valid & (df["sma_fast"] > df["sma_slow"]), "position"] = 1
 
     return df
+
+
+def generate_signal(df, fast=FAST_PERIOD, slow=SLOW_PERIOD):
+    """
+    Reduce the full signal series to ONE decision for the latest bar.
+    This is the clean interface the Phase 3 live loop calls each day.
+
+    Returns one of:
+      "BUY"  — strategy wants to be LONG  (fast SMA above slow SMA)
+      "SELL" — strategy wants to be FLAT  (fast SMA below slow SMA)
+      "HOLD" — not enough history yet to decide (SMA warmup period)
+
+    This is a TARGET-STATE signal, not a one-day event. The caller
+    compares it against what it currently holds and acts only on the
+    difference:
+        BUY  while flat  -> enter
+        SELL while long  -> exit
+        otherwise        -> do nothing
+    Designed this way so a once-daily script stays correct even if you
+    skip a day — it always reconciles to the right target state rather
+    than relying on catching the exact crossover day.
+    """
+    d = generate_signals(df, fast, slow)
+    if d.empty:
+        return "HOLD"
+
+    last = d.iloc[-1]
+    if pd.isna(last["sma_fast"]) or pd.isna(last["sma_slow"]):
+        return "HOLD"
+
+    return "BUY" if last["position"] == 1 else "SELL"

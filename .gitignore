@@ -5,3 +5,4 @@ __pycache__/
 *.pyc
 data/
 results/
+portfolio.db
