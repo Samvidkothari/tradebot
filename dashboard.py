@@ -18,6 +18,7 @@ only, so it is reachable just from this machine.
 """
 
 import csv
+import math
 import os
 import sqlite3
 import time
@@ -453,6 +454,52 @@ def api_candles(symbol):
             except (KeyError, ValueError):
                 continue   # skip malformed rows
     return jsonify(candles)
+
+
+# ── Options payoff / pricing tool (model-priced) ──────────────────────────────
+
+def realized_vol(symbol, window=30):
+    """Annualised realized volatility from the last `window` daily log-returns
+    in data/<symbol>.csv. Used as an implied-vol PROXY (no real chain data)."""
+    fp = DATA_DIR / f"{symbol}.csv"
+    if not fp.exists():
+        return None
+    closes = []
+    with open(fp, newline="") as f:
+        for row in csv.DictReader(f):
+            try:
+                closes.append(float(row["close"]))
+            except (KeyError, ValueError):
+                continue
+    closes = closes[-(window + 1):]
+    rets = [math.log(closes[i] / closes[i - 1])
+            for i in range(1, len(closes)) if closes[i - 1] > 0]
+    if len(rets) < 2:
+        return None
+    mean = sum(rets) / len(rets)
+    var  = sum((x - mean) ** 2 for x in rets) / (len(rets) - 1)
+    return math.sqrt(var) * math.sqrt(252)
+
+
+def option_inputs():
+    """{symbol: {spot, vol%}} defaults for every underlying with a CSV."""
+    out = {}
+    for s in chart_symbols():
+        spot = last_close(s)
+        if spot:
+            v = realized_vol(s)
+            out[s] = {"spot": round(spot, 2), "vol": round((v or 0.25) * 100, 1)}
+    return out
+
+
+@app.route("/options")
+@login_required
+def options():
+    inputs = option_inputs()
+    syms = list(inputs.keys())
+    return render_template("options.html", active="options",
+                           inputs=inputs, symbols=syms,
+                           default=(syms[0] if syms else None))
 
 
 # ── Backtest reports (results/*.md) ───────────────────────────────────────────

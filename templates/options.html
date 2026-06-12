@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% block title %}Options{% endblock %}
+{% block content %}
+  <h1>Options <span class="readonly">MODEL-PRICED</span></h1>
+  <p class="sub">Black–Scholes pricing &amp; payoff — for learning, not real market premiums</p>
+
+  {% if not symbols %}
+    <div class="empty">No underlying data in data/ — run fetch_data.py first.</div>
+  {% else %}
+    <div class="banner" style="background:linear-gradient(180deg,rgba(202,164,93,.12),rgba(202,164,93,.05));
+         border-color:rgba(202,164,93,.4); color:#e8d3a6;">
+      Prices are <b>theoretical</b> (Black–Scholes), using the stock's recent realized
+      volatility as a stand-in for implied vol. There is no live NSE option chain here,
+      so these are <b>not</b> tradeable quotes — no bid/ask, no IV smile, no liquidity.
+    </div>
+
+    <section>
+      <h2>Inputs</h2>
+      <div class="card">
+        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:18px;">
+          <label class="fld">Underlying
+            <select id="sym">
+              {% for s in symbols %}<option value="{{ s }}" {{ 'selected' if s == default }}>{{ s }}</option>{% endfor %}
+            </select>
+          </label>
+          <label class="fld">Type
+            <select id="type"><option value="call">Call</option><option value="put">Put</option></select>
+          </label>
+          <label class="fld">Spot (₹)<input id="spot" type="number" step="0.05"></label>
+          <label class="fld">Strike (₹)<input id="strike" type="number" step="0.05"></label>
+          <label class="fld">Days to expiry<input id="days" type="number" step="1" value="30"></label>
+          <label class="fld">Volatility (%)<input id="vol" type="number" step="0.1"></label>
+          <label class="fld">Risk-free (%)<input id="rate" type="number" step="0.1" value="6.5"></label>
+        </div>
+      </div>
+    </section>
+
+    <div class="cards">
+      <div class="card"><div class="label">Premium / unit</div><div class="value" id="o_price">—</div></div>
+      <div class="card"><div class="label">Break-even</div><div class="value" id="o_be">—</div></div>
+      <div class="card"><div class="label">Delta</div><div class="value" id="o_delta">—</div></div>
+      <div class="card"><div class="label">Gamma</div><div class="value" id="o_gamma">—</div></div>
+      <div class="card"><div class="label">Theta / day</div><div class="value" id="o_theta">—</div></div>
+      <div class="card"><div class="label">Vega / 1%</div><div class="value" id="o_vega">—</div></div>
+    </div>
+
+    <section>
+      <h2>Payoff at Expiry (per unit, net of premium)</h2>
+      <div class="card"><canvas id="payoff" height="90"></canvas></div>
+    </section>
+  {% endif %}
+{% endblock %}
+
+{% block head %}
+{% if symbols %}
+<style>
+  .fld { display:flex; flex-direction:column; gap:7px; color:var(--muted);
+         font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.06em; }
+  .fld input, .fld select {
+    padding:10px 12px; border-radius:9px; border:1px solid var(--border);
+    background:rgba(0,0,0,.25); color:var(--text); font-size:14px;
+    font-weight:500; text-transform:none; letter-spacing:normal;
+    font-variant-numeric:tabular-nums; transition:border-color .15s ease;
+  }
+  .fld input:focus, .fld select:focus { outline:none; border-color:var(--accent); }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+  const INPUTS = {{ inputs | tojson }};
+
+  const $ = id => document.getElementById(id);
+  const normPDF = x => 0.3989422804014327 * Math.exp(-x*x/2);
+  function normCDF(x){
+    const t = 1/(1+0.2316419*Math.abs(x));
+    const d = normPDF(x);
+    const p = d*t*(0.319381530+t*(-0.356563782+t*(1.781477937+t*(-1.821255978+t*1.330274429))));
+    return x >= 0 ? 1-p : p;
+  }
+  function bs(spot, K, T, vol, r, type){
+    if (T <= 0 || vol <= 0){
+      const intr = type==='call' ? Math.max(0,spot-K) : Math.max(0,K-spot);
+      return { price: intr, delta: type==='call' ? (spot>K?1:0) : (spot<K?-1:0),
+               gamma: 0, theta: 0, vega: 0 };
+    }
+    const sq = Math.sqrt(T);
+    const d1 = (Math.log(spot/K) + (r + vol*vol/2)*T) / (vol*sq);
+    const d2 = d1 - vol*sq;
+    let price, delta;
+    if (type === 'call'){
+      price = spot*normCDF(d1) - K*Math.exp(-r*T)*normCDF(d2);
+      delta = normCDF(d1);
+    } else {
+      price = K*Math.exp(-r*T)*normCDF(-d2) - spot*normCDF(-d1);
+      delta = normCDF(d1) - 1;
+    }
+    const gamma = normPDF(d1) / (spot*vol*sq);
+    const vega  = spot*normPDF(d1)*sq / 100;          // per 1 vol-point
+    const theta = (type==='call'
+        ? -spot*normPDF(d1)*vol/(2*sq) - r*K*Math.exp(-r*T)*normCDF(d2)
+        : -spot*normPDF(d1)*vol/(2*sq) + r*K*Math.exp(-r*T)*normCDF(-d2)) / 365;
+    return { price, delta, gamma, theta, vega };
+  }
+
+  let chart;
+  function recompute(){
+    const type = $('type').value;
+    const spot = parseFloat($('spot').value);
+    const K    = parseFloat($('strike').value);
+    const T    = parseFloat($('days').value) / 365;
+    const vol  = parseFloat($('vol').value) / 100;
+    const r    = parseFloat($('rate').value) / 100;
+    if (![spot,K,T,vol,r].every(Number.isFinite)) return;
+
+    const g = bs(spot, K, T, vol, r, type);
+    const be = type==='call' ? K + g.price : K - g.price;
+    const rup = x => '₹' + x.toLocaleString('en-IN', {maximumFractionDigits:2});
+    $('o_price').textContent = rup(g.price);
+    $('o_be').textContent    = rup(be);
+    $('o_delta').textContent = g.delta.toFixed(3);
+    $('o_gamma').textContent = g.gamma.toFixed(5);
+    $('o_theta').textContent = rup(g.theta);
+    $('o_vega').textContent  = rup(g.vega);
+
+    // Payoff at expiry across a ±35% range of the underlying.
+    const lo = spot*0.65, hi = spot*1.35, pts = [];
+    for (let i=0;i<=70;i++){
+      const ST = lo + (hi-lo)*i/70;
+      const intr = type==='call' ? Math.max(0,ST-K) : Math.max(0,K-ST);
+      pts.push({ x: +ST.toFixed(2), y: +(intr - g.price).toFixed(2) });
+    }
+    const data = {
+      datasets: [{
+        label: 'P&L at expiry', data: pts, parsing: false,
+        borderColor: '#7c8cff', backgroundColor: 'rgba(124,140,255,.12)',
+        fill: 'origin', tension: 0, pointRadius: 0, borderWidth: 2,
+      }]
+    };
+    const opts = {
+      plugins: { legend: { display:false },
+        tooltip: { callbacks: { title: it => 'Spot ' + rup(it[0].parsed.x),
+                                 label: it => 'P&L ' + rup(it.parsed.y) } } },
+      scales: {
+        x: { type:'linear', min:lo, max:hi, ticks:{ color:'#8a93a3',
+             callback:v=>'₹'+Math.round(v) }, grid:{ color:'#232a37' } },
+        y: { ticks:{ color:'#8a93a3' }, grid:{ color:'#232a37' } }
+      }
+    };
+    if (chart){ chart.data = data; chart.options = opts; chart.update('none'); }
+    else chart = new Chart($('payoff'), { type:'line', data, options:opts });
+  }
+
+  function loadSymbol(){
+    const d = INPUTS[$('sym').value];
+    if (!d) return;
+    $('spot').value = d.spot;
+    $('vol').value  = d.vol;
+    $('strike').value = Math.round(d.spot);   // default ATM
+    recompute();
+  }
+
+  ['type','spot','strike','days','vol','rate'].forEach(id =>
+    $(id).addEventListener('input', recompute));
+  $('sym').addEventListener('change', loadSymbol);
+  document.addEventListener('DOMContentLoaded', loadSymbol);
+</script>
+{% endif %}
+{% endblock %}
