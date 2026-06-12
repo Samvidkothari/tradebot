@@ -343,11 +343,13 @@ def save_report(full, period_a, period_b, nifty_full, nifty_a, nifty_b):
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
-def main():
+def main(symbols=None):
+    symbols = symbols or SYMBOLS
+
     # Load data
     data = {}
     missing = []
-    for sym in SYMBOLS + ["NIFTY50"]:
+    for sym in symbols + ["NIFTY50"]:
         fp = DATA_DIR / f"{sym}.csv"
         if not fp.exists():
             missing.append(sym)
@@ -362,6 +364,7 @@ def main():
     nifty_df = data["NIFTY50"]
 
     print(f"\nStrategy: SMA {FAST_PERIOD}/{SLOW_PERIOD} crossover")
+    print(f"Universe: {', '.join(symbols)}  ({len(symbols)} stocks, equal-weight)")
     print(f"Round-trip cost per trade: ≈{COST_ROUNDTRIP*100:.3f}%  "
           f"(slippage {SLIPPAGE_PER_SIDE*100:.3f}% × 2 + STT + exchange + stamp)\n")
     print("Running backtests...", end=" ", flush=True)
@@ -369,7 +372,7 @@ def main():
     # Full backtest per stock (returns equity + trades with full date range)
     full_equity  = {}
     full_trades  = {}
-    for sym in SYMBOLS:
+    for sym in symbols:
         eq, tr = run_backtest(data[sym])
         full_equity[sym] = eq
         full_trades[sym] = tr
@@ -379,7 +382,7 @@ def main():
     # Compute metrics for each period
     def period_metrics(start=None, end=None):
         return {sym: slice_metrics(full_equity[sym], full_trades[sym], start, end)
-                for sym in SYMBOLS}
+                for sym in symbols}
 
     full_m = period_metrics()
     a_m    = period_metrics(end=SPLIT_DATE)
@@ -403,4 +406,9 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    ap = argparse.ArgumentParser(description="SMA crossover backtest")
+    ap.add_argument("symbols", nargs="*",
+                    help="Subset of symbols to test (default: all 10)")
+    args = ap.parse_args()
+    main(symbols=args.symbols or None)
