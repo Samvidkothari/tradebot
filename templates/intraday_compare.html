@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}Intraday — Compare{% endblock %}
+{% block content %}
+  <h1>Intraday <span class="readonly">SIMULATED</span></h1>
+  <p class="sub">ORB vs VWAP — same days, same costs, separate paper books</p>
+
+  {% if strategies %}
+  <div style="display:flex; gap:8px; align-items:center; margin-bottom:28px;">
+    {% for s in strategies %}
+      <a href="{{ url_for('intraday', strategy=s) }}"
+         style="padding:7px 16px; border-radius:9px; font-size:13px; font-weight:600;
+                text-decoration:none; color:var(--muted); border:1px solid var(--border);">
+        {{ s }}
+      </a>
+    {% endfor %}
+    <a href="{{ url_for('intraday_compare') }}"
+       style="padding:7px 16px; border-radius:9px; font-size:13px; font-weight:600;
+              text-decoration:none; color:var(--text);
+              background:rgba(124,140,255,.14); border:1px solid rgba(124,140,255,.4);">
+      Compare
+    </a>
+  </div>
+  {% endif %}
+
+  {% if error %}
+    <div class="banner">{{ error }}</div>
+  {% else %}
+    <section>
+      <h2>Head to Head</h2>
+      <table>
+        <tr>
+          <th>Metric</th>
+          {% for s in summary %}
+          <th><span style="display:inline-block; width:9px; height:9px; border-radius:50%;
+                    background:{{ s.color }}; margin-right:7px; vertical-align:middle;"></span>{{ s.strategy }}</th>
+          {% endfor %}
+        </tr>
+        <tr><td>Book Equity</td>
+          {% for s in summary %}<td>₹{{ "{:,.0f}".format(s.equity) }}</td>{% endfor %}</tr>
+        <tr><td>Cumulative Net P&amp;L</td>
+          {% for s in summary %}<td class="{{ 'green' if s.cum_net >= 0 else 'red' }}">{{ "+" if s.cum_net >= 0 }}₹{{ "{:,.0f}".format(s.cum_net) }}</td>{% endfor %}</tr>
+        <tr><td>Return</td>
+          {% for s in summary %}<td class="{{ 'green' if s.ret_pct >= 0 else 'red' }}">{{ "+" if s.ret_pct >= 0 }}{{ "%.2f"|format(s.ret_pct) }}%</td>{% endfor %}</tr>
+        <tr><td>Trades</td>
+          {% for s in summary %}<td>{{ s.n_trades }}</td>{% endfor %}</tr>
+        <tr><td>Win Rate</td>
+          {% for s in summary %}<td>{{ "%.0f"|format(s.win_rate) ~ "%" if s.win_rate is not none else "—" }}</td>{% endfor %}</tr>
+        <tr><td>Total Costs</td>
+          {% for s in summary %}<td>₹{{ "{:,.0f}".format(s.costs) }}</td>{% endfor %}</tr>
+      </table>
+    </section>
+
+    {% if chart %}
+    <section>
+      <h2>Cumulative Net P&amp;L</h2>
+      <div class="card"><canvas id="cmpChart" height="80"></canvas></div>
+    </section>
+    {% endif %}
+
+    <section>
+      <h2>Net P&amp;L by Day</h2>
+      {% if rows %}
+      <table>
+        <tr><th>Date</th>{% for s in strategies %}<th>{{ s }}</th>{% endfor %}</tr>
+        {% for r in rows %}
+        <tr>
+          <td>{{ r.date }}</td>
+          {% for s in strategies %}
+            {% set v = r.nets[s] %}
+            {% if v is not none %}
+            <td class="{{ 'green' if v >= 0 else 'red' }}">{{ "+" if v >= 0 }}{{ "{:,.0f}".format(v) }}</td>
+            {% else %}<td style="color:var(--faint);">—</td>{% endif %}
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </table>
+      {% else %}<div class="empty">No simulated days yet — run intraday_sim.py.</div>{% endif %}
+    </section>
+  {% endif %}
+{% endblock %}
+
+{% block head %}
+{% if chart %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    new Chart(document.getElementById("cmpChart"), {
+      type: "line",
+      data: {
+        labels: {{ chart["labels"] | tojson }},
+        datasets: [
+          {% for ser in chart["series"] %}
+          {
+            label: {{ ser["name"] | tojson }},
+            data: {{ ser["data"] | tojson }},
+            borderColor: {{ ser["color"] | tojson }},
+            backgroundColor: "transparent",
+            fill: false, tension: .3, pointRadius: 2, borderWidth: 2,
+          },
+          {% endfor %}
+        ]
+      },
+      options: {
+        plugins: { legend: { display: true, labels: { color: "#e7eaf0", usePointStyle: true } } },
+        scales: {
+          x: { ticks: { color: "#8a93a3" }, grid: { color: "#232a37" } },
+          y: { ticks: { color: "#8a93a3" }, grid: { color: "#232a37" } }
+        }
+      }
+    });
+  });
+</script>
+{% endif %}
+{% endblock %}

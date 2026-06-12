@@ -339,6 +339,73 @@ def intraday():
         strategies=strategies, selected=selected)
 
 
+@app.route("/intraday/compare")
+@login_required
+def intraday_compare():
+    conn = intraday_db()
+    if conn is None:
+        return render_template(
+            "intraday_compare.html", active="intraday",
+            error="intraday.db not found — run intraday_sim.py first.",
+            summary=[], rows=[], chart=None, strategies=[])
+
+    strategies = [r["strategy"] for r in
+                  conn.execute("SELECT strategy FROM account ORDER BY strategy")]
+    if not strategies:
+        conn.close()
+        return render_template(
+            "intraday_compare.html", active="intraday",
+            error="No strategy books yet — run intraday_sim.py.",
+            summary=[], rows=[], chart=None, strategies=[])
+
+    palette = ["#7c8cff", "#caa45d", "#4cc38a", "#f0716a"]
+
+    # Per-strategy headline metrics.
+    summary = []
+    for i, s in enumerate(strategies):
+        cash = conn.execute("SELECT cash FROM account WHERE strategy = ?",
+                            (s,)).fetchone()
+        equity = cash["cash"] if cash else 0.0
+        agg = conn.execute(
+            "SELECT COUNT(*) n, COALESCE(SUM(net_pnl),0) net, "
+            "COALESCE(SUM(costs),0) costs, "
+            "SUM(CASE WHEN net_pnl > 0 THEN 1 ELSE 0 END) wins "
+            "FROM trades WHERE strategy = ?", (s,)).fetchone()
+        summary.append({
+            "strategy": s, "color": palette[i % len(palette)],
+            "equity": equity, "cum_net": agg["net"], "costs": agg["costs"],
+            "n_trades": agg["n"],
+            "win_rate": (agg["wins"] / agg["n"] * 100) if agg["n"] else None,
+            "ret_pct": (equity - STARTING_CAPITAL) / STARTING_CAPITAL * 100,
+        })
+
+    # Per-day net by strategy, aligned on the union of all dates.
+    all_dates = [r["trade_date"] for r in conn.execute(
+        "SELECT DISTINCT trade_date FROM days ORDER BY trade_date")]
+    daynet = {s: {} for s in strategies}
+    for r in conn.execute("SELECT strategy, trade_date, net_pnl FROM days"):
+        daynet[r["strategy"]][r["trade_date"]] = r["net_pnl"] or 0.0
+
+    # Overlaid cumulative-net curves (carry forward across days with no trades).
+    series = []
+    for i, s in enumerate(strategies):
+        cum, vals = 0.0, []
+        for d in all_dates:
+            cum += daynet[s].get(d, 0.0)
+            vals.append(round(cum, 2))
+        series.append({"name": s, "data": vals, "color": palette[i % len(palette)]})
+    chart = {"labels": all_dates, "series": series} if all_dates else None
+
+    # Per-day table (newest first): each strategy's net for that date.
+    rows = [{"date": d, "nets": {s: daynet[s].get(d) for s in strategies}}
+            for d in reversed(all_dates)]
+
+    conn.close()
+    return render_template(
+        "intraday_compare.html", active="intraday", error=None,
+        summary=summary, rows=rows, chart=chart, strategies=strategies)
+
+
 # ── Candlestick charts (data/*.csv) ───────────────────────────────────────────
 
 def chart_symbols():
