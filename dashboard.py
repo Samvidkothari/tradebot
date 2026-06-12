@@ -34,12 +34,13 @@ from paper_trader import fetch_live
 
 load_dotenv()
 
-BASE_DIR    = Path(__file__).parent
-DATA_DIR    = BASE_DIR / "data"
-RESULTS_DIR = BASE_DIR / "results"
-DB_PATH     = BASE_DIR / "portfolio.db"
+BASE_DIR     = Path(__file__).parent
+DATA_DIR     = BASE_DIR / "data"
+RESULTS_DIR  = BASE_DIR / "results"
+DB_PATH      = BASE_DIR / "portfolio.db"
+INTRADAY_DB  = BASE_DIR / "intraday.db"
 
-STARTING_CAPITAL = 1_000_000  # must match paper_trader.py
+STARTING_CAPITAL = 1_000_000  # must match paper_trader.py / intraday_sim.py
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)  # sessions reset on restart — that's fine
@@ -247,6 +248,64 @@ def paper():
         cash=cash, equity=equity, realised=realised, ret_pct=ret_pct,
         positions=positions, fills=fills, chart=chart,
     )
+
+
+# ── Intraday paper sim (intraday.db) ──────────────────────────────────────────
+
+def intraday_db():
+    if not INTRADAY_DB.exists():
+        return None
+    conn = sqlite3.connect(f"file:{INTRADAY_DB}?mode=ro", uri=True)  # read-only
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+@app.route("/intraday")
+@login_required
+def intraday():
+    conn = intraday_db()
+    if conn is None:
+        return render_template(
+            "intraday.html", active="intraday",
+            error="intraday.db not found — run intraday_sim.py first.",
+            days=[], trades=[], chart=None,
+            equity=0, cum_net=0, ret_pct=0, n_trades=0, win_rate=None)
+
+    cash = conn.execute("SELECT cash FROM account WHERE id = 1").fetchone()
+    equity = cash["cash"] if cash else 0.0
+
+    days = [dict(d) for d in conn.execute(
+        "SELECT trade_date, n_trades, gross_pnl, costs, net_pnl "
+        "FROM days ORDER BY trade_date DESC")]
+
+    trades = [dict(t) for t in conn.execute(
+        "SELECT trade_date, symbol, side, entry_time, entry_px, exit_time, "
+        "exit_px, qty, net_pnl, exit_reason FROM trades ORDER BY id DESC LIMIT 100")]
+
+    agg = conn.execute(
+        "SELECT COUNT(*) n, COALESCE(SUM(net_pnl),0) net, "
+        "SUM(CASE WHEN net_pnl > 0 THEN 1 ELSE 0 END) wins FROM trades").fetchone()
+    n_trades = agg["n"]
+    cum_net  = agg["net"]
+    win_rate = (agg["wins"] / n_trades * 100) if n_trades else None
+
+    # Cumulative net P&L by day (oldest → newest) for the chart
+    rows = conn.execute(
+        "SELECT trade_date, net_pnl FROM days ORDER BY trade_date").fetchall()
+    cum, labels, values = 0.0, [], []
+    for r in rows:
+        cum += r["net_pnl"] or 0.0
+        labels.append(r["trade_date"])
+        values.append(round(cum, 2))
+    chart = {"labels": labels, "values": values} if labels else None
+
+    conn.close()
+    ret_pct = (equity - STARTING_CAPITAL) / STARTING_CAPITAL * 100
+    return render_template(
+        "intraday.html", active="intraday", error=None,
+        days=days, trades=trades, chart=chart,
+        equity=equity, cum_net=cum_net, ret_pct=ret_pct,
+        n_trades=n_trades, win_rate=win_rate)
 
 
 # ── Candlestick charts (data/*.csv) ───────────────────────────────────────────

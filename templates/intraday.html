@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}Intraday{% endblock %}
+{% block content %}
+  <h1>Intraday <span class="readonly">SIMULATED</span></h1>
+  <p class="sub">Opening-range breakout — paper fills only, squared off by close, no real orders</p>
+
+  {% if error %}
+    <div class="banner">{{ error }}</div>
+  {% else %}
+    <div class="cards">
+      <div class="card">
+        <div class="label">Book Equity</div>
+        <div class="value">₹{{ "{:,.0f}".format(equity) }}</div>
+      </div>
+      <div class="card">
+        <div class="label">Cumulative Net P&amp;L</div>
+        <div class="value {{ 'green' if cum_net >= 0 else 'red' }}">
+          {{ "+" if cum_net >= 0 }}₹{{ "{:,.0f}".format(cum_net) }}
+          <small>({{ "+" if ret_pct >= 0 }}{{ "%.2f"|format(ret_pct) }}%)</small>
+        </div>
+      </div>
+      <div class="card">
+        <div class="label">Trades</div>
+        <div class="value">{{ n_trades }}</div>
+      </div>
+      <div class="card">
+        <div class="label">Win Rate</div>
+        <div class="value">{{ "%.0f"|format(win_rate) ~ "%" if win_rate is not none else "—" }}</div>
+      </div>
+    </div>
+
+    {% if chart %}
+    <section>
+      <h2>Cumulative Net P&amp;L (per day)</h2>
+      <div class="card"><canvas id="pnlChart" height="80"></canvas></div>
+    </section>
+    {% endif %}
+
+    <section>
+      <h2>Daily Summary</h2>
+      {% if days %}
+      <table>
+        <tr><th>Date</th><th>Trades</th><th>Gross</th><th>Costs</th><th>Net P&amp;L</th></tr>
+        {% for d in days %}
+        <tr>
+          <td>{{ d.trade_date }}</td>
+          <td>{{ d.n_trades }}</td>
+          <td>{{ "{:,.0f}".format(d.gross_pnl) }}</td>
+          <td>{{ "{:,.0f}".format(d.costs) }}</td>
+          <td class="{{ 'green' if d.net_pnl >= 0 else 'red' }}">{{ "+" if d.net_pnl >= 0 }}{{ "{:,.0f}".format(d.net_pnl) }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+      {% else %}<div class="empty">No simulated days yet — run intraday_sim.py.</div>{% endif %}
+    </section>
+
+    <section>
+      <h2>Recent Trades (latest 100)</h2>
+      {% if trades %}
+      <table>
+        <tr><th>Date</th><th>Symbol</th><th>Side</th><th>Entry</th><th>@</th><th>Exit</th><th>@</th><th>Qty</th><th>Net P&amp;L</th><th>Why</th></tr>
+        {% for t in trades %}
+        <tr>
+          <td>{{ t.trade_date }}</td>
+          <td>{{ t.symbol }}</td>
+          <td class="{{ 'green' if t.side == 'LONG' else 'red' }}">{{ t.side }}</td>
+          <td>{{ t.entry_time }}</td>
+          <td>{{ "%.2f"|format(t.entry_px) }}</td>
+          <td>{{ t.exit_time }}</td>
+          <td>{{ "%.2f"|format(t.exit_px) }}</td>
+          <td>{{ t.qty }}</td>
+          <td class="{{ 'green' if t.net_pnl >= 0 else 'red' }}">{{ "+" if t.net_pnl >= 0 }}{{ "{:,.2f}".format(t.net_pnl) }}</td>
+          <td>{{ t.exit_reason }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+      {% else %}<div class="empty">No trades recorded yet.</div>{% endif %}
+    </section>
+  {% endif %}
+{% endblock %}
+
+{% block head %}
+{% if chart %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    new Chart(document.getElementById("pnlChart"), {
+      type: "line",
+      data: {
+        labels: {{ chart["labels"] | tojson }},
+        datasets: [{
+          data: {{ chart["values"] | tojson }},
+          borderColor: "#4f8cff",
+          backgroundColor: "rgba(79,140,255,.12)",
+          fill: true, tension: .3, pointRadius: 2,
+        }]
+      },
+      options: {
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: "#8b949e" }, grid: { color: "#21262d" } },
+          y: { ticks: { color: "#8b949e" }, grid: { color: "#21262d" } }
+        }
+      }
+    });
+  });
+</script>
+{% endif %}
+{% endblock %}
