@@ -274,19 +274,28 @@ def _md_section(title, per_stock, port, nifty):
     return lines
 
 
-def save_report(full, period_a, period_b, nifty_full, nifty_a, nifty_b):
+def save_report(symbols, full, period_a, period_b, nifty_full, nifty_a, nifty_b):
     RESULTS_DIR.mkdir(exist_ok=True)
 
     port_full = portfolio_metrics(full)
     port_a    = portfolio_metrics(period_a)
     port_b    = portfolio_metrics(period_b)
 
+    n = len(symbols)
+    if symbols == SYMBOLS:
+        universe = f"{n} NIFTY 50 large-caps (full default basket)"
+    else:
+        universe = (f"{n}-stock SUBSET — {', '.join(symbols)}.  "
+                    f"**Caution:** a hand-picked subset is not a fair test; "
+                    f"if these were chosen after seeing results, the numbers below "
+                    f"reflect selection bias, not a real edge")
+
     lines = []
     lines.append(f"# SMA {FAST_PERIOD}/{SLOW_PERIOD} Crossover — Backtest Report\n\n")
     lines.append(f"Generated: {date.today()}  \n")
     lines.append(f"Strategy: buy when {FAST_PERIOD}-day SMA crosses above {SLOW_PERIOD}-day SMA; "
                  f"exit when it crosses back below.  \n")
-    lines.append(f"Universe: 10 NIFTY 50 large-caps, equal-weight portfolio.  \n")
+    lines.append(f"Universe: {universe}, equal-weight portfolio.  \n")
     lines.append(f"Data: yfinance NSE daily OHLCV (auto-adjusted).  \n")
 
     lines.append("\n## Cost Model (Zerodha Equity Delivery)\n\n")
@@ -401,7 +410,7 @@ def main(symbols=None):
 
     # Save
     print()
-    path = save_report(full_m, a_m, b_m, nifty_full, nifty_a, nifty_b)
+    path = save_report(symbols, full_m, a_m, b_m, nifty_full, nifty_a, nifty_b)
     print(f"  Report saved → {path}\n")
 
 
