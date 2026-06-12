@@ -7,3 +7,5 @@ data/
 results/
 portfolio.db
 portfolio.db.*
+intraday.db
+intraday.db.*
