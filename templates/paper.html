@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}Paper Trader{% endblock %}
+{% block content %}
+  <h1>Paper Trader <span class="readonly">SIMULATED</span></h1>
+  <p class="sub">Low-volatility strategy — simulated fills only, no real orders</p>
+
+  {% if error %}
+    <div class="banner">{{ error }}</div>
+  {% else %}
+    <div class="cards">
+      <div class="card">
+        <div class="label">Equity</div>
+        <div class="value">₹{{ "{:,.0f}".format(equity) }}</div>
+      </div>
+      <div class="card">
+        <div class="label">Cash</div>
+        <div class="value">₹{{ "{:,.0f}".format(cash) }}</div>
+      </div>
+      <div class="card">
+        <div class="label">Return</div>
+        <div class="value {{ 'green' if ret_pct >= 0 else 'red' }}">
+          {{ "+" if ret_pct >= 0 }}{{ "%.2f"|format(ret_pct) }}%
+        </div>
+      </div>
+      <div class="card">
+        <div class="label">Realised P&amp;L</div>
+        <div class="value {{ 'green' if realised >= 0 else 'red' }}">
+          {{ "+" if realised >= 0 }}₹{{ "{:,.0f}".format(realised) }}
+        </div>
+      </div>
+    </div>
+
+    {% if chart %}
+    <section>
+      <h2>Cumulative Realised P&amp;L</h2>
+      <div class="card"><canvas id="pnlChart" height="80"></canvas></div>
+    </section>
+    {% endif %}
+
+    <section>
+      <h2>Positions</h2>
+      {% if positions %}
+      <table>
+        <tr><th>Symbol</th><th>Qty</th><th>Avg Price</th><th>LTP</th><th>Value</th><th>Unrealised P&amp;L</th><th>Opened</th></tr>
+        {% for p in positions %}
+        <tr>
+          <td>{{ p.symbol }}</td>
+          <td>{{ p.qty }}</td>
+          <td>{{ "%.2f"|format(p.avg) }}</td>
+          <td>{{ "%.2f"|format(p.ltp) if p.ltp is not none else "—" }}</td>
+          <td>{{ "{:,.0f}".format(p.value) }}</td>
+          {% if p.pnl is not none %}
+          <td class="{{ 'green' if p.pnl >= 0 else 'red' }}">{{ "+" if p.pnl >= 0 }}{{ "{:,.2f}".format(p.pnl) }}</td>
+          {% else %}<td>—</td>{% endif %}
+          <td>{{ p.opened }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+      {% else %}<div class="empty">No paper positions yet — run paper_trader.py.</div>{% endif %}
+    </section>
+
+    <section>
+      <h2>Recent Fills (latest 100)</h2>
+      {% if fills %}
+      <table>
+        <tr><th>Date</th><th>Symbol</th><th>Side</th><th>Qty</th><th>Price</th><th>Cost</th><th>Realised P&amp;L</th></tr>
+        {% for f in fills %}
+        <tr>
+          <td>{{ f.run_date }}</td>
+          <td>{{ f.symbol }}</td>
+          <td class="{{ 'green' if f.side == 'BUY' else 'red' }}">{{ f.side }}</td>
+          <td>{{ f.qty }}</td>
+          <td>{{ "%.2f"|format(f.price) }}</td>
+          <td>{{ "%.2f"|format(f.cost) }}</td>
+          <td>{{ "{:,.2f}".format(f.realised_pnl) if f.realised_pnl is not none else "—" }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+      {% else %}<div class="empty">No fills recorded yet.</div>{% endif %}
+    </section>
+  {% endif %}
+{% endblock %}
+
+{% block head %}
+{% if chart %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    new Chart(document.getElementById("pnlChart"), {
+      type: "line",
+      data: {
+        labels: {{ chart["labels"] | tojson }},
+        datasets: [{
+          data: {{ chart["values"] | tojson }},
+          borderColor: "#4f8cff",
+          backgroundColor: "rgba(79,140,255,.12)",
+          fill: true, tension: .3, pointRadius: 2,
+        }]
+      },
+      options: {
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: "#8b949e" }, grid: { color: "#21262d" } },
+          y: { ticks: { color: "#8b949e" }, grid: { color: "#21262d" } }
+        }
+      }
+    });
+  });
+</script>
+{% endif %}
+{% endblock %}

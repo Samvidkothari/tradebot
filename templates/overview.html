@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Live Portfolio{% endblock %}
+{% block content %}
+  <h1>Live Portfolio <span class="readonly">READ-ONLY</span></h1>
+  <p class="sub">Real holdings &amp; positions from your Zerodha account</p>
+
+  {% if error %}
+    <div class="banner">{{ error }}</div>
+  {% else %}
+    <div class="cards">
+      <div class="card">
+        <div class="label">Invested</div>
+        <div class="value">₹{{ "{:,.0f}".format(total_invested) }}</div>
+      </div>
+      <div class="card">
+        <div class="label">Current Value</div>
+        <div class="value">₹{{ "{:,.0f}".format(total_current) }}</div>
+      </div>
+      <div class="card">
+        <div class="label">Total P&amp;L</div>
+        <div class="value {{ 'green' if total_pnl >= 0 else 'red' }}">
+          {{ "+" if total_pnl >= 0 }}₹{{ "{:,.0f}".format(total_pnl) }}
+          <small>({{ "%.2f"|format(total_pct) }}%)</small>
+        </div>
+      </div>
+    </div>
+
+    <section>
+      <h2>Holdings</h2>
+      {% if holdings %}
+      <table>
+        <tr><th>Stock</th><th>Qty</th><th>Avg Price</th><th>LTP</th><th>P&amp;L (₹)</th><th>P&amp;L %</th></tr>
+        {% for h in holdings %}
+        <tr>
+          <td>{{ h.symbol }}</td>
+          <td>{{ h.qty }}</td>
+          <td>{{ "%.2f"|format(h.avg) }}</td>
+          <td>{{ "%.2f"|format(h.ltp) }}</td>
+          <td class="{{ 'green' if h.pnl >= 0 else 'red' }}">{{ "+" if h.pnl >= 0 }}{{ "{:,.2f}".format(h.pnl) }}</td>
+          <td class="{{ 'green' if h.pct >= 0 else 'red' }}">{{ "+" if h.pct >= 0 }}{{ "%.2f"|format(h.pct) }}%</td>
+        </tr>
+        {% endfor %}
+      </table>
+      {% else %}<div class="empty">No holdings found.</div>{% endif %}
+    </section>
+
+    <section>
+      <h2>Open Positions</h2>
+      {% if positions %}
+      <table>
+        <tr><th>Symbol</th><th>Qty</th><th>Avg Price</th><th>LTP</th><th>P&amp;L (₹)</th></tr>
+        {% for p in positions %}
+        <tr>
+          <td>{{ p.symbol }}</td>
+          <td>{{ p.qty }}</td>
+          <td>{{ "%.2f"|format(p.avg) }}</td>
+          <td>{{ "%.2f"|format(p.ltp) }}</td>
+          <td class="{{ 'green' if p.pnl >= 0 else 'red' }}">{{ "+" if p.pnl >= 0 }}{{ "{:,.2f}".format(p.pnl) }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+      {% else %}<div class="empty">No open positions.</div>{% endif %}
+    </section>
+  {% endif %}
+{% endblock %}

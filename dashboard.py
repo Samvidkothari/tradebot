@@ -1,0 +1,255 @@
+"""
+dashboard.py — Local web dashboard for the tradebot project.
+
+A SaaS-style UI over the existing project, strictly READ-ONLY:
+  • Live Portfolio  — real holdings & positions from Kite (via kite_client)
+  • Paper Trader    — simulated portfolio state from portfolio.db
+  • Backtests       — rendered reports from results/*.md
+
+It can read your account data but contains NO order-placement code.
+
+Run:
+    python dashboard.py
+then open  http://127.0.0.1:5050  in your browser.
+
+Login password comes from DASHBOARD_PASSWORD in .env (add a line like
+DASHBOARD_PASSWORD=something-you-choose). The server binds to 127.0.0.1
+only, so it is reachable just from this machine.
+"""
+
+import csv
+import os
+import sqlite3
+from datetime import date
+from functools import wraps
+from pathlib import Path
+
+from dotenv import load_dotenv
+from flask import (Flask, abort, redirect, render_template, request,
+                   session, url_for)
+
+from paper_trader import fetch_live
+
+load_dotenv()
+
+BASE_DIR    = Path(__file__).parent
+DATA_DIR    = BASE_DIR / "data"
+RESULTS_DIR = BASE_DIR / "results"
+DB_PATH     = BASE_DIR / "portfolio.db"
+
+STARTING_CAPITAL = 1_000_000  # must match paper_trader.py
+
+app = Flask(__name__)
+app.secret_key = os.urandom(24)  # sessions reset on restart — that's fine
+
+
+# ── Auth ──────────────────────────────────────────────────────────────────────
+
+def login_required(view):
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        if not session.get("authed"):
+            return redirect(url_for("login"))
+        return view(*args, **kwargs)
+    return wrapped
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    configured = bool(os.getenv("DASHBOARD_PASSWORD"))
+    error = None
+    if request.method == "POST":
+        if not configured:
+            error = "No password set. Add DASHBOARD_PASSWORD=... to .env and restart."
+        elif request.form.get("password") == os.getenv("DASHBOARD_PASSWORD"):
+            session["authed"] = True
+            return redirect(url_for("overview"))
+        else:
+            error = "Wrong password."
+    return render_template("login.html", error=error, configured=configured)
+
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
+
+
+# ── Live portfolio (Kite) ─────────────────────────────────────────────────────
+
+def get_kite():
+    """
+    Connect via the shared kite_client module.
+    kite_client.load_kite() raises SystemExit with a friendly message when the
+    token is missing/stale — we catch that and surface it in the UI instead.
+    Returns (kite, error_message).
+    """
+    try:
+        from kite_client import load_kite
+        return load_kite(), None
+    except SystemExit as e:
+        return None, str(e).strip()
+    except Exception as e:
+        return None, f"Could not connect to Kite: {e}"
+
+
+@app.route("/")
+@login_required
+def overview():
+    kite, err = get_kite()
+    holdings, positions = [], []
+    total_pnl = total_invested = total_current = 0.0
+
+    if kite is not None:
+        try:
+            for h in kite.holdings():
+                qty, avg, ltp = h["quantity"], h["average_price"], h["last_price"]
+                pnl = (ltp - avg) * qty
+                pct = ((ltp - avg) / avg * 100) if avg else 0.0
+                total_pnl      += pnl
+                total_invested += avg * qty
+                total_current  += ltp * qty
+                holdings.append({
+                    "symbol": h["tradingsymbol"], "qty": qty, "avg": avg,
+                    "ltp": ltp, "pnl": pnl, "pct": pct,
+                })
+            net = kite.positions().get("net", [])
+            positions = [{
+                "symbol": p["tradingsymbol"], "qty": p["quantity"],
+                "avg": p["average_price"], "ltp": p["last_price"],
+                "pnl": p.get("pnl", 0.0),
+            } for p in net if p["quantity"] != 0]
+        except Exception as e:
+            err = f"Kite API error: {e}"
+
+    holdings.sort(key=lambda x: x["pnl"], reverse=True)
+    total_pct = (total_pnl / total_invested * 100) if total_invested else 0.0
+    return render_template(
+        "overview.html", active="overview", error=err,
+        holdings=holdings, positions=positions,
+        total_pnl=total_pnl, total_pct=total_pct,
+        total_invested=total_invested, total_current=total_current,
+    )
+
+
+# ── Paper trader (portfolio.db) ───────────────────────────────────────────────
+
+def last_close(symbol):
+    """Most recent close from data/<symbol>.csv, or None if unavailable."""
+    fp = DATA_DIR / f"{symbol}.csv"
+    if not fp.exists():
+        return None
+    last = None
+    with open(fp, newline="") as f:
+        for last in csv.DictReader(f):
+            pass
+    try:
+        return float(last["close"]) if last else None
+    except (KeyError, ValueError):
+        return None
+
+
+def live_price(symbol):
+    """Live last price (yfinance, SYMBOL.NS), falling back to the latest CSV
+    close if the fetch fails or returns nothing."""
+    try:
+        ser = fetch_live(f"{symbol}.NS")
+        if ser is not None and not ser.empty:
+            return float(ser.iloc[-1])
+    except Exception:
+        pass
+    return last_close(symbol)
+
+
+def paper_db():
+    if not DB_PATH.exists():
+        return None
+    conn = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True)  # read-only
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+@app.route("/paper")
+@login_required
+def paper():
+    conn = paper_db()
+    if conn is None:
+        return render_template("paper.html", active="paper",
+                               error="portfolio.db not found — run paper_trader.py first.",
+                               positions=[], fills=[], chart=None,
+                               cash=0, equity=0, realised=0, ret_pct=0)
+
+    cash = conn.execute("SELECT cash FROM account WHERE id = 1").fetchone()
+    cash = cash["cash"] if cash else 0.0
+
+    positions = []
+    pos_value = 0.0
+    for row in conn.execute("SELECT * FROM positions ORDER BY symbol"):
+        ltp   = live_price(row["symbol"])
+        value = (ltp or row["avg_price"]) * row["qty"]
+        pnl   = ((ltp - row["avg_price"]) * row["qty"]) if ltp else None
+        pos_value += value
+        positions.append({
+            "symbol": row["symbol"], "qty": row["qty"], "avg": row["avg_price"],
+            "ltp": ltp, "value": value, "pnl": pnl, "opened": row["opened"],
+        })
+
+    fills = [dict(r) for r in conn.execute(
+        "SELECT run_date, symbol, side, qty, price, cost, realised_pnl "
+        "FROM fills ORDER BY id DESC LIMIT 100")]
+
+    realised = conn.execute(
+        "SELECT COALESCE(SUM(realised_pnl), 0) AS s FROM fills").fetchone()["s"]
+
+    # Cumulative realised P&L by date — for the chart
+    chart_rows = conn.execute(
+        "SELECT run_date, SUM(realised_pnl) AS pnl FROM fills "
+        "GROUP BY run_date ORDER BY run_date").fetchall()
+    cum, labels, values = 0.0, [], []
+    for r in chart_rows:
+        cum += r["pnl"] or 0.0
+        labels.append(r["run_date"])
+        values.append(round(cum, 2))
+    chart = {"labels": labels, "values": values} if labels else None
+
+    conn.close()
+    equity  = cash + pos_value
+    ret_pct = (equity - STARTING_CAPITAL) / STARTING_CAPITAL * 100
+    return render_template(
+        "paper.html", active="paper", error=None,
+        cash=cash, equity=equity, realised=realised, ret_pct=ret_pct,
+        positions=positions, fills=fills, chart=chart,
+    )
+
+
+# ── Backtest reports (results/*.md) ───────────────────────────────────────────
+
+@app.route("/backtests")
+@login_required
+def backtests():
+    reports = sorted(fp.name for fp in RESULTS_DIR.glob("*.md")) \
+        if RESULTS_DIR.exists() else []
+    return render_template("backtests.html", active="backtests",
+                           reports=reports, current=None, content=None)
+
+
+@app.route("/backtests/<name>")
+@login_required
+def backtest_view(name):
+    # Only allow simple .md filenames that actually exist in results/
+    if "/" in name or "\\" in name or not name.endswith(".md"):
+        abort(404)
+    fp = RESULTS_DIR / name
+    if not fp.exists():
+        abort(404)
+    reports = sorted(f.name for f in RESULTS_DIR.glob("*.md"))
+    return render_template("backtests.html", active="backtests",
+                           reports=reports, current=name,
+                           content=fp.read_text())
+
+
+# ── Main ──────────────────────────────────────────────────────────────────────
+
+if __name__ == "__main__":
+    print("\n  tradebot dashboard →  http://127.0.0.1:5050\n")
+    app.run(host="127.0.0.1", port=5050, debug=False)
