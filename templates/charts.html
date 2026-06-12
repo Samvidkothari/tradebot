@@ -35,10 +35,10 @@
 <script>
 document.addEventListener("DOMContentLoaded", async () => {
   const dark = {
-    layout: { background: { color: "transparent" }, textColor: "#8b949e" },
-    grid: { vertLines: { color: "#21262d" }, horzLines: { color: "#21262d" } },
-    timeScale: { borderColor: "#21262d" },
-    rightPriceScale: { borderColor: "#21262d" },
+    layout: { background: { color: "transparent" }, textColor: "#8a93a3" },
+    grid: { vertLines: { color: "#232a37" }, horzLines: { color: "#232a37" } },
+    timeScale: { borderColor: "#232a37" },
+    rightPriceScale: { borderColor: "#232a37" },
     crosshair: { mode: 0 },
   };
 
@@ -49,12 +49,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     { ...dark, height: 110, timeScale: { visible: true, borderColor: "#21262d" } });
 
   const candleSeries = priceChart.addCandlestickSeries({
-    upColor: "#3fb950", downColor: "#f85149",
-    wickUpColor: "#3fb950", wickDownColor: "#f85149",
+    upColor: "#4cc38a", downColor: "#f0716a",
+    wickUpColor: "#4cc38a", wickDownColor: "#f0716a",
     borderVisible: false,
   });
   const smaSeries = priceChart.addLineSeries({
-    color: "#4f8cff", lineWidth: 2, priceLineVisible: false,
+    color: "#7c8cff", lineWidth: 2, priceLineVisible: false,
     lastValueVisible: false, crosshairMarkerVisible: false,
   });
   const volSeries = volChart.addHistogramSeries({
@@ -87,7 +87,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     smaSeries.setData(document.getElementById("smaToggle").checked ? sma(candles) : []);
     volSeries.setData(candles.map(c => ({
       time: c.time, value: c.volume,
-      color: c.close >= c.open ? "rgba(63,185,80,.45)" : "rgba(248,81,73,.45)",
+      color: c.close >= c.open ? "rgba(76,195,138,.45)" : "rgba(240,113,106,.45)",
     })));
     priceChart.timeScale().fitContent();
     window._candles = candles;

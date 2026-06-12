@@ -4,73 +4,158 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>tradebot — {% block title %}Dashboard{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #0d1117; --panel: #161b22; --border: #21262d;
-      --text: #e6edf3; --muted: #8b949e; --accent: #4f8cff;
-      --green: #3fb950; --red: #f85149;
+      --bg: #0a0c11; --panel: #12151d; --elev: #161a24; --border: #232a37;
+      --text: #e7eaf0; --muted: #8a93a3; --faint: #5b6373;
+      --accent: #7c8cff; --accent-2: #caa45d;
+      --green: #4cc38a; --red: #f0716a;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.28);
+      --radius: 14px;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
     body {
       background: var(--bg); color: var(--text);
-      font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 15px; line-height: 1.55; letter-spacing: -0.006em;
       display: flex; min-height: 100vh;
+      background-image:
+        radial-gradient(900px 500px at 12% -8%, rgba(124,140,255,.10), transparent 60%),
+        radial-gradient(800px 500px at 100% 0%, rgba(202,164,93,.06), transparent 55%);
+      background-attachment: fixed;
     }
+    .num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+
+    /* ── Sidebar ─────────────────────────────────────────────── */
     aside {
-      width: 220px; background: var(--panel); border-right: 1px solid var(--border);
-      padding: 24px 0; position: fixed; top: 0; bottom: 0;
+      width: 236px; position: fixed; top: 0; bottom: 0; padding: 28px 0 24px;
+      background: linear-gradient(180deg, rgba(255,255,255,.025), transparent 40%), var(--panel);
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
     }
-    .brand { font-size: 20px; font-weight: 700; padding: 0 24px 20px;
-             border-bottom: 1px solid var(--border); }
-    .brand span { color: var(--accent); }
-    .brand small { display: block; color: var(--muted); font-size: 11px;
-                   font-weight: 400; margin-top: 2px; }
-    nav { margin-top: 16px; }
+    .brand {
+      font-family: "Fraunces", Georgia, serif; font-size: 23px; font-weight: 600;
+      letter-spacing: -0.02em; padding: 0 26px 22px; margin: 0 0 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .brand span { color: var(--accent-2); }
+    .brand small {
+      display: block; font-family: "Inter", sans-serif; color: var(--faint);
+      font-size: 10.5px; font-weight: 500; letter-spacing: .14em;
+      text-transform: uppercase; margin-top: 7px;
+    }
+    nav { margin-top: 14px; display: flex; flex-direction: column; gap: 2px; padding: 0 14px; }
     nav a {
-      display: block; padding: 10px 24px; color: var(--muted);
-      text-decoration: none; border-left: 3px solid transparent;
+      position: relative; display: flex; align-items: center;
+      padding: 10px 16px; color: var(--muted); text-decoration: none;
+      font-size: 14px; font-weight: 500; border-radius: 9px;
+      transition: color .18s ease, background .18s ease;
     }
-    nav a:hover { color: var(--text); }
-    nav a.active { color: var(--text); border-left-color: var(--accent);
-                   background: rgba(79,140,255,.08); }
-    .logout { position: absolute; bottom: 24px; left: 24px; }
-    .logout a { color: var(--muted); font-size: 13px; text-decoration: none; }
-    main { margin-left: 220px; flex: 1; padding: 32px 40px; max-width: 1200px; }
-    h1 { font-size: 22px; margin-bottom: 4px; }
-    .sub { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
-    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr));
-             gap: 16px; margin-bottom: 28px; }
-    .card { background: var(--panel); border: 1px solid var(--border);
-            border-radius: 10px; padding: 18px 20px; }
-    .card .label { color: var(--muted); font-size: 12px; text-transform: uppercase;
-                   letter-spacing: .5px; }
-    .card .value { font-size: 24px; font-weight: 600; margin-top: 6px; }
-    table { width: 100%; border-collapse: collapse; background: var(--panel);
-            border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
-    th, td { padding: 10px 14px; text-align: right; font-size: 14px; }
+    nav a::before {
+      content: ""; position: absolute; left: -14px; top: 50%; transform: translateY(-50%);
+      width: 3px; height: 0; border-radius: 0 3px 3px 0;
+      background: var(--accent); transition: height .2s ease;
+    }
+    nav a:hover { color: var(--text); background: rgba(255,255,255,.035); }
+    nav a.active { color: var(--text); background: rgba(124,140,255,.12); }
+    nav a.active::before { height: 20px; }
+    .logout { margin-top: auto; padding: 0 30px; }
+    .logout a {
+      color: var(--faint); font-size: 13px; text-decoration: none;
+      transition: color .18s ease;
+    }
+    .logout a:hover { color: var(--text); }
+
+    /* ── Main ────────────────────────────────────────────────── */
+    main {
+      margin-left: 236px; flex: 1; padding: 44px 52px 64px; max-width: 1240px;
+      animation: fade .4s ease both;
+    }
+    @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    h1 {
+      font-family: "Fraunces", Georgia, serif; font-size: 30px; font-weight: 500;
+      letter-spacing: -0.02em; margin-bottom: 6px;
+    }
+    .sub { color: var(--muted); font-size: 13.5px; margin-bottom: 32px; }
+
+    /* ── Stat cards ──────────────────────────────────────────── */
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px,1fr));
+             gap: 18px; margin-bottom: 34px; }
+    .card {
+      background: linear-gradient(180deg, var(--elev), var(--panel));
+      border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 20px 22px; box-shadow: var(--shadow);
+      transition: transform .2s ease, border-color .2s ease;
+    }
+    .cards .card:hover { transform: translateY(-2px); border-color: rgba(124,140,255,.35); }
+    .card .label {
+      color: var(--muted); font-size: 11px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: .09em;
+    }
+    .card .value {
+      font-size: 27px; font-weight: 600; margin-top: 8px; letter-spacing: -0.01em;
+      font-variant-numeric: tabular-nums;
+    }
+    .card .value small { font-size: 14px; font-weight: 500; color: var(--muted); }
+
+    /* ── Tables ──────────────────────────────────────────────── */
+    table {
+      width: 100%; border-collapse: separate; border-spacing: 0;
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow);
+      font-variant-numeric: tabular-nums;
+    }
+    th, td { padding: 12px 16px; text-align: right; font-size: 13.5px; }
     th:first-child, td:first-child { text-align: left; }
-    th { background: rgba(255,255,255,.03); color: var(--muted); font-size: 12px;
-         text-transform: uppercase; letter-spacing: .5px; }
-    tr + tr td { border-top: 1px solid var(--border); }
+    th {
+      background: rgba(255,255,255,.022); color: var(--faint);
+      font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .07em;
+      border-bottom: 1px solid var(--border);
+    }
+    td { border-top: 1px solid rgba(255,255,255,.045); }
+    tbody tr:first-child td, tr:first-child td { border-top: none; }
+    table tr { transition: background .12s ease; }
+    table tbody tr:hover td, table tr:hover td { background: rgba(124,140,255,.05); }
     .green { color: var(--green); } .red { color: var(--red); }
-    .banner { background: rgba(248,81,73,.1); border: 1px solid rgba(248,81,73,.4);
-              color: #ffb4ae; padding: 14px 18px; border-radius: 10px;
-              margin-bottom: 24px; white-space: pre-line; }
-    .banner code { background: rgba(255,255,255,.08); padding: 1px 6px;
-                   border-radius: 4px; }
-    .empty { color: var(--muted); padding: 24px; text-align: center; }
-    section { margin-bottom: 36px; }
-    h2 { font-size: 15px; color: var(--muted); text-transform: uppercase;
-         letter-spacing: .5px; margin-bottom: 12px; }
-    .readonly { display: inline-block; font-size: 11px; color: var(--green);
-                border: 1px solid var(--green); border-radius: 20px;
-                padding: 1px 10px; margin-left: 10px; vertical-align: middle; }
+
+    /* ── Misc ────────────────────────────────────────────────── */
+    .banner {
+      background: linear-gradient(180deg, rgba(240,113,106,.12), rgba(240,113,106,.06));
+      border: 1px solid rgba(240,113,106,.38); color: #ffc4bf;
+      padding: 15px 18px; border-radius: var(--radius);
+      margin-bottom: 26px; white-space: pre-line; box-shadow: var(--shadow);
+    }
+    .banner code { background: rgba(255,255,255,.09); padding: 1px 6px; border-radius: 5px; }
+    .empty {
+      color: var(--muted); padding: 32px; text-align: center;
+      background: var(--panel); border: 1px dashed var(--border); border-radius: var(--radius);
+    }
+    section { margin-bottom: 40px; }
+    h2 {
+      font-size: 12px; color: var(--faint); text-transform: uppercase;
+      letter-spacing: .1em; font-weight: 600; margin-bottom: 14px;
+    }
+    .readonly {
+      display: inline-block; font-family: "Inter", sans-serif; font-size: 10.5px;
+      font-weight: 600; letter-spacing: .08em; color: var(--accent-2);
+      border: 1px solid rgba(202,164,93,.45); border-radius: 20px;
+      padding: 2px 11px; margin-left: 12px; vertical-align: middle;
+      text-transform: uppercase;
+    }
+    ::selection { background: rgba(124,140,255,.28); }
+    ::-webkit-scrollbar { width: 11px; height: 11px; }
+    ::-webkit-scrollbar-thumb { background: #20262f; border: 3px solid var(--bg); border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: #2b333f; }
   </style>
   {% block head %}{% endblock %}
 </head>
 <body>
   <aside>
-    <div class="brand">tradebot<span>.</span><small>personal trading console</small></div>
+    <div class="brand">tradebot<span>.</span><small>Trading Console</small></div>
     <nav>
       <a href="{{ url_for('overview') }}"  class="{{ 'active' if active == 'overview' }}">Live Portfolio</a>
       <a href="{{ url_for('paper') }}"     class="{{ 'active' if active == 'paper' }}">Paper Trader</a>
