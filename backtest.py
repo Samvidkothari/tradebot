@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from strategy import generate_signals, FAST_PERIOD, SLOW_PERIOD
+from strategy import generate_signals, FAST_PERIOD, SLOW_PERIOD, TREND_PERIOD
 
 # ── Cost constants (Zerodha equity delivery) ─────────────────────────────────
 # Edit these if your broker or plan changes.
@@ -290,10 +290,14 @@ def save_report(symbols, full, period_a, period_b, nifty_full, nifty_a, nifty_b)
                     f"if these were chosen after seeing results, the numbers below "
                     f"reflect selection bias, not a real edge")
 
+    trend_title = f" + {TREND_PERIOD}d Trend Filter" if TREND_PERIOD else ""
+    trend_desc  = (f" — but only while the close is above its {TREND_PERIOD}-day SMA "
+                   f"(long-term trend filter)" if TREND_PERIOD else "")
+
     lines = []
-    lines.append(f"# SMA {FAST_PERIOD}/{SLOW_PERIOD} Crossover — Backtest Report\n\n")
+    lines.append(f"# SMA {FAST_PERIOD}/{SLOW_PERIOD} Crossover{trend_title} — Backtest Report\n\n")
     lines.append(f"Generated: {date.today()}  \n")
-    lines.append(f"Strategy: buy when {FAST_PERIOD}-day SMA crosses above {SLOW_PERIOD}-day SMA; "
+    lines.append(f"Strategy: buy when {FAST_PERIOD}-day SMA crosses above {SLOW_PERIOD}-day SMA{trend_desc}; "
                  f"exit when it crosses back below.  \n")
     lines.append(f"Universe: {universe}, equal-weight portfolio.  \n")
     lines.append(f"Data: yfinance NSE daily OHLCV (auto-adjusted).  \n")
@@ -372,7 +376,8 @@ def main(symbols=None):
 
     nifty_df = data["NIFTY50"]
 
-    print(f"\nStrategy: SMA {FAST_PERIOD}/{SLOW_PERIOD} crossover")
+    trend_note = f" + {TREND_PERIOD}d trend filter" if TREND_PERIOD else ""
+    print(f"\nStrategy: SMA {FAST_PERIOD}/{SLOW_PERIOD} crossover{trend_note}")
     print(f"Universe: {', '.join(symbols)}  ({len(symbols)} stocks, equal-weight)")
     print(f"Round-trip cost per trade: ≈{COST_ROUNDTRIP*100:.3f}%  "
           f"(slippage {SLIPPAGE_PER_SIDE*100:.3f}% × 2 + STT + exchange + stamp)\n")
