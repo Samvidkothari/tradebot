@@ -15,19 +15,31 @@ import pandas as pd
 import yfinance as yf
 
 # ── Config ────────────────────────────────────────────────────────────────────
-SYMBOLS = {
-    "RELIANCE":   "RELIANCE.NS",
-    "HDFCBANK":   "HDFCBANK.NS",
-    "INFY":       "INFY.NS",
-    "TCS":        "TCS.NS",
-    "ICICIBANK":  "ICICIBANK.NS",
-    "LT":         "LT.NS",
-    "SBIN":       "SBIN.NS",
-    "BHARTIARTL": "BHARTIARTL.NS",
-    "ITC":        "ITC.NS",
-    "HINDUNILVR": "HINDUNILVR.NS",
-    "NIFTY50":    "^NSEI",          # NIFTY 50 index as benchmark
-}
+# Full NIFTY 50 universe (current constituents) for cross-sectional momentum.
+# yfinance ticker = NSE symbol + ".NS".  Some names (M&M, BAJAJ-AUTO) keep
+# their punctuation. Any ticker that fails to download is skipped, not fatal —
+# the validation summary shows which succeeded.
+#
+# NOTE (survivorship bias): this is TODAY's index membership applied to the
+# past. Stocks dropped from the index over the window are absent, and current
+# members were partly selected for having done well. Momentum results on this
+# list will look better than a true point-in-time universe would. Flagged in
+# the report too.
+_NIFTY50 = [
+    "ADANIENT", "ADANIPORTS", "APOLLOHOSP", "ASIANPAINT", "AXISBANK",
+    "BAJAJ-AUTO", "BAJFINANCE", "BAJAJFINSV", "BEL", "BHARTIARTL",
+    "CIPLA", "COALINDIA", "DRREDDY", "EICHERMOT", "GRASIM",
+    "HCLTECH", "HDFCBANK", "HDFCLIFE", "HEROMOTOCO", "HINDALCO",
+    "HINDUNILVR", "ICICIBANK", "INDUSINDBK", "INFY", "ITC",
+    "JIOFIN", "JSWSTEEL", "KOTAKBANK", "LT", "LTIM",
+    "M&M", "MARUTI", "NESTLEIND", "NTPC", "ONGC",
+    "POWERGRID", "RELIANCE", "SBILIFE", "SBIN", "SHRIRAMFIN",
+    "SUNPHARMA", "TATACONSUM", "TATAMOTORS", "TATASTEEL", "TCS",
+    "TECHM", "TITAN", "TRENT", "ULTRACEMCO", "WIPRO",
+]
+SYMBOLS = {name: f"{name}.NS" for name in _NIFTY50}
+SYMBOLS["NIFTY50"] = "^NSEI"        # NIFTY 50 index as benchmark
+
 YEARS    = 5
 DATA_DIR = Path(__file__).parent / "data"
 # ─────────────────────────────────────────────────────────────────────────────
