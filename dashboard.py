@@ -20,6 +20,8 @@ only, so it is reachable just from this machine.
 import csv
 import os
 import sqlite3
+import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 from functools import wraps
 from pathlib import Path
@@ -149,16 +151,38 @@ def last_close(symbol):
         return None
 
 
+PRICE_TTL    = 300            # seconds a fetched price stays fresh (5 min)
+_price_cache = {}             # symbol -> (price, fetched_at)
+
+
 def live_price(symbol):
-    """Live last price (yfinance, SYMBOL.NS), falling back to the latest CSV
-    close if the fetch fails or returns nothing."""
+    """Live last price (yfinance, SYMBOL.NS), memoised for PRICE_TTL seconds and
+    falling back to the latest CSV close if the fetch fails or returns nothing."""
+    now = time.time()
+    hit = _price_cache.get(symbol)
+    if hit is not None and now - hit[1] < PRICE_TTL:
+        return hit[0]
     try:
         ser = fetch_live(f"{symbol}.NS")
         if ser is not None and not ser.empty:
-            return float(ser.iloc[-1])
+            px = float(ser.iloc[-1])
+            _price_cache[symbol] = (px, now)
+            return px
     except Exception:
         pass
     return last_close(symbol)
+
+
+def warm_prices(symbols):
+    """Fetch all not-yet-fresh symbols concurrently so the first page load
+    pays one round-trip instead of N sequential ones."""
+    now = time.time()
+    stale = [s for s in symbols
+             if s not in _price_cache or now - _price_cache[s][1] >= PRICE_TTL]
+    if not stale:
+        return
+    with ThreadPoolExecutor(max_workers=min(8, len(stale))) as ex:
+        ex.map(live_price, stale)
 
 
 def paper_db():
@@ -182,9 +206,12 @@ def paper():
     cash = conn.execute("SELECT cash FROM account WHERE id = 1").fetchone()
     cash = cash["cash"] if cash else 0.0
 
+    rows = conn.execute("SELECT * FROM positions ORDER BY symbol").fetchall()
+    warm_prices([r["symbol"] for r in rows])   # concurrent prefetch into cache
+
     positions = []
     pos_value = 0.0
-    for row in conn.execute("SELECT * FROM positions ORDER BY symbol"):
+    for row in rows:
         ltp   = live_price(row["symbol"])
         value = (ltp or row["avg_price"]) * row["qty"]
         pnl   = ((ltp - row["avg_price"]) * row["qty"]) if ltp else None
