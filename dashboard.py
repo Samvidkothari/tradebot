@@ -263,29 +263,44 @@ def intraday_db():
 @app.route("/intraday")
 @login_required
 def intraday():
+    empty = dict(days=[], trades=[], chart=None, equity=0, cum_net=0, ret_pct=0,
+                 n_trades=0, win_rate=None, by_symbol=[], by_side=[],
+                 strategies=[], selected=None)
     conn = intraday_db()
     if conn is None:
         return render_template(
             "intraday.html", active="intraday",
-            error="intraday.db not found — run intraday_sim.py first.",
-            days=[], trades=[], chart=None,
-            equity=0, cum_net=0, ret_pct=0, n_trades=0, win_rate=None,
-            by_symbol=[], by_side=[])
+            error="intraday.db not found — run intraday_sim.py first.", **empty)
 
-    cash = conn.execute("SELECT cash FROM account WHERE id = 1").fetchone()
+    # Available strategy books; the page shows one at a time (selector at top).
+    strategies = [r["strategy"] for r in
+                  conn.execute("SELECT strategy FROM account ORDER BY strategy")]
+    if not strategies:
+        conn.close()
+        return render_template("intraday.html", active="intraday",
+                               error="No strategy books yet — run intraday_sim.py.",
+                               **empty)
+    selected = request.args.get("strategy")
+    if selected not in strategies:
+        selected = strategies[0]
+
+    cash = conn.execute("SELECT cash FROM account WHERE strategy = ?",
+                        (selected,)).fetchone()
     equity = cash["cash"] if cash else 0.0
 
     days = [dict(d) for d in conn.execute(
-        "SELECT trade_date, n_trades, gross_pnl, costs, net_pnl "
-        "FROM days ORDER BY trade_date DESC")]
+        "SELECT trade_date, n_trades, gross_pnl, costs, net_pnl FROM days "
+        "WHERE strategy = ? ORDER BY trade_date DESC", (selected,))]
 
     trades = [dict(t) for t in conn.execute(
         "SELECT trade_date, symbol, side, entry_time, entry_px, exit_time, "
-        "exit_px, qty, net_pnl, exit_reason FROM trades ORDER BY id DESC LIMIT 100")]
+        "exit_px, qty, net_pnl, exit_reason FROM trades WHERE strategy = ? "
+        "ORDER BY id DESC LIMIT 100", (selected,))]
 
     agg = conn.execute(
         "SELECT COUNT(*) n, COALESCE(SUM(net_pnl),0) net, "
-        "SUM(CASE WHEN net_pnl > 0 THEN 1 ELSE 0 END) wins FROM trades").fetchone()
+        "SUM(CASE WHEN net_pnl > 0 THEN 1 ELSE 0 END) wins "
+        "FROM trades WHERE strategy = ?", (selected,)).fetchone()
     n_trades = agg["n"]
     cum_net  = agg["net"]
     win_rate = (agg["wins"] / n_trades * 100) if n_trades else None
@@ -294,17 +309,18 @@ def intraday():
     by_symbol = [dict(r) for r in conn.execute(
         "SELECT symbol, COUNT(*) n, "
         "SUM(CASE WHEN net_pnl > 0 THEN 1 ELSE 0 END) wins, "
-        "COALESCE(SUM(net_pnl),0) net FROM trades "
-        "GROUP BY symbol ORDER BY net DESC")]
+        "COALESCE(SUM(net_pnl),0) net FROM trades WHERE strategy = ? "
+        "GROUP BY symbol ORDER BY net DESC", (selected,))]
     by_side = [dict(r) for r in conn.execute(
         "SELECT side, COUNT(*) n, "
         "SUM(CASE WHEN net_pnl > 0 THEN 1 ELSE 0 END) wins, "
-        "COALESCE(SUM(net_pnl),0) net FROM trades "
-        "GROUP BY side ORDER BY side")]
+        "COALESCE(SUM(net_pnl),0) net FROM trades WHERE strategy = ? "
+        "GROUP BY side ORDER BY side", (selected,))]
 
     # Cumulative net P&L by day (oldest → newest) for the chart
     rows = conn.execute(
-        "SELECT trade_date, net_pnl FROM days ORDER BY trade_date").fetchall()
+        "SELECT trade_date, net_pnl FROM days WHERE strategy = ? "
+        "ORDER BY trade_date", (selected,)).fetchall()
     cum, labels, values = 0.0, [], []
     for r in rows:
         cum += r["net_pnl"] or 0.0
@@ -319,7 +335,8 @@ def intraday():
         days=days, trades=trades, chart=chart,
         equity=equity, cum_net=cum_net, ret_pct=ret_pct,
         n_trades=n_trades, win_rate=win_rate,
-        by_symbol=by_symbol, by_side=by_side)
+        by_symbol=by_symbol, by_side=by_side,
+        strategies=strategies, selected=selected)
 
 
 # ── Candlestick charts (data/*.csv) ───────────────────────────────────────────
