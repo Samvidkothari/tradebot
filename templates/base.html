@@ -74,6 +74,7 @@
     <nav>
       <a href="{{ url_for('overview') }}"  class="{{ 'active' if active == 'overview' }}">Live Portfolio</a>
       <a href="{{ url_for('paper') }}"     class="{{ 'active' if active == 'paper' }}">Paper Trader</a>
+      <a href="{{ url_for('charts') }}"    class="{{ 'active' if active == 'charts' }}">Charts</a>
       <a href="{{ url_for('backtests') }}" class="{{ 'active' if active == 'backtests' }}">Backtests</a>
     </nav>
     <div class="logout"><a href="{{ url_for('logout') }}">Sign out</a></div>

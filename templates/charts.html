@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}Charts{% endblock %}
+{% block content %}
+  <h1>Charts</h1>
+  <p class="sub">Daily candlesticks from your local data folder</p>
+
+  {% if not symbols %}
+    <div class="empty">No CSVs found in data/ — run fetch_data.py first.</div>
+  {% else %}
+    <div style="display:flex; gap:12px; align-items:center; margin-bottom:18px;">
+      <select id="symbolSelect"
+              style="background:var(--panel); color:var(--text);
+                     border:1px solid var(--border); border-radius:8px;
+                     padding:9px 14px; font-size:14px; min-width:200px;">
+        {% for s in symbols %}
+          <option value="{{ s }}" {{ 'selected' if s == symbol }}>{{ s }}</option>
+        {% endfor %}
+      </select>
+      <label style="color:var(--muted); font-size:13px;">
+        <input type="checkbox" id="smaToggle" checked> 20-day SMA
+      </label>
+      <span id="ohlcReadout" style="color:var(--muted); font-size:13px;"></span>
+    </div>
+
+    <div class="card" style="padding:8px;">
+      <div id="chart" style="height:420px;"></div>
+      <div id="volume" style="height:110px;"></div>
+    </div>
+  {% endif %}
+{% endblock %}
+
+{% block head %}
+{% if symbols %}
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", async () => {
+  const dark = {
+    layout: { background: { color: "transparent" }, textColor: "#8b949e" },
+    grid: { vertLines: { color: "#21262d" }, horzLines: { color: "#21262d" } },
+    timeScale: { borderColor: "#21262d" },
+    rightPriceScale: { borderColor: "#21262d" },
+    crosshair: { mode: 0 },
+  };
+
+  const priceChart = LightweightCharts.createChart(
+    document.getElementById("chart"), { ...dark, height: 420 });
+  const volChart = LightweightCharts.createChart(
+    document.getElementById("volume"),
+    { ...dark, height: 110, timeScale: { visible: true, borderColor: "#21262d" } });
+
+  const candleSeries = priceChart.addCandlestickSeries({
+    upColor: "#3fb950", downColor: "#f85149",
+    wickUpColor: "#3fb950", wickDownColor: "#f85149",
+    borderVisible: false,
+  });
+  const smaSeries = priceChart.addLineSeries({
+    color: "#4f8cff", lineWidth: 2, priceLineVisible: false,
+    lastValueVisible: false, crosshairMarkerVisible: false,
+  });
+  const volSeries = volChart.addHistogramSeries({
+    priceFormat: { type: "volume" }, color: "#30363d",
+  });
+
+  // keep the two time scales in sync
+  priceChart.timeScale().subscribeVisibleLogicalRangeChange(r => {
+    if (r) volChart.timeScale().setVisibleLogicalRange(r);
+  });
+  volChart.timeScale().subscribeVisibleLogicalRangeChange(r => {
+    if (r) priceChart.timeScale().setVisibleLogicalRange(r);
+  });
+
+  function sma(candles, n = 20) {
+    const out = [];
+    let sum = 0;
+    for (let i = 0; i < candles.length; i++) {
+      sum += candles[i].close;
+      if (i >= n) sum -= candles[i - n].close;
+      if (i >= n - 1) out.push({ time: candles[i].time, value: sum / n });
+    }
+    return out;
+  }
+
+  async function load(symbol) {
+    const res = await fetch(`/api/candles/${symbol}`);
+    const candles = await res.json();
+    candleSeries.setData(candles);
+    smaSeries.setData(document.getElementById("smaToggle").checked ? sma(candles) : []);
+    volSeries.setData(candles.map(c => ({
+      time: c.time, value: c.volume,
+      color: c.close >= c.open ? "rgba(63,185,80,.45)" : "rgba(248,81,73,.45)",
+    })));
+    priceChart.timeScale().fitContent();
+    window._candles = candles;
+    history.replaceState(null, "", `/charts/${symbol}`);
+  }
+
+  // OHLC readout on hover
+  priceChart.subscribeCrosshairMove(p => {
+    const el = document.getElementById("ohlcReadout");
+    const d = p.seriesData && p.seriesData.get(candleSeries);
+    el.textContent = d
+      ? `${p.time}  O ${d.open}  H ${d.high}  L ${d.low}  C ${d.close}`
+      : "";
+  });
+
+  const sel = document.getElementById("symbolSelect");
+  sel.addEventListener("change", () => load(sel.value));
+  document.getElementById("smaToggle").addEventListener("change", e => {
+    smaSeries.setData(e.target.checked && window._candles ? sma(window._candles) : []);
+  });
+
+  await load("{{ symbol }}");
+});
+</script>
+{% endif %}
+{% endblock %}

@@ -27,7 +27,7 @@ from functools import wraps
 from pathlib import Path
 
 from dotenv import load_dotenv
-from flask import (Flask, abort, redirect, render_template, request,
+from flask import (Flask, abort, jsonify, redirect, render_template, request,
                    session, url_for)
 
 from paper_trader import fetch_live
@@ -247,6 +247,55 @@ def paper():
         cash=cash, equity=equity, realised=realised, ret_pct=ret_pct,
         positions=positions, fills=fills, chart=chart,
     )
+
+
+# ── Candlestick charts (data/*.csv) ───────────────────────────────────────────
+
+def chart_symbols():
+    """All symbols with a CSV in data/, NIFTY50 index first."""
+    syms = sorted(fp.stem for fp in DATA_DIR.glob("*.csv"))
+    if "NIFTY50" in syms:
+        syms.remove("NIFTY50")
+        syms.insert(0, "NIFTY50")
+    return syms
+
+
+@app.route("/charts")
+@app.route("/charts/<symbol>")
+@login_required
+def charts(symbol=None):
+    syms = chart_symbols()
+    if not syms:
+        return render_template("charts.html", active="charts",
+                               symbols=[], symbol=None)
+    if symbol is None:
+        symbol = syms[0]
+    if symbol not in syms:
+        abort(404)
+    return render_template("charts.html", active="charts",
+                           symbols=syms, symbol=symbol)
+
+
+@app.route("/api/candles/<symbol>")
+@login_required
+def api_candles(symbol):
+    if symbol not in chart_symbols():   # validates against real files only
+        abort(404)
+    candles = []
+    with open(DATA_DIR / f"{symbol}.csv", newline="") as f:
+        for row in csv.DictReader(f):
+            try:
+                candles.append({
+                    "time":   row["date"],
+                    "open":   round(float(row["open"]), 2),
+                    "high":   round(float(row["high"]), 2),
+                    "low":    round(float(row["low"]), 2),
+                    "close":  round(float(row["close"]), 2),
+                    "volume": int(float(row["volume"])),
+                })
+            except (KeyError, ValueError):
+                continue   # skip malformed rows
+    return jsonify(candles)
 
 
 # ── Backtest reports (results/*.md) ───────────────────────────────────────────
