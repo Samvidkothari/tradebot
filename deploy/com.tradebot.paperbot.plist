@@ -2,28 +2,28 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
   "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
-  com.tradebot.intraday — auto-runs the intraday ORB PAPER simulator at
-  15:45 IST on weekdays (Mon–Fri). Simulated only; places no real orders.
-  Install:  cp deploy/com.tradebot.intraday.plist ~/Library/LaunchAgents/
-            launchctl load -w ~/Library/LaunchAgents/com.tradebot.intraday.plist
-  Remove:   launchctl unload -w ~/Library/LaunchAgents/com.tradebot.intraday.plist
+  com.tradebot.paperbot — runs the whole PAPER bot (intraday ORB+VWAP +
+  options short strangle) at 15:45 IST on weekdays (Mon–Fri) via
+  run_paper_bot.sh. Simulated only; places no real orders.
+  Install:  cp deploy/com.tradebot.paperbot.plist ~/Library/LaunchAgents/
+            launchctl load -w ~/Library/LaunchAgents/com.tradebot.paperbot.plist
+  Remove:   launchctl unload -w ~/Library/LaunchAgents/com.tradebot.paperbot.plist
 -->
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.tradebot.intraday</string>
+    <string>com.tradebot.paperbot</string>
 
     <key>ProgramArguments</key>
     <array>
-        <string>/Users/samvid/projects/tradebot/.venv/bin/python</string>
-        <string>/Users/samvid/projects/tradebot/intraday_sim.py</string>
+        <string>/bin/bash</string>
+        <string>/Users/samvid/projects/tradebot/run_paper_bot.sh</string>
     </array>
 
     <key>WorkingDirectory</key>
     <string>/Users/samvid/projects/tradebot</string>
 
-    <!-- 15:45 local (IST) on Mon(1) Tue(2) Wed(3) Thu(4) Fri(5).
-         launchd runs a missed calendar event once when the Mac next wakes. -->
+    <!-- 15:45 local (IST) Mon(1)–Fri(5); launchd runs a missed slot on wake. -->
     <key>StartCalendarInterval</key>
     <array>
         <dict><key>Weekday</key><integer>1</integer><key>Hour</key><integer>15</integer><key>Minute</key><integer>45</integer></dict>
@@ -37,8 +37,8 @@
     <false/>
 
     <key>StandardOutPath</key>
-    <string>/Users/samvid/projects/tradebot/logs/intraday.log</string>
+    <string>/Users/samvid/projects/tradebot/logs/paperbot.log</string>
     <key>StandardErrorPath</key>
-    <string>/Users/samvid/projects/tradebot/logs/intraday.log</string>
+    <string>/Users/samvid/projects/tradebot/logs/paperbot.log</string>
 </dict>
 </plist>
