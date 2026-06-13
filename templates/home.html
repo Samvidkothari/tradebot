@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Home{% endblock %}
+{% block content %}
+  {% set d = digest %}
+  <h1>Daily Summary</h1>
+  <p class="sub">Every book below is simulated — paper only, no real orders · generated {{ d.generated }}</p>
+
+  <div class="banner" style="background:linear-gradient(180deg,rgba(124,140,255,.10),rgba(124,140,255,.04));
+       border-color:rgba(124,140,255,.35); color:#c7d0ff;">
+    The autonomous paper bot runs at <b>15:45 IST on weekdays</b> — intraday (ORB + VWAP)
+    and the NIFTY options strangle — and logs to <code>logs/paperbot.log</code>.
+  </div>
+
+  <!-- Low-vol -->
+  <section>
+    <h2>Low-Vol Equity Book</h2>
+    {% if d.lowvol %}
+    {% set lv = d.lowvol %}
+    <div class="cards">
+      <div class="card"><div class="label">Open Positions</div><div class="value">{{ lv.n_positions }}</div></div>
+      <div class="card"><div class="label">Cash</div><div class="value">₹{{ "{:,.0f}".format(lv.cash) }}</div></div>
+      <div class="card"><div class="label">Realised P&amp;L</div>
+        <div class="value {{ 'green' if lv.realised >= 0 else 'red' }}">{{ "+" if lv.realised >= 0 }}₹{{ "{:,.0f}".format(lv.realised) }}</div></div>
+      <div class="card"><div class="label">Last Activity</div><div class="value" style="font-size:18px;">{{ lv.last_run or '—' }}</div></div>
+    </div>
+    <p class="sub" style="margin-top:-14px;">Live marked equity is on the
+      <a href="{{ url_for('paper') }}" style="color:var(--accent);">Paper Trader</a> tab.</p>
+    {% else %}<div class="empty">No low-vol book yet.</div>{% endif %}
+  </section>
+
+  <!-- Intraday -->
+  <section>
+    <h2>Intraday {% if d.intraday %}<span style="text-transform:none;letter-spacing:0;color:var(--faint);">· latest {{ d.intraday.latest_day }}</span>{% endif %}</h2>
+    {% if d.intraday %}
+    <table>
+      <tr><th>Strategy</th><th>Cumulative Net</th><th>Win Rate</th><th>Today</th></tr>
+      {% for s in d.intraday.strategies %}
+      <tr>
+        <td>{{ s.strategy }}</td>
+        <td class="{{ 'green' if s.cum_net >= 0 else 'red' }}">{{ "+" if s.cum_net >= 0 }}₹{{ "{:,.0f}".format(s.cum_net) }}</td>
+        <td>{{ s.wins }}/{{ s.n_trades }}</td>
+        <td>{% if s.today_trades %}<span class="{{ 'green' if s.today_net >= 0 else 'red' }}">{{ s.today_trades }} trades · {{ "+" if s.today_net >= 0 }}₹{{ "{:,.0f}".format(s.today_net) }}</span>{% else %}—{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    <p class="sub" style="margin-top:14px;">Detail &amp; ORB-vs-VWAP compare on the
+      <a href="{{ url_for('intraday') }}" style="color:var(--accent);">Intraday</a> tab.</p>
+    {% else %}<div class="empty">No intraday book yet.</div>{% endif %}
+  </section>
+
+  <!-- Options -->
+  <section>
+    <h2>Options Short Strangle</h2>
+    {% if d.options %}
+    {% set op = d.options %}
+    <div class="cards">
+      <div class="card"><div class="label">Realised P&amp;L</div>
+        <div class="value {{ 'green' if op.realised >= 0 else 'red' }}">{{ "+" if op.realised >= 0 }}₹{{ "{:,.0f}".format(op.realised) }}</div></div>
+      <div class="card"><div class="label">Open Position</div>
+        <div class="value" style="font-size:18px;">{% if op.open %}{{ "%.0f"|format(op.open.put_strike) }}P / {{ "%.0f"|format(op.open.call_strike) }}C{% else %}Flat{% endif %}</div></div>
+      <div class="card"><div class="label">Mark-to-Model</div>
+        <div class="value {{ 'green' if (op.open and op.open.open_pnl >= 0) else 'red' }}">{% if op.open %}{{ "+" if op.open.open_pnl >= 0 }}₹{{ "{:,.0f}".format(op.open.open_pnl) }}{% else %}—{% endif %}</div></div>
+      <div class="card"><div class="label">Closed Cycles</div><div class="value">{{ op.n_closed }}</div></div>
+    </div>
+    {% if not op.had_event %}
+    <p class="sub" style="margin-top:-14px;color:#e8d3a6;"><b>Verdict: inconclusive</b> — awaiting a ≥4% NIFTY day while short. Quiet months prove nothing.</p>
+    {% else %}
+    <p class="sub" style="margin-top:-14px;color:#bfe9d2;">A volatility event has occurred while short — results are now meaningful to read.</p>
+    {% endif %}
+    <p class="sub"><a href="{{ url_for('options_book') }}" style="color:var(--accent);">Options → Paper Book</a> for the full view.</p>
+    {% else %}<div class="empty">No options book yet.</div>{% endif %}
+  </section>
+{% endblock %}

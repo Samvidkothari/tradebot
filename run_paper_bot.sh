@@ -10,5 +10,7 @@ echo "----- intraday (ORB + VWAP) -----"
 "$PY" intraday_sim.py
 echo "----- options (NIFTY short strangle) -----"
 "$PY" options_sim.py
+echo "----- daily digest -----"
+"$PY" digest.py
 echo "================ paper-bot run complete ================"
 echo

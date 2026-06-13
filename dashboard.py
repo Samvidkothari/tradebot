@@ -32,6 +32,7 @@ from flask import (Flask, abort, jsonify, redirect, render_template, request,
                    session, url_for)
 
 from paper_trader import fetch_live
+from digest import build_digest
 
 load_dotenv()
 
@@ -68,7 +69,7 @@ def login():
             error = "No password set. Add DASHBOARD_PASSWORD=... to .env and restart."
         elif request.form.get("password") == os.getenv("DASHBOARD_PASSWORD"):
             session["authed"] = True
-            return redirect(url_for("overview"))
+            return redirect(url_for("home"))
         else:
             error = "Wrong password."
     return render_template("login.html", error=error, configured=configured)
@@ -78,6 +79,12 @@ def login():
 def logout():
     session.clear()
     return redirect(url_for("login"))
+
+
+@app.route("/home")
+@login_required
+def home():
+    return render_template("home.html", active="home", digest=build_digest())
 
 
 # ── Live portfolio (Kite) ─────────────────────────────────────────────────────
