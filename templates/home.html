@@ -25,6 +25,14 @@
     </div>
     <p class="sub" style="margin-top:-14px;">Live marked equity is on the
       <a href="{{ url_for('paper') }}" style="color:var(--accent);">Paper Trader</a> tab.</p>
+    {% if lv.holdings %}
+    <table>
+      <tr><th>Holding</th><th>Qty</th><th>Avg Price</th></tr>
+      {% for h in lv.holdings %}
+      <tr><td>{{ h.symbol }}</td><td>{{ h.qty }}</td><td>{{ "%.2f"|format(h.avg_price) }}</td></tr>
+      {% endfor %}
+    </table>
+    {% endif %}
     {% else %}<div class="empty">No low-vol book yet.</div>{% endif %}
   </section>
 
@@ -43,6 +51,24 @@
       </tr>
       {% endfor %}
     </table>
+    {% if d.intraday.today_detail %}
+    <h2 style="margin-top:24px;">Today's Intraday Bets · {{ d.intraday.latest_day }}</h2>
+    <table>
+      <tr><th>Strategy</th><th>Symbol</th><th>Side</th><th>Entry</th><th>@</th><th>Exit</th><th>@</th><th>Qty</th><th>Net P&amp;L</th><th>Why</th></tr>
+      {% for t in d.intraday.today_detail %}
+      <tr>
+        <td>{{ t.strategy }}</td>
+        <td>{{ t.symbol }}</td>
+        <td class="{{ 'green' if t.side == 'LONG' else 'red' }}">{{ t.side }}</td>
+        <td>{{ t.entry_time }}</td><td>{{ "%.2f"|format(t.entry_px) }}</td>
+        <td>{{ t.exit_time }}</td><td>{{ "%.2f"|format(t.exit_px) }}</td>
+        <td>{{ t.qty }}</td>
+        <td class="{{ 'green' if t.net_pnl >= 0 else 'red' }}">{{ "+" if t.net_pnl >= 0 }}{{ "{:,.0f}".format(t.net_pnl) }}</td>
+        <td>{{ t.exit_reason }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% endif %}
     <p class="sub" style="margin-top:14px;">Detail &amp; ORB-vs-VWAP compare on the
       <a href="{{ url_for('intraday') }}" style="color:var(--accent);">Intraday</a> tab.</p>
     {% else %}<div class="empty">No intraday book yet.</div>{% endif %}
@@ -67,7 +93,30 @@
     {% else %}
     <p class="sub" style="margin-top:-14px;color:#bfe9d2;">A volatility event has occurred while short — results are now meaningful to read.</p>
     {% endif %}
-    <p class="sub"><a href="{{ url_for('options_book') }}" style="color:var(--accent);">Options → Paper Book</a> for the full view.</p>
+    {% if op.open %}
+    <table>
+      <tr><th>Open Bet</th><th>Strike</th><th>Expiry</th><th>Premium banked</th><th>Mark-to-Model</th></tr>
+      <tr><td>Short Put</td><td>{{ "%.0f"|format(op.open.put_strike) }}</td>
+          <td rowspan="2" style="vertical-align:middle;">{{ op.open.expiry }} ({{ op.open.dte }}d)</td>
+          <td rowspan="2" style="vertical-align:middle;">₹{{ "{:,.0f}".format(op.open.premium_net) }}</td>
+          <td rowspan="2" style="vertical-align:middle;" class="{{ 'green' if op.open.open_pnl >= 0 else 'red' }}">{{ "+" if op.open.open_pnl >= 0 }}₹{{ "{:,.0f}".format(op.open.open_pnl) }}</td></tr>
+      <tr><td>Short Call</td><td>{{ "%.0f"|format(op.open.call_strike) }}</td></tr>
+    </table>
+    {% endif %}
+    {% if op.recent_closed %}
+    <h2 style="margin-top:24px;">Recent Closed Strangles</h2>
+    <table>
+      <tr><th>Opened</th><th>Expiry</th><th>Strikes</th><th>Premium</th><th>Closed</th><th>Why</th><th>Net P&amp;L</th></tr>
+      {% for c in op.recent_closed %}
+      <tr><td>{{ c.open_date }}</td><td>{{ c.expiry }}</td>
+          <td>{{ "%.0f"|format(c.put_strike) }}P / {{ "%.0f"|format(c.call_strike) }}C</td>
+          <td>₹{{ "{:,.0f}".format(c.premium_net) }}</td>
+          <td>{{ c.close_date }}</td><td>{{ c.close_reason }}</td>
+          <td class="{{ 'green' if c.settle_pnl >= 0 else 'red' }}">{{ "+" if c.settle_pnl >= 0 }}₹{{ "{:,.0f}".format(c.settle_pnl) }}</td></tr>
+      {% endfor %}
+    </table>
+    {% endif %}
+    <p class="sub" style="margin-top:14px;"><a href="{{ url_for('options_book') }}" style="color:var(--accent);">Options → Paper Book</a> for the full view.</p>
     {% else %}<div class="empty">No options book yet.</div>{% endif %}
   </section>
 {% endblock %}

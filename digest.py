@@ -46,8 +46,10 @@ def lowvol_section():
         realised = _one(c, "SELECT COALESCE(SUM(realised_pnl),0) r "
                             "FROM fills WHERE side='SELL'")["r"]
         last = _one(c, "SELECT MAX(run_date) d FROM fills")["d"]
+        holdings = [dict(r) for r in c.execute(
+            "SELECT symbol, qty, avg_price FROM positions ORDER BY symbol")]
         return {"cash": cash, "n_positions": npos, "book_cost": cash + cost,
-                "realised": realised, "last_run": last}
+                "realised": realised, "last_run": last, "holdings": holdings}
     finally:
         c.close()
 
@@ -74,7 +76,11 @@ def intraday_section():
                 "today_trades": today["n_trades"] if today else 0,
                 "today_net": today["net_pnl"] if today else 0.0,
             })
-        return {"latest_day": latest, "strategies": out}
+        today_detail = [dict(r) for r in c.execute(
+            "SELECT strategy, symbol, side, entry_time, entry_px, exit_time, "
+            "exit_px, qty, net_pnl, exit_reason FROM trades WHERE trade_date=? "
+            "ORDER BY entry_time", (latest,))] if latest else []
+        return {"latest_day": latest, "strategies": out, "today_detail": today_detail}
     finally:
         c.close()
 
@@ -98,8 +104,12 @@ def options_section():
                   "open_pnl": mk["open_pnl"] if mk else 0.0}
         n_closed = _one(c, "SELECT COUNT(*) n FROM cycles WHERE status='closed'")["n"]
         had_event = _one(c, "SELECT 1 x FROM marks WHERE ABS(daily_move)>=0.04 LIMIT 1") is not None
-        return {"realised": cash - CAPITAL, "open": op,
-                "n_closed": n_closed, "had_event": had_event}
+        recent = [dict(r) for r in c.execute(
+            "SELECT open_date, expiry, put_strike, call_strike, premium_net, "
+            "close_date, close_reason, settle_pnl FROM cycles WHERE status='closed' "
+            "ORDER BY id DESC LIMIT 5")]
+        return {"realised": cash - CAPITAL, "open": op, "n_closed": n_closed,
+                "had_event": had_event, "recent_closed": recent}
     finally:
         c.close()
 
