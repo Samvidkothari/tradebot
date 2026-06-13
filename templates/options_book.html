@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}Options — Paper Book{% endblock %}
+{% block content %}
+  <h1>Options <span class="readonly">SIMULATED</span></h1>
+  <p class="sub">NIFTY short-strangle forward paper book — model-priced, no real orders</p>
+
+  <div style="display:flex; gap:8px; margin-bottom:28px;">
+    <a href="{{ url_for('options') }}"
+       style="padding:7px 16px; border-radius:9px; font-size:13px; font-weight:600;
+              text-decoration:none; color:var(--muted); border:1px solid var(--border);">Pricing Tool</a>
+    <a href="{{ url_for('options_book') }}"
+       style="padding:7px 16px; border-radius:9px; font-size:13px; font-weight:600;
+              text-decoration:none; color:var(--text);
+              background:rgba(124,140,255,.14); border:1px solid rgba(124,140,255,.4);">Paper Book</a>
+  </div>
+
+  {% if error %}
+    <div class="banner">{{ error }}</div>
+  {% else %}
+    {% if had_event %}
+      <div class="banner" style="background:linear-gradient(180deg,rgba(76,195,138,.12),rgba(76,195,138,.05));
+           border-color:rgba(76,195,138,.4); color:#bfe9d2;">
+        A volatility event (≥4% NIFTY day) has occurred while short — results are now
+        meaningful to read. Judge the strategy by how it came through that, not the quiet months.
+      </div>
+    {% else %}
+      <div class="banner" style="background:linear-gradient(180deg,rgba(202,164,93,.12),rgba(202,164,93,.05));
+           border-color:rgba(202,164,93,.4); color:#e8d3a6;">
+        <b>VERDICT: INCONCLUSIVE</b> — awaiting a volatility event (≥4% NIFTY day while short).
+        Quiet months prove nothing about a short-premium book; the test is the crash, not the calm.
+      </div>
+    {% endif %}
+
+    <div class="cards">
+      <div class="card"><div class="label">Marked Equity</div>
+        <div class="value">₹{{ "{:,.0f}".format(equity) }}
+          <small>/ ₹{{ "{:,.0f}".format(started) }}</small></div></div>
+      <div class="card"><div class="label">Realized P&amp;L</div>
+        <div class="value {{ 'green' if realized >= 0 else 'red' }}">{{ "+" if realized >= 0 }}₹{{ "{:,.0f}".format(realized) }}</div></div>
+      <div class="card"><div class="label">Open Mark-to-Model</div>
+        <div class="value {{ 'green' if unrealized >= 0 else 'red' }}">{{ "+" if unrealized >= 0 }}₹{{ "{:,.0f}".format(unrealized) }}</div></div>
+      <div class="card"><div class="label">Closed Cycles</div>
+        <div class="value">{{ n_closed }}{% if n_closed %}<small> · {{ wins }}W · {{ stops }} stop</small>{% endif %}</div></div>
+    </div>
+
+    <section>
+      <h2>Open Position</h2>
+      {% if open_pos %}
+      <div class="card">
+        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:20px;">
+          <div><div class="label" style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.08em;">Expiry</div>
+               <div style="font-size:18px;margin-top:4px;">{{ open_pos.expiry }} <span style="color:var(--faint);font-size:13px;">({{ open_pos.dte }}d)</span></div></div>
+          <div><div class="label" style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.08em;">Strikes</div>
+               <div style="font-size:18px;margin-top:4px;">{{ "%.0f"|format(open_pos.put_strike) }}<span class="red">P</span> / {{ "%.0f"|format(open_pos.call_strike) }}<span class="green">C</span></div></div>
+          <div><div class="label" style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.08em;">Spot at mark</div>
+               <div style="font-size:18px;margin-top:4px;">{{ ("%.0f"|format(open_pos.spot)) if open_pos.spot else "—" }}</div></div>
+          <div><div class="label" style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.08em;">Premium banked</div>
+               <div style="font-size:18px;margin-top:4px;">₹{{ "{:,.0f}".format(open_pos.premium_net) }} <span style="color:var(--faint);font-size:12px;">(spread ₹{{ "{:,.0f}".format(open_pos.entry_spread) }})</span></div></div>
+          <div><div class="label" style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.08em;">Mark-to-model P&amp;L</div>
+               <div style="font-size:18px;margin-top:4px;" class="{{ 'green' if open_pos.open_pnl >= 0 else 'red' }}">{{ "+" if open_pos.open_pnl >= 0 }}₹{{ "{:,.0f}".format(open_pos.open_pnl) }}</div></div>
+        </div>
+      </div>
+      {% else %}<div class="empty">Flat — no open position.</div>{% endif %}
+    </section>
+
+    {% if marks %}
+    <section>
+      <h2>Open P&amp;L (mark-to-model, current cycle)</h2>
+      <div class="card"><canvas id="mkChart" height="80"></canvas></div>
+    </section>
+    {% endif %}
+
+    <section>
+      <h2>Closed Cycles</h2>
+      {% if closed %}
+      <table>
+        <tr><th>Opened</th><th>Expiry</th><th>Strikes</th><th>Premium</th><th>Closed</th><th>Why</th><th>Net P&amp;L</th></tr>
+        {% for c in closed %}
+        <tr>
+          <td>{{ c.open_date }}</td>
+          <td>{{ c.expiry }}</td>
+          <td>{{ "%.0f"|format(c.put_strike) }}P / {{ "%.0f"|format(c.call_strike) }}C</td>
+          <td>₹{{ "{:,.0f}".format(c.premium_net) }}</td>
+          <td>{{ c.close_date }}</td>
+          <td>{{ c.close_reason }}</td>
+          <td class="{{ 'green' if c.settle_pnl >= 0 else 'red' }}">{{ "+" if c.settle_pnl >= 0 }}₹{{ "{:,.0f}".format(c.settle_pnl) }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+      {% else %}<div class="empty">No closed cycles yet — the first expiry is ahead.</div>{% endif %}
+    </section>
+  {% endif %}
+{% endblock %}
+
+{% block head %}
+{% if marks %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    new Chart(document.getElementById("mkChart"), {
+      type: "line",
+      data: {
+        labels: {{ marks["labels"] | tojson }},
+        datasets: [{
+          data: {{ marks["values"] | tojson }},
+          borderColor: "#caa45d", backgroundColor: "rgba(202,164,93,.12)",
+          fill: true, tension: .3, pointRadius: 2,
+        }]
+      },
+      options: {
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: "#8a93a3" }, grid: { color: "#232a37" } },
+          y: { ticks: { color: "#8a93a3" }, grid: { color: "#232a37" } }
+        }
+      }
+    });
+  });
+</script>
+{% endif %}
+{% endblock %}

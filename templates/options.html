@@ -4,6 +4,16 @@
   <h1>Options <span class="readonly">MODEL-PRICED</span></h1>
   <p class="sub">Black–Scholes pricing &amp; payoff — for learning, not real market premiums</p>
 
+  <div style="display:flex; gap:8px; margin-bottom:28px;">
+    <a href="{{ url_for('options') }}"
+       style="padding:7px 16px; border-radius:9px; font-size:13px; font-weight:600;
+              text-decoration:none; color:var(--text);
+              background:rgba(124,140,255,.14); border:1px solid rgba(124,140,255,.4);">Pricing Tool</a>
+    <a href="{{ url_for('options_book') }}"
+       style="padding:7px 16px; border-radius:9px; font-size:13px; font-weight:600;
+              text-decoration:none; color:var(--muted); border:1px solid var(--border);">Paper Book</a>
+  </div>
+
   {% if not symbols %}
     <div class="empty">No underlying data in data/ — run fetch_data.py first.</div>
   {% else %}

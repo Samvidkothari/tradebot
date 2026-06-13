@@ -40,6 +40,7 @@ DATA_DIR     = BASE_DIR / "data"
 RESULTS_DIR  = BASE_DIR / "results"
 DB_PATH      = BASE_DIR / "portfolio.db"
 INTRADAY_DB  = BASE_DIR / "intraday.db"
+OPTIONS_DB   = BASE_DIR / "options.db"
 
 STARTING_CAPITAL = 1_000_000  # must match paper_trader.py / intraday_sim.py
 
@@ -500,6 +501,59 @@ def options():
     return render_template("options.html", active="options",
                            inputs=inputs, symbols=syms,
                            default=(syms[0] if syms else None))
+
+
+@app.route("/options/book")
+@login_required
+def options_book():
+    if not OPTIONS_DB.exists():
+        return render_template(
+            "options_book.html", active="options",
+            error="options.db not found — run options_sim.py first.",
+            open_pos=None, closed=[], marks=None, had_event=False,
+            equity=0, realized=0, unrealized=0, started=STARTING_CAPITAL,
+            n_closed=0, wins=0, stops=0)
+
+    conn = sqlite3.connect(f"file:{OPTIONS_DB}?mode=ro", uri=True)
+    conn.row_factory = sqlite3.Row
+
+    cash = conn.execute("SELECT cash FROM account WHERE id = 1").fetchone()
+    realized = cash["cash"] - STARTING_CAPITAL if cash else 0.0
+    equity_real = cash["cash"] if cash else STARTING_CAPITAL
+
+    cyc = conn.execute("SELECT * FROM cycles WHERE status = 'open'").fetchone()
+    open_pos, unrealized, marks = None, 0.0, None
+    if cyc:
+        last = conn.execute(
+            "SELECT * FROM marks WHERE cycle_id = ? ORDER BY mark_date DESC LIMIT 1",
+            (cyc["id"],)).fetchone()
+        unrealized = last["open_pnl"] if last else 0.0
+        dte = (date.fromisoformat(cyc["expiry"]) - date.today()).days
+        open_pos = {**dict(cyc), "open_pnl": unrealized,
+                    "spot": (last["spot"] if last else None), "dte": dte}
+        m = conn.execute(
+            "SELECT mark_date, open_pnl FROM marks WHERE cycle_id = ? "
+            "ORDER BY mark_date", (cyc["id"],)).fetchall()
+        if len(m) >= 2:
+            marks = {"labels": [r["mark_date"] for r in m],
+                     "values": [r["open_pnl"] for r in m]}
+
+    closed = [dict(c) for c in conn.execute(
+        "SELECT * FROM cycles WHERE status = 'closed' ORDER BY id DESC")]
+    agg = conn.execute(
+        "SELECT COUNT(*) n, SUM(CASE WHEN settle_pnl>0 THEN 1 ELSE 0 END) wins, "
+        "SUM(CASE WHEN close_reason='STOP' THEN 1 ELSE 0 END) stops "
+        "FROM cycles WHERE status='closed'").fetchone()
+    had_event = conn.execute(
+        "SELECT 1 FROM marks WHERE ABS(daily_move) >= 0.04 LIMIT 1").fetchone() is not None
+    conn.close()
+
+    return render_template(
+        "options_book.html", active="options", error=None,
+        open_pos=open_pos, closed=closed, marks=marks, had_event=had_event,
+        equity=equity_real + unrealized, realized=realized, unrealized=unrealized,
+        started=STARTING_CAPITAL, n_closed=agg["n"],
+        wins=agg["wins"] or 0, stops=agg["stops"] or 0)
 
 
 # ── Backtest reports (results/*.md) ───────────────────────────────────────────
