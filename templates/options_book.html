@@ -89,6 +89,37 @@
       </table>
       {% else %}<div class="empty">No closed cycles yet — the first expiry is ahead.</div>{% endif %}
     </section>
+
+    {% if condor %}
+    <section>
+      <h2>Defined-Risk Iron Condor <span style="text-transform:none;letter-spacing:0;color:var(--faint);font-size:14px;">· same idea, tail risk capped — running head-to-head</span></h2>
+      <div class="cards">
+        <div class="card"><div class="label">Realized P&amp;L</div>
+          <div class="value {{ 'green' if condor.realized >= 0 else 'red' }}">{{ "+" if condor.realized >= 0 }}₹{{ "{:,.0f}".format(condor.realized) }}</div></div>
+        <div class="card"><div class="label">Net Credit</div>
+          <div class="value">{% if condor.open %}₹{{ "{:,.0f}".format(condor.open.premium_net) }}{% else %}—{% endif %}</div></div>
+        <div class="card"><div class="label">Max Loss (capped)</div>
+          <div class="value">{% if condor.open %}₹{{ "{:,.0f}".format(condor.open.max_loss) }}{% else %}—{% endif %}</div></div>
+        <div class="card"><div class="label">Open Mark-to-Model</div>
+          <div class="value {{ 'green' if (condor.open and condor.open.open_pnl >= 0) else 'red' }}">{% if condor.open %}{{ "+" if condor.open.open_pnl >= 0 }}₹{{ "{:,.0f}".format(condor.open.open_pnl) }}{% else %}—{% endif %}</div></div>
+      </div>
+      {% if condor.open %}
+      <div class="card">
+        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:20px;">
+          <div><div class="label" style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.08em;">Expiry</div>
+               <div style="font-size:18px;margin-top:4px;">{{ condor.open.expiry }} <span style="color:var(--faint);font-size:13px;">({{ condor.open.dte }}d)</span></div></div>
+          <div><div class="label" style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.08em;">Bodies (sold)</div>
+               <div style="font-size:18px;margin-top:4px;">{{ "%.0f"|format(condor.open.sp_strike) }}<span class="red">P</span> / {{ "%.0f"|format(condor.open.sc_strike) }}<span class="green">C</span></div></div>
+          <div><div class="label" style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.08em;">Wings (bought)</div>
+               <div style="font-size:18px;margin-top:4px;">{{ "%.0f"|format(condor.open.lp_strike) }}<span class="red">P</span> / {{ "%.0f"|format(condor.open.lc_strike) }}<span class="green">C</span></div></div>
+          <div><div class="label" style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.08em;">Spot at mark</div>
+               <div style="font-size:18px;margin-top:4px;">{{ ("%.0f"|format(condor.open.spot)) if condor.open.spot else "—" }}</div></div>
+        </div>
+      </div>
+      {% else %}<div class="empty">Flat — no open condor.</div>{% endif %}
+      <p class="sub" style="margin-top:14px;">Both options books are model-priced paper. The condor gives up some premium to cap the strangle's unlimited tail; the test is whether that trade pays off through a real vol event. Full per-book view on the <a href="{{ url_for('home') }}" style="color:var(--accent);">Home</a> summary.</p>
+    </section>
+    {% endif %}
   {% endif %}
 {% endblock %}
 

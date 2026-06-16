@@ -8,7 +8,7 @@
   <div class="banner" style="background:linear-gradient(180deg,rgba(124,140,255,.10),rgba(124,140,255,.04));
        border-color:rgba(124,140,255,.35); color:#c7d0ff;">
     The autonomous paper bot runs at <b>15:45 IST on weekdays</b> — intraday (ORB + VWAP)
-    and the NIFTY options strangle — and logs to <code>logs/paperbot.log</code>.
+    and the NIFTY options books (short strangle + defined-risk iron condor) — and logs to <code>logs/paperbot.log</code>.
   </div>
 
   <!-- Low-vol -->
@@ -118,5 +118,55 @@
     {% endif %}
     <p class="sub" style="margin-top:14px;"><a href="{{ url_for('options_book') }}" style="color:var(--accent);">Options → Paper Book</a> for the full view.</p>
     {% else %}<div class="empty">No options book yet.</div>{% endif %}
+  </section>
+
+  <!-- Options Iron Condor (defined-risk) -->
+  <section>
+    <h2>Options Iron Condor <span style="text-transform:none;letter-spacing:0;color:var(--faint);">· defined-risk, head-to-head vs the strangle</span></h2>
+    {% if d.condor %}
+    {% set cd = d.condor %}
+    <div class="cards">
+      <div class="card"><div class="label">Realised P&amp;L</div>
+        <div class="value {{ 'green' if cd.realised >= 0 else 'red' }}">{{ "+" if cd.realised >= 0 }}₹{{ "{:,.0f}".format(cd.realised) }}</div></div>
+      <div class="card"><div class="label">Net Credit</div>
+        <div class="value" style="font-size:18px;">{% if cd.open %}₹{{ "{:,.0f}".format(cd.open.premium_net) }}{% else %}Flat{% endif %}</div></div>
+      <div class="card"><div class="label">Max Loss (capped)</div>
+        <div class="value" style="font-size:18px;">{% if cd.open %}₹{{ "{:,.0f}".format(cd.open.max_loss) }}{% else %}—{% endif %}</div></div>
+      <div class="card"><div class="label">Mark-to-Model</div>
+        <div class="value {{ 'green' if (cd.open and cd.open.open_pnl >= 0) else 'red' }}">{% if cd.open %}{{ "+" if cd.open.open_pnl >= 0 }}₹{{ "{:,.0f}".format(cd.open.open_pnl) }}{% else %}—{% endif %}</div></div>
+    </div>
+    {% if not cd.had_event %}
+    <p class="sub" style="margin-top:-14px;color:#e8d3a6;"><b>Verdict: inconclusive</b> — awaiting a ≥4% NIFTY day while short. Unlike the strangle, the worst case here is finite (the bought wings cap it).</p>
+    {% else %}
+    <p class="sub" style="margin-top:-14px;color:#bfe9d2;">A volatility event has occurred while short — compare head-to-head vs the strangle.</p>
+    {% endif %}
+    {% if cd.open %}
+    <table>
+      <tr><th>Leg</th><th>Strike</th><th>Expiry</th><th>Net credit</th><th>Max loss</th><th>Mark-to-Model</th></tr>
+      <tr><td><span class="red">SELL</span> Put</td><td>{{ "%.0f"|format(cd.open.sp_strike) }}</td>
+          <td rowspan="4" style="vertical-align:middle;">{{ cd.open.expiry }} ({{ cd.open.dte }}d)</td>
+          <td rowspan="4" style="vertical-align:middle;">₹{{ "{:,.0f}".format(cd.open.premium_net) }}</td>
+          <td rowspan="4" style="vertical-align:middle;">₹{{ "{:,.0f}".format(cd.open.max_loss) }}</td>
+          <td rowspan="4" style="vertical-align:middle;" class="{{ 'green' if cd.open.open_pnl >= 0 else 'red' }}">{{ "+" if cd.open.open_pnl >= 0 }}₹{{ "{:,.0f}".format(cd.open.open_pnl) }}</td></tr>
+      <tr><td><span class="red">SELL</span> Call</td><td>{{ "%.0f"|format(cd.open.sc_strike) }}</td></tr>
+      <tr><td><span class="green">BUY</span> Put (wing)</td><td>{{ "%.0f"|format(cd.open.lp_strike) }}</td></tr>
+      <tr><td><span class="green">BUY</span> Call (wing)</td><td>{{ "%.0f"|format(cd.open.lc_strike) }}</td></tr>
+    </table>
+    {% endif %}
+    {% if cd.recent_closed %}
+    <h2 style="margin-top:24px;">Recent Closed Condors</h2>
+    <table>
+      <tr><th>Opened</th><th>Expiry</th><th>Bodies</th><th>Wings</th><th>Credit</th><th>Closed</th><th>Net P&amp;L</th></tr>
+      {% for c in cd.recent_closed %}
+      <tr><td>{{ c.open_date }}</td><td>{{ c.expiry }}</td>
+          <td>{{ "%.0f"|format(c.sp_strike) }}P / {{ "%.0f"|format(c.sc_strike) }}C</td>
+          <td>{{ "%.0f"|format(c.lp_strike) }}P / {{ "%.0f"|format(c.lc_strike) }}C</td>
+          <td>₹{{ "{:,.0f}".format(c.premium_net) }}</td>
+          <td>{{ c.close_date }}</td>
+          <td class="{{ 'green' if c.settle_pnl >= 0 else 'red' }}">{{ "+" if c.settle_pnl >= 0 }}₹{{ "{:,.0f}".format(c.settle_pnl) }}</td></tr>
+      {% endfor %}
+    </table>
+    {% endif %}
+    {% else %}<div class="empty">No iron-condor book yet — run condor_sim.py.</div>{% endif %}
   </section>
 {% endblock %}

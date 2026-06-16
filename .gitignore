@@ -12,3 +12,5 @@ intraday.db.*
 logs/
 options.db
 options.db.*
+condor.db
+condor.db.*

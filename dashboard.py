@@ -560,7 +560,38 @@ def options_book():
         open_pos=open_pos, closed=closed, marks=marks, had_event=had_event,
         equity=equity_real + unrealized, realized=realized, unrealized=unrealized,
         started=STARTING_CAPITAL, n_closed=agg["n"],
-        wins=agg["wins"] or 0, stops=agg["stops"] or 0)
+        wins=agg["wins"] or 0, stops=agg["stops"] or 0,
+        condor=_condor_summary())
+
+
+def _condor_summary():
+    """Compact defined-risk iron-condor read for the Options book page (read-only)."""
+    db = BASE_DIR / "condor.db"
+    if not db.exists():
+        return None
+    conn = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+    conn.row_factory = sqlite3.Row
+    try:
+        cash = conn.execute("SELECT cash FROM account WHERE id=1").fetchone()
+        realized = (cash["cash"] - STARTING_CAPITAL) if cash else 0.0
+        cyc = conn.execute("SELECT * FROM cycles WHERE status='open'").fetchone()
+        open_pos = None
+        if cyc:
+            last = conn.execute(
+                "SELECT open_pnl, spot FROM marks WHERE cycle_id=? "
+                "ORDER BY mark_date DESC LIMIT 1", (cyc["id"],)).fetchone()
+            dte = (date.fromisoformat(cyc["expiry"]) - date.today()).days
+            open_pos = {**dict(cyc), "dte": dte,
+                        "open_pnl": last["open_pnl"] if last else 0.0,
+                        "spot": last["spot"] if last else None}
+        n_closed = conn.execute(
+            "SELECT COUNT(*) n FROM cycles WHERE status='closed'").fetchone()["n"]
+        had_event = conn.execute(
+            "SELECT 1 FROM marks WHERE ABS(daily_move)>=0.04 LIMIT 1").fetchone() is not None
+        return {"realized": realized, "open": open_pos,
+                "n_closed": n_closed, "had_event": had_event}
+    finally:
+        conn.close()
 
 
 # ── Backtest reports (results/*.md) ───────────────────────────────────────────

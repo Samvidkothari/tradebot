@@ -5,6 +5,7 @@ Reads (read-only, no network) the three local ledgers and produces one digest:
   • Low-vol equity book   (portfolio.db)
   • Intraday ORB + VWAP    (intraday.db)
   • Options short strangle (options.db)
+  • Options iron condor    (condor.db)
 
 Used two ways:
   • CLI  — `python digest.py` prints it (the daily paper-bot run appends this).
@@ -114,12 +115,43 @@ def options_section():
         c.close()
 
 
+def condor_section():
+    c = _conn("condor.db")
+    if c is None:
+        return None
+    try:
+        cash = _one(c, "SELECT cash FROM account WHERE id=1")
+        cash = cash["cash"] if cash else CAPITAL
+        cyc = _one(c, "SELECT * FROM cycles WHERE status='open'")
+        op = None
+        if cyc:
+            mk = _one(c, "SELECT open_pnl FROM marks WHERE cycle_id=? "
+                         "ORDER BY mark_date DESC LIMIT 1", (cyc["id"],))
+            dte = (date.fromisoformat(cyc["expiry"]) - date.today()).days
+            op = {"expiry": cyc["expiry"], "dte": dte,
+                  "sp_strike": cyc["sp_strike"], "sc_strike": cyc["sc_strike"],
+                  "lp_strike": cyc["lp_strike"], "lc_strike": cyc["lc_strike"],
+                  "premium_net": cyc["premium_net"], "max_loss": cyc["max_loss"],
+                  "open_pnl": mk["open_pnl"] if mk else 0.0}
+        n_closed = _one(c, "SELECT COUNT(*) n FROM cycles WHERE status='closed'")["n"]
+        had_event = _one(c, "SELECT 1 x FROM marks WHERE ABS(daily_move)>=0.04 LIMIT 1") is not None
+        recent = [dict(r) for r in c.execute(
+            "SELECT open_date, expiry, sp_strike, sc_strike, lp_strike, lc_strike, "
+            "premium_net, close_date, close_reason, settle_pnl FROM cycles "
+            "WHERE status='closed' ORDER BY id DESC LIMIT 5")]
+        return {"realised": cash - CAPITAL, "open": op, "n_closed": n_closed,
+                "had_event": had_event, "recent_closed": recent}
+    finally:
+        c.close()
+
+
 def build_digest():
     return {
         "generated": datetime.now().strftime("%Y-%m-%d %H:%M"),
         "lowvol": lowvol_section(),
         "intraday": intraday_section(),
         "options": options_section(),
+        "condor": condor_section(),
     }
 
 
@@ -174,6 +206,25 @@ def main():
               f"{'vol event seen' if op['had_event'] else 'VERDICT: inconclusive (awaiting vol event)'}")
     else:
         print("    (no options.db yet)")
+
+    cd = d["condor"]
+    print("\n  Options iron condor (defined-risk)")
+    if cd:
+        s = "+" if cd["realised"] >= 0 else ""
+        if cd["open"]:
+            o = cd["open"]
+            osign = "+" if o["open_pnl"] >= 0 else ""
+            print(f"    OPEN {o['sp_strike']:.0f}P/{o['sc_strike']:.0f}C bodies · "
+                  f"{o['lp_strike']:.0f}P/{o['lc_strike']:.0f}C wings  "
+                  f"exp {o['expiry']} ({o['dte']}d)")
+            print(f"    net credit {_r(o['premium_net'])}  max loss capped {_r(o['max_loss'])}  "
+                  f"mark {osign}{_r(o['open_pnl'])}")
+        else:
+            print("    flat (no open position)")
+        print(f"    realised {s}{_r(cd['realised'])}   closed cycles {cd['n_closed']}   "
+              f"{'vol event seen' if cd['had_event'] else 'VERDICT: inconclusive (awaiting vol event)'}")
+    else:
+        print("    (no condor.db yet)")
     print(f"\n{'='*W}\n")
 
 
