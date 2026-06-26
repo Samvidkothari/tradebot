@@ -7,6 +7,20 @@ model-priced backtest cannot test the spread, which is the whole question).
 NO real orders, ever. NO fully-autonomous live trading, ever (firm line: a gap
 makes the account negative faster than any kill switch).
 
+**v2 amendment (2026-06-26) — fixed-duration entry (methodology fix, NOT a
+result-driven tweak).** v1 opened a cycle on the nearest monthly expiry ≥7 days
+out whenever flat, which let the first cycle open only ~9 trading days before
+expiry — a near-worthless stub (₹1,211) — while a normal cycle collects ~12×
+that. Cycle durations (and therefore the short tail risk) were not comparable.
+Fix: open only on a monthly expiry **≥ `OPEN_MIN_DTE = 21` calendar days** out
+(roll to the next monthly otherwise), so every cycle opens with ~21–50 days of
+life and no stubs. This changes ONLY entry timing — OTM %, spread, stop, sizing,
+and the INCONCLUSIVE-until-a-vol-event verdict gate are all unchanged. The
+forward book was reseeded fresh on adoption so every cycle is on one rule set.
+Residual: monthly expiries are discrete (~30d apart), so some duration variance
+remains; perfectly fixed-T would need weekly options. Supersedes the v1 code
+constant `MIN_DTE = 7` (the implicit ≥7-day open rule).
+
 ## 1. What it is
 
 A monthly **short strangle on NIFTY** — the most liquid Indian option, which

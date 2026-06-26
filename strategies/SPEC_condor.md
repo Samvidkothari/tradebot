@@ -7,6 +7,17 @@ model-priced backtest cannot test the spread, which is the whole question).
 NO real orders, ever. NO fully-autonomous live trading, ever (firm line: see
 `[[options-discipline]]`).
 
+**v2 amendment (2026-06-26) — fixed-duration entry (methodology fix, NOT a
+result-driven tweak).** Same change adopted across both options books (see
+`SPEC_options.md` v2 note): open only on a monthly expiry **≥ `OPEN_MIN_DTE = 21`
+calendar days** out (roll to the next monthly otherwise), so cycles open with
+~21–50 days of life and no near-worthless stubs. The condor's first cycle was
+also a ~7-trading-day stub; v2 makes cycle durations comparable so the
+head-to-head vs the strangle is fair. Changes ONLY entry timing — OTM %, wing
+width, spread, sizing, and the INCONCLUSIVE-until-a-vol-event verdict gate are
+unchanged. The forward book was reseeded fresh on adoption. Supersedes the v1
+code constant `MIN_DTE = 7`.
+
 ## 1. What it is
 
 A monthly **iron condor on NIFTY** — the naked short strangle with its tail

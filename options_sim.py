@@ -38,7 +38,8 @@ RV_WINDOW   = 20          # trading days for realized vol
 RISK_FREE   = 0.065
 STOP_MULT   = 2.0         # close if loss >= 2x premium collected
 SPREAD_PCT  = 0.10        # HARSH bid-ask haircut, per leg, per transaction
-MIN_DTE     = 7           # don't open a cycle with < 7 calendar days to expiry
+OPEN_MIN_DTE = 21         # v2 (SPEC §v2): open only on a monthly expiry >= 21
+                          # calendar days out — no near-worthless stubs
 VOL_EVENT   = 0.04        # |NIFTY daily move| that counts as a volatility event
 
 # Light statutory costs on premium turnover (rupees) — secondary to the spread
@@ -86,9 +87,9 @@ def last_thursday(year, month):
 
 
 def next_expiry(today):
-    """Nearest monthly expiry at least MIN_DTE calendar days out."""
+    """Nearest monthly expiry at least OPEN_MIN_DTE calendar days out (v2)."""
     e = last_thursday(today.year, today.month)
-    if (e - today).days < MIN_DTE:
+    if (e - today).days < OPEN_MIN_DTE:
         y = today.year + (1 if today.month == 12 else 0)
         m = today.month % 12 + 1
         e = last_thursday(y, m)
