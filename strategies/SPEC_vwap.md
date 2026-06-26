@@ -9,6 +9,16 @@ This is the **second** intraday paper strategy, run by the same engine as the
 Opening-Range Breakout (`SPEC_intraday.md`). It is a monitoring sandbox, not a
 Phase 2B strategy-class audition — no pass/fail gate, no benchmark competition.
 
+**CONCLUDED / RETIRED (2026-06-26) — sandbox finding delivered.** Over ~10 days
+(49 VWAP trades): **gross +₹9,874, costs −₹15,491, net −₹5,616.** Unlike ORB,
+VWAP has a real gross edge (reversion exits +₹20,105) — but it is thin enough
+that costs (~₹316/trade) erase it, and trend days run the mean-reversion over:
+14 end-of-day forced exits cost −₹20,215, concentrated in two trend days
+(2026-06-23 −₹10,097, 06-24 −₹7,007). Same lesson as ORB: a thin intraday edge
+does not survive realistic costs. Not a Phase 2B FAIL (no gate); a useful
+finding, not tuned away. Daily VWAP sim **removed from `run_paper_bot.sh`**;
+`intraday.db` kept as evidence.
+
 ---
 
 ## 1. What it is, in one sentence

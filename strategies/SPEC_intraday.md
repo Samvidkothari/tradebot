@@ -10,6 +10,17 @@ attempt — it does not compete against the NIFTY buy-and-hold benchmark and doe
 not consume the (closed) Phase 2B budget. It exists so we can watch a disciplined
 intraday rule behave on a separate paper book.
 
+**CONCLUDED / RETIRED (2026-06-26) — the sandbox delivered its useful finding.**
+Over ~10 trading days (55 ORB trades): **gross +₹1,531, costs −₹17,424, net
+−₹15,893.** The gross edge is ~flat; realistic intraday MIS costs (~0.08% of
+turnover per round trip, ~₹316/trade × 5 trades/day) overwhelm it. Mechanism:
+breakout entries get whipsawed — 16 stop-outs cost −₹32,935 against +₹23,354 of
+target wins. This is NOT a Phase 2B "FAIL" (there was never a pass/fail gate —
+see §8); it is exactly the "useful finding, not a failure to be tuned away" this
+spec anticipated. Per discipline we do **not** re-tune stop/entry to erase the
+loss. The daily ORB sim is **removed from `run_paper_bot.sh`**; `intraday.db` is
+kept as evidence. Companion finding for VWAP in `SPEC_vwap.md`.
+
 ---
 
 ## 1. What it is, in one sentence
