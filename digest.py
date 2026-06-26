@@ -178,7 +178,8 @@ def main():
         print("    (no portfolio.db yet)")
 
     it = d["intraday"]
-    print(f"\n  Intraday  (latest day {it['latest_day'] if it else '—'})")
+    print(f"\n  Intraday  [RETIRED 2026-06-26 — edge didn't survive costs; "
+          f"frozen evidence]  (latest day {it['latest_day'] if it else '—'})")
     if it:
         for s in it["strategies"]:
             sign = "+" if s["cum_net"] >= 0 else ""
