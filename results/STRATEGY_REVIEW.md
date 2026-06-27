@@ -88,9 +88,19 @@ committed, and surfaced on the dashboard:
 | `factors.py` | `BaseFeature` factor library (6 price/volume factors) + multi-factor composite |
 | `portfolio_analyzer.py` | Correlation, concentration, risk decomposition, allocation comparison, sector exposure |
 | `risk_analytics.py` | VaR / Expected Shortfall, drawdown analytics, tail stats, vol targeting, ATR sizing |
+| `attribution.py` | Holding / sector contribution + Brinson allocation-vs-selection |
+| `data_quality.py` | Panel validation (coverage, staleness, extreme moves, zero-volume) |
 
-32 unit/regression tests, all passing. Dashboard gained **Tear Sheets, Factors,
-Portfolio Analysis, Risk Analytics** tabs.
+**40 unit/regression tests, all passing** (run via `pytest` or `python run_tests.py`).
+Dashboard gained **Tear Sheets, Factors, Portfolio Analysis, Risk Analytics,
+Attribution, Data Quality** tabs.
+
+Supporting infrastructure added the same session: `config.py` (single source of
+truth for paper capital), `data_io.py` (unified data loading), `refresh_research.py`
+(one-command analytics refresh, wired into the daily job after a fresh data fetch),
+`run_tests.py` + `pytest.ini` + `requirements.txt`/`requirements-dev.txt`
+(reproducible install & tests), and `TECH_DEBT.md` (debt register with explicit
+decisions).
 
 ### What the deeper analytics revealed (beyond the pass/fail report)
 - **Low-vol's edge is thin and decaying.** Full Sharpe 0.40, OOS 0.14; walk-forward
