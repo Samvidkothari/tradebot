@@ -30,6 +30,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+import data_io
+
 BASE        = Path(__file__).parent
 DATA_DIR    = BASE / "data"
 RESULTS_DIR = BASE / "results"
@@ -104,12 +106,7 @@ def inverse_vol_weights(vols: np.ndarray) -> np.ndarray:
 # ── Data ──────────────────────────────────────────────────────────────────────
 
 def load_closes(symbols):
-    out = {}
-    for s in symbols:
-        fp = DATA_DIR / f"{s}.csv"
-        if fp.exists():
-            out[s] = pd.read_csv(fp, parse_dates=["date"]).set_index("date")["close"]
-    return pd.DataFrame(out).sort_index()
+    return data_io.close_panel(symbols=symbols)
 
 
 def load_holdings():

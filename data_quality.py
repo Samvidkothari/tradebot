@@ -30,6 +30,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+import data_io
+
 DATA_DIR    = Path(__file__).parent / "data"
 RESULTS_DIR = Path(__file__).parent / "results"
 
@@ -73,11 +75,7 @@ def staleness_days(last_date, ref_date) -> int:
 
 def validate_panel(data_dir: Path = DATA_DIR, ref_date=None) -> dict:
     ref_date = pd.Timestamp(ref_date or date.today())
-    raws = {}
-    for fp in sorted(data_dir.glob("*.csv")):
-        if fp.stem == "NIFTY50":
-            continue
-        raws[fp.stem] = pd.read_csv(fp, parse_dates=["date"])
+    raws = data_io.symbol_frames(data_dir, exclude_index=True)
 
     if not raws:
         return {"error": "no data CSVs found"}

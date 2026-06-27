@@ -16,11 +16,9 @@ import json
 from datetime import date
 from pathlib import Path
 
-import pandas as pd
-
+import data_io
 import factors as F
 
-DATA_DIR    = Path(__file__).parent / "data"
 RESULTS_DIR = Path(__file__).parent / "results"
 TOP_K       = 8
 
@@ -29,18 +27,10 @@ COMPOSITE_WEIGHTS = {"momentum": 1.0, "low_volatility": 1.0, "trend": 1.0}
 
 
 def load_context():
-    """Build aligned close + volume panels from data/*.csv (excluding the index)."""
-    closes, vols = {}, {}
-    for fp in sorted(DATA_DIR.glob("*.csv")):
-        if fp.stem == "NIFTY50":
-            continue
-        df = pd.read_csv(fp, parse_dates=["date"]).sort_values("date").set_index("date")
-        closes[fp.stem] = df["close"]
-        if "volume" in df.columns:
-            vols[fp.stem] = df["volume"]
-    close = pd.DataFrame(closes).sort_index()
-    volume = pd.DataFrame(vols).reindex_like(close) if vols else None
-    return F.PanelContext(close=close, volume=volume)
+    """Aligned close + volume panels (via the shared data_io loader)."""
+    close = data_io.close_panel()
+    volume = data_io.volume_panel(like=close)
+    return F.PanelContext(close=close, volume=(volume if not volume.empty else None))
 
 
 def main():

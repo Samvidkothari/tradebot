@@ -35,38 +35,13 @@ from momentum import (
     momentum_scores, target_portfolio,
     FORMATION, SKIP, LOOKBACK, TOP_N,
 )
+# Data loading unified in data_io (was a byte-identical copy here); re-exported.
+from data_io import load_panel
 
 DATA_DIR    = Path(__file__).parent / "data"
 RESULTS_DIR = Path(__file__).parent / "results"
 SPLIT_DATE  = "2024-01-01"     # Period B (out-of-sample) starts here
 STARTING    = 1.0              # normalised capital; costs are fractions of value
-
-
-# ── Data loading ──────────────────────────────────────────────────────────────
-
-def load_panel():
-    """
-    Build a daily-close panel from every stock CSV in data/ except the index.
-
-    Returns
-      panel_raw : DataFrame (index=dates, cols=symbols) of RAW closes (NaN gaps)
-      nifty_df  : the NIFTY50 benchmark DataFrame (date/close)
-    """
-    closes = {}
-    nifty_df = None
-    for fp in sorted(DATA_DIR.glob("*.csv")):
-        sym = fp.stem
-        df = pd.read_csv(fp, parse_dates=["date"]).sort_values("date")
-        if sym == "NIFTY50":
-            nifty_df = df.reset_index(drop=True)
-            continue
-        closes[sym] = df.set_index("date")["close"]
-
-    if nifty_df is None:
-        raise FileNotFoundError("data/NIFTY50.csv not found — run fetch_data.py")
-
-    panel_raw = pd.DataFrame(closes).sort_index()
-    return panel_raw, nifty_df
 
 
 def rebalance_dates(panel):
