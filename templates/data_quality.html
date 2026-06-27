@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Data Quality{% endblock %}
+{% block content %}
+  <h1>Data Quality <span class="readonly">RESEARCH</span></h1>
+  <p class="sub">Validation of the cached price/volume panel{% if data %} · {{ data.panel_start }} → {{ data.panel_end }}{% endif %} · read-only, changes no data</p>
+
+  {% if error %}
+    <div class="banner">{{ error }} <code>python data_quality.py</code></div>
+  {% else %}
+    <div class="cards">
+      <div class="card"><div class="label">Symbols</div><div class="value">{{ data.n_symbols }}</div></div>
+      <div class="card"><div class="label">OK</div><div class="value green">{{ data.summary.OK }}</div></div>
+      <div class="card"><div class="label">Warnings</div><div class="value" style="color:var(--warn);">{{ data.summary.WARN }}</div></div>
+      <div class="card"><div class="label">Failures</div><div class="value {{ 'red' if data.summary.FAIL else '' }}">{{ data.summary.FAIL }}</div></div>
+    </div>
+
+    {% if data.cache_stale_days > 3 %}
+    <div class="notice">Cache is <b>{{ data.cache_stale_days }} trading days behind</b> today — run <code>python fetch_data.py --refresh</code> to update before relying on backtests.</div>
+    {% endif %}
+
+    <section>
+      <h2>Per-symbol status</h2>
+      <div class="table-wrap">
+        <table>
+          <tr><th>Symbol</th><th>Status</th><th>Rows</th><th>Last date</th><th>Coverage</th><th>Issues</th></tr>
+          {% for x in data.symbols %}
+          <tr>
+            <td>{{ x.symbol }}</td>
+            <td class="{{ 'green' if x.status == 'OK' else ('red' if x.status == 'FAIL' else '') }}" {% if x.status == 'WARN' %}style="color:var(--warn);"{% endif %}>{{ x.status }}</td>
+            <td>{{ x.rows }}</td>
+            <td>{{ x.last_date }}</td>
+            <td>{{ "%.0f"|format(x.coverage*100) }}%</td>
+            <td style="color:var(--muted);">{{ x.issues|join('; ') or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </table>
+      </div>
+    </section>
+
+    <div class="notice" style="background:linear-gradient(180deg,rgba(124,140,255,.08),transparent);border-color:rgba(124,140,255,.3);color:var(--muted);">
+      Most WARNs are benign and expected: Adani extreme moves are real historical
+      events; recently-listed names (e.g. JIOFIN) legitimately have short history;
+      yfinance has occasional zero-volume quirks. FAIL is reserved for genuinely
+      broken data (non-positive prices, duplicate dates, history ending early).
+      Missing tickers (LTIM, TATAMOTORS) have no file at all — they failed to
+      download (delisted symbol on yfinance).
+    </div>
+  {% endif %}
+{% endblock %}

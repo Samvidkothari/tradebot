@@ -713,6 +713,18 @@ def tearsheet():
                            regime=data.get("regime"))
 
 
+@app.route("/data-quality")
+@login_required
+def data_quality_view():
+    fp = RESULTS_DIR / "data_quality.json"
+    if not fp.exists():
+        return render_template("data_quality.html", active="data_quality", data=None,
+                               error="No data-quality report yet — run `python data_quality.py`.")
+    import json as _json
+    return render_template("data_quality.html", active="data_quality", error=None,
+                           data=_json.loads(fp.read_text()))
+
+
 @app.route("/attribution")
 @login_required
 def attribution_view():
