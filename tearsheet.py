@@ -30,6 +30,7 @@ from pathlib import Path
 import pandas as pd
 
 import metrics as M
+import regime as R
 from backtest_lowvol import load_panel, SPLIT_DATE
 from strategy_base import REGISTRY, MonthlyRebalanceEngine
 
@@ -170,10 +171,16 @@ def main():
     panel_raw, nifty_df = load_panel()
     print("done")
 
-    sheets, payload = [], {"generated": date.today().isoformat(), "strategies": {}}
+    reg = R.classify(nifty_df.set_index("date")["close"])
+    print(f"  market regime: {', '.join(reg['tags']) or 'unknown'}")
+
+    sheets = []
+    payload = {"generated": date.today().isoformat(), "regime": reg, "strategies": {}}
     for name, strategy in REGISTRY.items():
         print(f"  tear sheet: {strategy.label} ...", end=" ", flush=True)
         ts = equity_tearsheet(strategy, panel_raw, nifty_df)
+        ts["supported_regimes"] = list(strategy.supported_regimes)
+        ts["regime_compat"] = R.compatibility(strategy.supported_regimes, reg["tags"])
         sheets.append(ts)
         payload["strategies"][name] = ts
         if ts["sufficient"]:

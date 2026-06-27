@@ -12,6 +12,26 @@
   {% if error %}
     <div class="banner">{{ error }} <code>python tearsheet.py</code></div>
   {% else %}
+    {% if regime and regime.tags %}
+    <section>
+      <h2>Current Market Regime <span style="text-transform:none;letter-spacing:0;color:var(--faint);">· NIFTY 50, as of {{ regime.as_of }}</span></h2>
+      <div class="panel">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+          {% for t in regime.tags %}<span class="tag">{{ t.replace('_',' ') }}</span>{% endfor %}
+        </div>
+        <div class="sub" style="margin:0;">{{ regime.reason }}</div>
+        <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;">
+          {% for s in equity %}
+          <span class="pill {{ 'up' if s.regime_compat and s.regime_compat.compatible else 'down' }}">
+            {{ s.label.split(' (')[0] }}: {{ 'in regime' if s.regime_compat and s.regime_compat.compatible else 'out of regime' }}
+            {%- if s.regime_compat and s.regime_compat.matched %} ({{ s.regime_compat.matched|join(', ')|replace('_',' ') }}){% endif %}
+          </span>
+          {% endfor %}
+        </div>
+        <p class="sub" style="margin-top:12px;margin-bottom:0;font-size:12px;">Research signal only — a heuristic read of whether the market currently suits each strategy. It does not gate any order (there is no live trading).</p>
+      </div>
+    </section>
+    {% endif %}
     <section>
       <h2>Equity Strategies — full period</h2>
       <div class="table-wrap">

@@ -709,7 +709,8 @@ def tearsheet():
     ]
     return render_template("tearsheet.html", active="tearsheet", error=None,
                            generated=data.get("generated"), equity=equity,
-                           options=options, metric_rows=metric_rows)
+                           options=options, metric_rows=metric_rows,
+                           regime=data.get("regime"))
 
 
 # ── Backtest reports (results/*.md) ───────────────────────────────────────────
