@@ -30,19 +30,15 @@ from pathlib import Path
 import pandas as pd
 
 import metrics as M
-from backtest_lowvol import load_panel, run_lowvol, SPLIT_DATE
-from backtest_momentum import run_momentum
+from backtest_lowvol import load_panel, SPLIT_DATE
+from strategy_base import REGISTRY, MonthlyRebalanceEngine
 
 BASE        = Path(__file__).parent
 RESULTS_DIR = BASE / "results"
 CAPITAL     = 1_000_000
 MIN_DAYS    = 60          # below this, risk ratios are noise — don't report them
 
-# Registry of equity strategies (same data panel, same benchmark, same OOS split).
-EQUITY_STRATEGIES = {
-    "lowvol":   ("Low-Volatility (15 lowest-vol)", run_lowvol),
-    "momentum": ("Momentum (12-1, top-15)",        run_momentum),
-}
+ENGINE = MonthlyRebalanceEngine()   # the shared, regression-proven backtest loop
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
@@ -61,8 +57,9 @@ def _f(x, pct=False, nd=2):
 
 # ── equity-strategy tear sheet ────────────────────────────────────────────────
 
-def equity_tearsheet(name, label, run_fn, panel_raw, nifty_df):
-    equity, n_changes, _ = run_fn(panel_raw)
+def equity_tearsheet(strategy, panel_raw, nifty_df):
+    name, label = strategy.name, strategy.label
+    equity, n_changes, _ = ENGINE.run(strategy, panel_raw)
     if equity.empty:
         return {"name": name, "label": label, "sufficient": False,
                 "note": "no equity curve produced"}
@@ -174,9 +171,9 @@ def main():
     print("done")
 
     sheets, payload = [], {"generated": date.today().isoformat(), "strategies": {}}
-    for name, (label, run_fn) in EQUITY_STRATEGIES.items():
-        print(f"  tear sheet: {label} ...", end=" ", flush=True)
-        ts = equity_tearsheet(name, label, run_fn, panel_raw, nifty_df)
+    for name, strategy in REGISTRY.items():
+        print(f"  tear sheet: {strategy.label} ...", end=" ", flush=True)
+        ts = equity_tearsheet(strategy, panel_raw, nifty_df)
         sheets.append(ts)
         payload["strategies"][name] = ts
         if ts["sufficient"]:
