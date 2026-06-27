@@ -17,35 +17,24 @@ DASHBOARD_PASSWORD=something-you-choose). The server binds to 127.0.0.1
 only, so it is reachable just from this machine.
 """
 
-from config import PAPER_CAPITAL
 import csv
-import json
 import math
 import os
 import sqlite3
 import time
-from concurrent.futures import ThreadPoolExecutor
 from datetime import date
-from functools import wraps
-from pathlib import Path
 
 from dotenv import load_dotenv
 from flask import (Flask, abort, jsonify, redirect, render_template, request,
                    session, url_for)
 
-from paper_trader import fetch_live
-from digest import build_digest
-
 load_dotenv()
 
-BASE_DIR     = Path(__file__).parent
-DATA_DIR     = BASE_DIR / "data"
-RESULTS_DIR  = BASE_DIR / "results"
-DB_PATH      = BASE_DIR / "portfolio.db"
-INTRADAY_DB  = BASE_DIR / "intraday.db"
-OPTIONS_DB   = BASE_DIR / "options.db"
-
-STARTING_CAPITAL = PAPER_CAPITAL  # single source of truth in config.py
+# Shared constants + read-only helpers live in web_common (single source; also
+# used by views_research).
+from web_common import (BASE_DIR, DATA_DIR, INTRADAY_DB, OPTIONS_DB,
+                        STARTING_CAPITAL, login_required,
+                        last_close, live_price, warm_prices, paper_db)
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)  # sessions reset on restart — that's fine
@@ -55,17 +44,14 @@ app.secret_key = os.urandom(24)  # sessions reset on restart — that's fine
 from features import bp as features_bp  # noqa: E402
 app.register_blueprint(features_bp)
 
+# Research / summary pages (Home, P&L, tear sheets, factors, portfolio, risk,
+# attribution, data quality, backtests) — registered with their ORIGINAL endpoint
+# names so the templates' url_for(...) calls are unchanged.
+import views_research  # noqa: E402
+views_research.register(app)
+
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
-
-def login_required(view):
-    @wraps(view)
-    def wrapped(*args, **kwargs):
-        if not session.get("authed"):
-            return redirect(url_for("login"))
-        return view(*args, **kwargs)
-    return wrapped
-
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -86,12 +72,6 @@ def login():
 def logout():
     session.clear()
     return redirect(url_for("login"))
-
-
-@app.route("/home")
-@login_required
-def home():
-    return render_template("home.html", active="home", digest=build_digest())
 
 
 # ── Live portfolio (Kite) ─────────────────────────────────────────────────────
@@ -152,63 +132,6 @@ def overview():
 
 
 # ── Paper trader (portfolio.db) ───────────────────────────────────────────────
-
-def last_close(symbol):
-    """Most recent close from data/<symbol>.csv, or None if unavailable."""
-    fp = DATA_DIR / f"{symbol}.csv"
-    if not fp.exists():
-        return None
-    last = None
-    with open(fp, newline="") as f:
-        for last in csv.DictReader(f):
-            pass
-    try:
-        return float(last["close"]) if last else None
-    except (KeyError, ValueError):
-        return None
-
-
-PRICE_TTL    = 300            # seconds a fetched price stays fresh (5 min)
-_price_cache = {}             # symbol -> (price, fetched_at)
-
-
-def live_price(symbol):
-    """Live last price (yfinance, SYMBOL.NS), memoised for PRICE_TTL seconds and
-    falling back to the latest CSV close if the fetch fails or returns nothing."""
-    now = time.time()
-    hit = _price_cache.get(symbol)
-    if hit is not None and now - hit[1] < PRICE_TTL:
-        return hit[0]
-    try:
-        ser = fetch_live(f"{symbol}.NS")
-        if ser is not None and not ser.empty:
-            px = float(ser.iloc[-1])
-            _price_cache[symbol] = (px, now)
-            return px
-    except Exception:
-        pass
-    return last_close(symbol)
-
-
-def warm_prices(symbols):
-    """Fetch all not-yet-fresh symbols concurrently so the first page load
-    pays one round-trip instead of N sequential ones."""
-    now = time.time()
-    stale = [s for s in symbols
-             if s not in _price_cache or now - _price_cache[s][1] >= PRICE_TTL]
-    if not stale:
-        return
-    with ThreadPoolExecutor(max_workers=min(8, len(stale))) as ex:
-        ex.map(live_price, stale)
-
-
-def paper_db():
-    if not DB_PATH.exists():
-        return None
-    conn = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True)  # read-only
-    conn.row_factory = sqlite3.Row
-    return conn
-
 
 @app.route("/paper")
 @login_required
@@ -599,200 +522,6 @@ def _condor_summary():
                 "n_closed": n_closed, "had_event": had_event}
     finally:
         conn.close()
-
-
-# ── Consolidated P&L (every paper book, read-only) ────────────────────────────
-
-def _pnl_lowvol():
-    """Low-vol equity book: realised from SELL fills + unrealised marked to the
-    latest live price (falls back to last CSV close)."""
-    conn = paper_db()
-    if conn is None:
-        return None
-    positions = conn.execute("SELECT symbol, qty, avg_price FROM positions").fetchall()
-    realised = conn.execute(
-        "SELECT COALESCE(SUM(realised_pnl),0) r FROM fills WHERE side='SELL'").fetchone()["r"]
-    conn.close()
-    warm_prices([p["symbol"] for p in positions])
-    unreal = 0.0
-    for p in positions:
-        px = live_price(p["symbol"]) or p["avg_price"]
-        unreal += (px - p["avg_price"]) * p["qty"]
-    return {"book": "Low-vol equity", "realised": realised, "unrealised": unreal,
-            "status": "active", "note": "marked to latest price · proven strategy"}
-
-
-def _pnl_option_book(db_name, label, note):
-    """One options book: realised = cash − start; unrealised = latest open mark."""
-    p = BASE_DIR / db_name
-    if not p.exists():
-        return None
-    conn = sqlite3.connect(f"file:{p}?mode=ro", uri=True)
-    conn.row_factory = sqlite3.Row
-    try:
-        cash = conn.execute("SELECT cash FROM account WHERE id=1").fetchone()
-        realised = (cash["cash"] - STARTING_CAPITAL) if cash else 0.0
-        cyc = conn.execute("SELECT id FROM cycles WHERE status='open'").fetchone()
-        unreal = 0.0
-        if cyc:
-            m = conn.execute("SELECT open_pnl FROM marks WHERE cycle_id=? "
-                             "ORDER BY mark_date DESC LIMIT 1", (cyc["id"],)).fetchone()
-            unreal = m["open_pnl"] if m else 0.0
-        return {"book": label, "realised": realised, "unrealised": unreal,
-                "status": "active", "note": note}
-    finally:
-        conn.close()
-
-
-def _pnl_intraday():
-    """Retired ORB + VWAP books — realised, frozen as evidence."""
-    if not INTRADAY_DB.exists():
-        return []
-    conn = sqlite3.connect(f"file:{INTRADAY_DB}?mode=ro", uri=True)
-    conn.row_factory = sqlite3.Row
-    try:
-        return [{"book": f"Intraday {r['strategy']}",
-                 "realised": r["cash"] - STARTING_CAPITAL, "unrealised": 0.0,
-                 "status": "retired", "note": "frozen evidence"}
-                for r in conn.execute("SELECT strategy, cash FROM account ORDER BY strategy")]
-    finally:
-        conn.close()
-
-
-def _pnl_total(sel):
-    return {"realised": sum(r["realised"] for r in sel),
-            "unrealised": sum(r["unrealised"] for r in sel),
-            "total": sum(r["total"] for r in sel)}
-
-
-@app.route("/pnl")
-@login_required
-def pnl():
-    rows = [r for r in (
-        _pnl_lowvol(),
-        _pnl_option_book("options.db", "Options strangle", "mark-to-model · inconclusive"),
-        _pnl_option_book("condor.db", "Options condor", "mark-to-model · inconclusive"),
-    ) if r]
-    rows += _pnl_intraday()
-    for r in rows:
-        r["total"] = r["realised"] + r["unrealised"]
-    active = [r for r in rows if r["status"] == "active"]
-    retired = [r for r in rows if r["status"] == "retired"]
-    return render_template(
-        "pnl.html", active="pnl", active_rows=active, retired_rows=retired,
-        active_total=_pnl_total(active), retired_total=_pnl_total(retired),
-        grand=_pnl_total(rows), started=STARTING_CAPITAL)
-
-
-# ── Research tear sheets (results/tearsheets.json) ────────────────────────────
-
-def _research_json(filename, runner):
-    """Load results/<filename>; return (data, error_message). Shared by every
-    research page so the file-exists / json-load / error wiring lives in one place."""
-    fp = RESULTS_DIR / filename
-    if not fp.exists():
-        return None, f"No data yet — run `python {runner}`."
-    return json.loads(fp.read_text()), None
-
-
-@app.route("/tearsheet")
-@login_required
-def tearsheet():
-    data, error = _research_json("tearsheets.json", "tearsheet.py")
-    if error:
-        return render_template("tearsheet.html", active="tearsheet", error=error,
-                               generated=None, equity=[], options=[], metric_rows=[])
-    strats = data.get("strategies", {})
-    equity = [s for s in strats.values()
-              if s.get("kind") == "equity" and s.get("sufficient")]
-    options = [s for s in strats.values() if s.get("kind") == "options"]
-    metric_rows = [
-        ("CAGR", "cagr", True), ("Total return", "total_return", True),
-        ("Max drawdown", "max_drawdown", True), ("Annualised vol", "annual_vol", True),
-        ("Sharpe", "sharpe", False), ("Sortino", "sortino", False),
-        ("Calmar", "calmar", False), ("Recovery factor", "recovery_factor", False),
-        ("Profit factor", "profit_factor", False), ("Win rate", "win_rate", True),
-        ("Beta vs NIFTY", "beta", False), ("Alpha vs NIFTY", "alpha", True),
-        ("Information ratio", "information_ratio", False),
-    ]
-    return render_template("tearsheet.html", active="tearsheet", error=None,
-                           generated=data.get("generated"), equity=equity,
-                           options=options, metric_rows=metric_rows,
-                           regime=data.get("regime"))
-
-
-@app.route("/data-quality")
-@login_required
-def data_quality_view():
-    data, error = _research_json("data_quality.json", "data_quality.py")
-    return render_template("data_quality.html", active="data_quality",
-                           data=data, error=error)
-
-
-@app.route("/attribution")
-@login_required
-def attribution_view():
-    data, error = _research_json("attribution.json", "attribution_report.py")
-    if error:
-        return render_template("attribution.html", active="attribution",
-                               data=None, error=error)
-    # Pre-sort holding contributions per strategy for display.
-    for s in data.get("strategies", {}).values():
-        bs = s["holdings"]["by_symbol"]
-        ordered = sorted(bs.items(), key=lambda kv: kv[1], reverse=True)
-        s["_top"] = ordered[:8]
-        s["_bottom"] = ordered[-5:][::-1]
-        s["_sectors"] = sorted(s["holdings"]["by_sector"].items(),
-                               key=lambda kv: kv[1], reverse=True)
-    return render_template("attribution.html", active="attribution", error=None, data=data)
-
-
-@app.route("/risk")
-@login_required
-def risk_view():
-    data, error = _research_json("risk.json", "risk_report.py")
-    return render_template("risk.html", active="risk", data=data, error=error)
-
-
-@app.route("/portfolio-analysis")
-@login_required
-def portfolio_analysis():
-    data, error = _research_json("portfolio.json", "portfolio_analyzer.py")
-    return render_template("portfolio_analysis.html", active="portfolio_analysis",
-                           data=data, error=error)
-
-
-@app.route("/factors")
-@login_required
-def factors_view():
-    data, error = _research_json("factors.json", "factor_report.py")
-    return render_template("factors.html", active="factors", data=data, error=error)
-
-
-# ── Backtest reports (results/*.md) ───────────────────────────────────────────
-
-@app.route("/backtests")
-@login_required
-def backtests():
-    reports = sorted(fp.name for fp in RESULTS_DIR.glob("*.md")) \
-        if RESULTS_DIR.exists() else []
-    return render_template("backtests.html", active="backtests",
-                           reports=reports, current=None, content=None)
-
-
-@app.route("/backtests/<name>")
-@login_required
-def backtest_view(name):
-    # Only allow simple .md filenames that actually exist in results/
-    if "/" in name or "\\" in name or not name.endswith(".md"):
-        abort(404)
-    fp = RESULTS_DIR / name
-    if not fp.exists():
-        abort(404)
-    reports = sorted(f.name for f in RESULTS_DIR.glob("*.md"))
-    return render_template("backtests.html", active="backtests",
-                           reports=reports, current=name,
-                           content=fp.read_text())
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
