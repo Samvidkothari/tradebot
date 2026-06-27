@@ -713,6 +713,18 @@ def tearsheet():
                            regime=data.get("regime"))
 
 
+@app.route("/portfolio-analysis")
+@login_required
+def portfolio_analysis():
+    fp = RESULTS_DIR / "portfolio.json"
+    if not fp.exists():
+        return render_template("portfolio_analysis.html", active="portfolio_analysis",
+                               data=None, error="No analysis yet — run `python portfolio_analyzer.py`.")
+    import json as _json
+    return render_template("portfolio_analysis.html", active="portfolio_analysis",
+                           error=None, data=_json.loads(fp.read_text()))
+
+
 @app.route("/factors")
 @login_required
 def factors_view():
