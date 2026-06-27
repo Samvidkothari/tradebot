@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Tear Sheets{% endblock %}
+{% macro fmt(v, pct=False) -%}
+  {%- if v is none -%}—
+  {%- elif pct -%}{{ "%+.2f"|format(v*100) }}%
+  {%- else -%}{{ "%.2f"|format(v) }}{%- endif -%}
+{%- endmacro %}
+{% block content %}
+  <h1>Research Tear Sheets <span class="readonly">SIMULATED</span></h1>
+  <p class="sub">Institutional analytics computed from each strategy's equity curve · research only, no orders{% if generated %} · generated {{ generated }}{% endif %}</p>
+
+  {% if error %}
+    <div class="banner">{{ error }} <code>python tearsheet.py</code></div>
+  {% else %}
+    <section>
+      <h2>Equity Strategies — full period</h2>
+      <div class="table-wrap">
+        <table>
+          <tr><th>Metric</th>{% for s in equity %}<th>{{ s.label.split(' (')[0] }}</th>{% endfor %}</tr>
+          {% for name, key, pct in metric_rows %}
+          <tr>
+            <td>{{ name }}</td>
+            {% for s in equity %}
+            {% set v = s.full[key] %}
+            <td class="{{ '' if v is none else ('green' if v >= 0 else 'red') if key in ('cagr','total_return','alpha','sharpe','sortino','calmar') else '' }}">{{ fmt(v, pct) }}</td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </table>
+      </div>
+      <p class="sub" style="margin-top:12px;">Higher Sharpe/Sortino = better return per unit of volatility. Higher Calmar/recovery = better return per unit of drawdown. The two can disagree — which is the whole point of comparing them.</p>
+    </section>
+
+    {% for s in equity %}
+    <section>
+      <h2>{{ s.label }} · walk-forward stability</h2>
+      <div class="table-wrap">
+        <table>
+          <tr><th>Segment</th><th>CAGR</th><th>Sharpe</th><th>Max DD</th></tr>
+          {% for w in s.walk_forward %}
+          <tr>
+            <td>{{ w.start }} → {{ w.end }}</td>
+            <td class="{{ 'green' if (w.cagr or 0) >= 0 else 'red' }}">{{ fmt(w.cagr, True) }}</td>
+            <td class="{{ 'green' if (w.sharpe or 0) >= 0 else 'red' }}">{{ fmt(w.sharpe) }}</td>
+            <td class="red">{{ fmt(w.max_drawdown, True) }}</td>
+          </tr>
+          {% endfor %}
+        </table>
+      </div>
+      {% if s.monte_carlo %}
+      <div class="cards" style="margin-top:16px;">
+        <div class="card"><div class="label">Monte Carlo CAGR (p5 / p50 / p95)</div>
+          <div class="value" style="font-size:18px;">{{ fmt(s.monte_carlo.cagr_p5, True) }} / {{ fmt(s.monte_carlo.cagr_p50, True) }} / {{ fmt(s.monte_carlo.cagr_p95, True) }}</div></div>
+        <div class="card"><div class="label">Monte Carlo Max DD (p5 / p50 / p95)</div>
+          <div class="value" style="font-size:18px;">{{ fmt(s.monte_carlo.maxdd_p5, True) }} / {{ fmt(s.monte_carlo.maxdd_p50, True) }} / {{ fmt(s.monte_carlo.maxdd_p95, True) }}</div></div>
+        <div class="card"><div class="label">P(negative CAGR)</div>
+          <div class="value">{{ fmt(s.monte_carlo.prob_negative_cagr, True) }}</div></div>
+      </div>
+      {% endif %}
+    </section>
+    {% endfor %}
+
+    {% if options %}
+    <section>
+      <h2>Options Books <span style="text-transform:none;letter-spacing:0;color:var(--faint);">· track record too short for risk ratios</span></h2>
+      {% for o in options %}
+      <div class="notice"><b>{{ o.label }}</b> — {{ o.note }}
+        (realised ₹{{ "{:,.0f}".format(o.realised) }}, open mark ₹{{ "{:,.0f}".format(o.unrealised) }}).</div>
+      {% endfor %}
+    </section>
+    {% endif %}
+  {% endif %}
+{% endblock %}

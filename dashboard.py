@@ -682,6 +682,36 @@ def pnl():
         grand=_pnl_total(rows), started=STARTING_CAPITAL)
 
 
+# ── Research tear sheets (results/tearsheets.json) ────────────────────────────
+
+@app.route("/tearsheet")
+@login_required
+def tearsheet():
+    fp = RESULTS_DIR / "tearsheets.json"
+    if not fp.exists():
+        return render_template("tearsheet.html", active="tearsheet",
+                               error="No tear sheets yet — run `python tearsheet.py`.",
+                               generated=None, equity=[], options=[], metric_rows=[])
+    import json as _json
+    data = _json.loads(fp.read_text())
+    strats = data.get("strategies", {})
+    equity = [s for s in strats.values()
+              if s.get("kind") == "equity" and s.get("sufficient")]
+    options = [s for s in strats.values() if s.get("kind") == "options"]
+    metric_rows = [
+        ("CAGR", "cagr", True), ("Total return", "total_return", True),
+        ("Max drawdown", "max_drawdown", True), ("Annualised vol", "annual_vol", True),
+        ("Sharpe", "sharpe", False), ("Sortino", "sortino", False),
+        ("Calmar", "calmar", False), ("Recovery factor", "recovery_factor", False),
+        ("Profit factor", "profit_factor", False), ("Win rate", "win_rate", True),
+        ("Beta vs NIFTY", "beta", False), ("Alpha vs NIFTY", "alpha", True),
+        ("Information ratio", "information_ratio", False),
+    ]
+    return render_template("tearsheet.html", active="tearsheet", error=None,
+                           generated=data.get("generated"), equity=equity,
+                           options=options, metric_rows=metric_rows)
+
+
 # ── Backtest reports (results/*.md) ───────────────────────────────────────────
 
 @app.route("/backtests")

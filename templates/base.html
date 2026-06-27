@@ -322,6 +322,8 @@
     <nav>
       <a href="{{ url_for('features.analytics') }}" class="{{ 'active' if active == 'analytics' }}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 12l5-3M12 12v-6"/></svg>Analytics</a>
+      <a href="{{ url_for('tearsheet') }}" class="{{ 'active' if active == 'tearsheet' }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3h14v18l-7-4-7 4z"/><path d="M9 8h6M9 12h6" opacity=".5"/></svg>Tear Sheets</a>
       <a href="{{ url_for('backtests') }}" class="{{ 'active' if active == 'backtests' }}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9l3 3v15H6z"/><path d="M9 9h6M9 13h6M9 17h4"/></svg>Backtests</a>
       <a href="{{ url_for('features.journal') }}" class="{{ 'active' if active == 'journal' }}">
