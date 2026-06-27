@@ -15,17 +15,12 @@ the benefit clearly outweighs the churn/regression risk — especially for
 - ✅ **Six copy-pasted dashboard JSON routes** → `_research_json()` helper. Commit `c1f432d`.
 - ✅ **Byte-identical `load_panel` + scattered CSV loaders** → `data_io.py`
   (verdicts proven unchanged). Commit `075494b`.
+- ✅ **`CAPITAL = 1_000_000` duplicated in 9 files** → `config.PAPER_CAPITAL`
+  (single source of truth). All 9 now alias the config value; proven identical
+  (each resolves to 1_000_000 / `is config.PAPER_CAPITAL`), 40 tests pass,
+  research + dashboard unaffected. Done at the user's explicit request.
 
 ## Open items — with decisions
-
-### 1. `CAPITAL = 1_000_000` duplicated in ~9 files — WON'T FIX (for now)
-`dashboard.py` even comments "must match paper_trader.py / intraday_sim.py".
-**Decision: leave it.** It is a constant that is identical everywhere and never
-changes; unifying it into a `config.py` would touch the **pre-registered sims**
-(`options_sim`, `condor_sim`, `intraday_sim`) and the **live `paper_trader`** for
-zero behavioural benefit. The regression/review risk to protected code outweighs
-the single-source-of-truth gain. **Revisit only if** the paper capital ever needs
-to differ per book or change — at which point a `config.py` becomes worth it.
 
 ### 2. Small formatter helpers (`rupees`/`_pct`/`_f`) duplicated ~8× — WON'T FIX
 4 copies live in pre-registered/live sims (don't touch), 4 in research runners.

@@ -25,6 +25,7 @@ Usage:
   python condor_sim.py             # advance the sim to the latest NIFTY day
 """
 
+from config import PAPER_CAPITAL
 import calendar
 import sqlite3
 from datetime import date, timedelta
@@ -40,7 +41,7 @@ OTM_PCT     = 0.04        # short (body) strikes 4% OTM
 WING_PCT    = 0.06        # long (wing) strikes 6% OTM  → ~2%-of-spot wing width
 STRIKE_STEP = 50          # round strikes to nearest 50
 LOT_SIZE    = 75          # NIFTY lot
-CAPITAL     = 1_000_000   # paper book
+CAPITAL     = PAPER_CAPITAL   # paper book
 RV_WINDOW   = 20          # trading days for realized vol
 RISK_FREE   = 0.065
 SPREAD_PCT  = 0.10        # HARSH bid-ask haircut, per leg, per transaction

@@ -17,6 +17,7 @@ DASHBOARD_PASSWORD=something-you-choose). The server binds to 127.0.0.1
 only, so it is reachable just from this machine.
 """
 
+from config import PAPER_CAPITAL
 import csv
 import json
 import math
@@ -44,7 +45,7 @@ DB_PATH      = BASE_DIR / "portfolio.db"
 INTRADAY_DB  = BASE_DIR / "intraday.db"
 OPTIONS_DB   = BASE_DIR / "options.db"
 
-STARTING_CAPITAL = 1_000_000  # must match paper_trader.py / intraday_sim.py
+STARTING_CAPITAL = PAPER_CAPITAL  # single source of truth in config.py
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)  # sessions reset on restart — that's fine

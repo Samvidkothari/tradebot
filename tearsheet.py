@@ -22,6 +22,7 @@ nothing. Writes:
 Usage:  python tearsheet.py
 """
 
+from config import PAPER_CAPITAL
 import json
 import sqlite3
 from datetime import date
@@ -36,7 +37,7 @@ from strategy_base import REGISTRY, MonthlyRebalanceEngine
 
 BASE        = Path(__file__).parent
 RESULTS_DIR = BASE / "results"
-CAPITAL     = 1_000_000
+CAPITAL     = PAPER_CAPITAL
 MIN_DAYS    = 60          # below this, risk ratios are noise — don't report them
 
 ENGINE = MonthlyRebalanceEngine()   # the shared, regression-proven backtest loop

@@ -12,6 +12,7 @@ nothing to the live book.
 Usage:  python risk_report.py
 """
 
+from config import PAPER_CAPITAL
 import json
 from datetime import date
 from pathlib import Path
@@ -24,7 +25,7 @@ from strategy_base import REGISTRY, MonthlyRebalanceEngine
 from portfolio_analyzer import load_holdings, load_closes
 
 RESULTS_DIR = Path(__file__).parent / "results"
-CAPITAL = 1_000_000
+CAPITAL = PAPER_CAPITAL
 ENGINE = MonthlyRebalanceEngine()
 
 

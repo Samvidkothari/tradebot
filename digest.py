@@ -14,12 +14,13 @@ Used two ways:
 Everything here is simulated. Nothing places an order.
 """
 
+from config import PAPER_CAPITAL
 import sqlite3
 from datetime import date, datetime
 from pathlib import Path
 
 BASE     = Path(__file__).parent
-CAPITAL  = 1_000_000   # per-book starting paper capital
+CAPITAL  = PAPER_CAPITAL   # per-book starting paper capital
 
 
 def _conn(name):

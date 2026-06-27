@@ -18,6 +18,7 @@ Usage:
   python intraday_sim.py 2026-06-11 # simulate a specific date (must be in range)
 """
 
+from config import PAPER_CAPITAL
 import sqlite3
 import sys
 from datetime import date
@@ -30,7 +31,7 @@ import yfinance as yf
 UNIVERSE = ["RELIANCE", "HDFCBANK", "ICICIBANK", "INFY", "TCS",
             "SBIN", "AXISBANK", "ITC", "LT", "BHARTIARTL"]
 
-CAPITAL        = 1_000_000     # paper rupees per strategy book
+CAPITAL        = PAPER_CAPITAL     # paper rupees per strategy book
 MAX_CONCURRENT = 5             # at most 5 open positions at once, per strategy
 NOTIONAL       = CAPITAL / MAX_CONCURRENT
 SQUAREOFF      = "15:15"       # bar time at which any open position is closed

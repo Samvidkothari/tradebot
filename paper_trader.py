@@ -23,6 +23,7 @@ Running it twice in one day is harmless: the month-guard means the second run
 of the month does no rebalance, and reconciliation is state-based anyway.
 """
 
+from config import PAPER_CAPITAL
 import sqlite3
 from datetime import date, timedelta
 from pathlib import Path
@@ -36,7 +37,7 @@ from backtest import COST_ENTRY, COST_EXIT   # reuse the exact cost model
 # ── Config ────────────────────────────────────────────────────────────────────
 DATA_DIR         = Path(__file__).parent / "data"
 DB_PATH          = Path(__file__).parent / "portfolio.db"
-STARTING_CAPITAL = 1_000_000          # ₹10,00,000 paper money
+STARTING_CAPITAL = PAPER_CAPITAL          # ₹10,00,000 paper money
 LOOKBACK_DAYS    = 400                 # calendar days fetched — ample for 61 closes
 # ─────────────────────────────────────────────────────────────────────────────
 

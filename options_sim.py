@@ -19,6 +19,7 @@ Usage:
   python options_sim.py            # advance the sim to the latest NIFTY day
 """
 
+from config import PAPER_CAPITAL
 import calendar
 import sqlite3
 from datetime import date, timedelta
@@ -33,7 +34,7 @@ import yfinance as yf
 OTM_PCT     = 0.04        # strikes 4% OTM
 STRIKE_STEP = 50          # round strikes to nearest 50
 LOT_SIZE    = 75          # NIFTY lot
-CAPITAL     = 1_000_000   # paper book (covers strangle margin)
+CAPITAL     = PAPER_CAPITAL   # paper book (covers strangle margin)
 RV_WINDOW   = 20          # trading days for realized vol
 RISK_FREE   = 0.065
 STOP_MULT   = 2.0         # close if loss >= 2x premium collected
