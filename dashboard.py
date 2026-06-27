@@ -713,6 +713,18 @@ def tearsheet():
                            regime=data.get("regime"))
 
 
+@app.route("/factors")
+@login_required
+def factors_view():
+    fp = RESULTS_DIR / "factors.json"
+    if not fp.exists():
+        return render_template("factors.html", active="factors", data=None,
+                               error="No factor data yet — run `python factor_report.py`.")
+    import json as _json
+    return render_template("factors.html", active="factors", error=None,
+                           data=_json.loads(fp.read_text()))
+
+
 # ── Backtest reports (results/*.md) ───────────────────────────────────────────
 
 @app.route("/backtests")

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Factors{% endblock %}
+{% block content %}
+  <h1>Factor Library <span class="readonly">RESEARCH</span></h1>
+  <p class="sub">Modular factor scores from price/volume data{% if data %} · as of {{ data.as_of }}{% endif %} · research only, no orders</p>
+
+  {% if error %}
+    <div class="banner">{{ error }} <code>python factor_report.py</code></div>
+  {% else %}
+    <section>
+      <h2>Multi-Factor Composite <span style="text-transform:none;letter-spacing:0;color:var(--faint);">· illustrative blend (momentum + low-vol + trend, equal weight) — not a strategy</span></h2>
+      <div class="table-wrap">
+        <table>
+          <tr><th>Rank</th><th>Symbol</th><th>Composite score</th></tr>
+          {% for d in data.composite %}
+          <tr><td>{{ loop.index }}</td><td>{{ d.symbol }}</td><td class="green">{{ "%.3f"|format(d.score) }}</td></tr>
+          {% endfor %}
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h2>Factor Leaderboards</h2>
+      <div class="cards" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr));">
+        {% for name, f in data.factors.items() %}
+        <div class="card">
+          <div class="label">{{ name.replace('_',' ') }} <span style="color:var(--faint);text-transform:none;">({{ f.direction }})</span></div>
+          <div class="sub" style="margin:4px 0 10px;font-size:11.5px;">{{ f.description }}</div>
+          <table style="box-shadow:none;border:none;">
+            {% for d in f.top[:5] %}
+            <tr><td style="padding:4px 0;">{{ d.symbol }}</td><td style="padding:4px 0;text-align:right;">{{ "%.2f"|format(d.score) }}</td></tr>
+            {% endfor %}
+          </table>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <div class="notice">
+      <b>Fundamental factors not computed:</b> {{ data.unavailable|join(', ') }}.
+      We have price/volume data only (free plan, no fundamentals feed) — these are
+      intentionally left out rather than fabricated. A multi-factor <i>composite</i>
+      is research analysis, not a tradeable strategy: a multi-factor strategy would
+      need Phase 2B pre-registration, and the equity strategy-class budget is closed.
+    </div>
+  {% endif %}
+{% endblock %}
