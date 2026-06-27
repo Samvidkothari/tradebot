@@ -2,8 +2,8 @@
 
 *Lead Architect review, 2026-06-27. Grounded in the measured import graph + code scan.*
 
-> Items #1–3 of §10 were implemented immediately after this review (see commit
-> history); the rest remain open. All paper/research — no order-placement code.
+> Items #1–4 of §10 were implemented immediately after this review (see commit
+> history); #5–8 remain open. All paper/research — no order-placement code.
 
 ## 1. Current architecture
 
@@ -73,7 +73,7 @@ Graph is acyclic and layered, but two edges point the wrong way (§4).
 | 1 | Delete the 3 dead `DATA_DIR` vars | trivial | ~0 | High |
 | 2 | Move cost model + `SPLIT_DATE` into `config`; repoint imports | low | low | High (kills §4.1/§4.2) |
 | 3 | Load the panel **once** per `refresh_research` (memoise) | low | low | High |
-| 4 | Integration smoke test (daily bot dry-run / all routes) | low-med | low | High |
+| 4 | Integration smoke test (pipeline JSON + all routes) | low-med | low | High ✅ done (`test_integration.py`) |
 | 5 | Dataclasses/TypedDicts for `results/*.json` payloads | medium | low | Medium |
 | 6 | Split `dashboard.py` into Flask blueprints | medium | medium | Medium |
 | 7 | Archive `review.py` / `intraday_sim.py` explicitly | trivial | ~0 | Medium |
