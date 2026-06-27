@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}Analytics{% endblock %}
+
+{% macro stat(label, value, cls="") -%}
+  <div class="card"><div class="label">{{ label }}</div>
+    <div class="value {{ cls }}">{{ value }}</div></div>
+{%- endmacro %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Performance Analytics</h1>
+    <p class="sub">Risk &amp; return metrics computed from the local paper ledgers — read-only.</p>
+  </div>
+  {% if a %}
+  <div class="btn-row">
+    <a class="btn" href="{{ url_for('features.export_csv', kind='intraday_trades', strategy=selected) }}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg>Export trades</a>
+    <a class="btn primary" href="{{ url_for('features.report') }}" target="_blank">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9l3 3v15H6z"/><path d="M9 12h6M9 16h4"/></svg>Full report</a>
+  </div>
+  {% endif %}
+</div>
+
+{% if error %}
+  <div class="empty">{{ error }}</div>
+{% else %}
+
+  {% if strategies|length > 1 %}
+  <div class="seg" style="margin-bottom:26px;">
+    {% for s in strategies %}
+      <a href="{{ url_for('features.analytics', strategy=s) }}" class="{{ 'active' if s == selected }}">{{ s }}</a>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="cards">
+    {{ stat("Equity", "₹{:,.0f}".format(a.equity)) }}
+    {{ stat("Total Return", "{:+.2f}%".format(a.ret_pct), "green" if a.ret_pct >= 0 else "red") }}
+    {{ stat("Cumulative Net", "₹{:+,.0f}".format(a.cum_net), "green" if a.cum_net >= 0 else "red") }}
+    {{ stat("Sharpe (ann.)", "%.2f"|format(a.sharpe) if a.sharpe is not none else "—") }}
+    {{ stat("Sortino (ann.)", "%.2f"|format(a.sortino) if a.sortino is not none else "—") }}
+    {{ stat("Max Drawdown", "₹{:,.0f}".format(a.max_dd) + " ({:.1f}%)".format(a.max_dd_pct), "red") }}
+  </div>
+
+  {% if chart %}
+  <div class="panel">
+    <div class="panel-head"><h2 style="margin:0;">Equity Curve &amp; Drawdown</h2>
+      <span class="tag">{{ selected }}</span></div>
+    <div style="position:relative;height:300px;"><canvas id="eqChart"></canvas></div>
+    <div style="position:relative;height:120px;margin-top:10px;"><canvas id="ddChart"></canvas></div>
+  </div>
+  {% endif %}
+
+  <section>
+    <h2>Trade Statistics</h2>
+    <div class="cards">
+      {{ stat("Trades", a.trade.n) }}
+      {{ stat("Win Rate", "%.1f%%"|format(a.trade.win_rate) if a.trade.win_rate is not none else "—") }}
+      {{ stat("Profit Factor", a.trade.pf_label) }}
+      {{ stat("Expectancy / trade", "₹{:+,.0f}".format(a.trade.expectancy) if a.trade.expectancy is not none else "—", "green" if (a.trade.expectancy or 0) >= 0 else "red") }}
+      {{ stat("Payoff Ratio", "%.2f"|format(a.trade.payoff) if a.trade.payoff is not none else "—") }}
+      {{ stat("Annualised Vol", "%.1f%%"|format(a.vol_pct) if a.vol_pct is not none else "—") }}
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+        <tbody class="num">
+          <tr><td>Average win</td><td class="green">{{ "₹{:+,.0f}".format(a.trade.avg_win) if a.trade.avg_win is not none else "—" }}</td></tr>
+          <tr><td>Average loss</td><td class="red">{{ "₹{:+,.0f}".format(a.trade.avg_loss) if a.trade.avg_loss is not none else "—" }}</td></tr>
+          <tr><td>Largest win</td><td class="green">{{ "₹{:+,.0f}".format(a.trade.largest_win) if a.trade.largest_win is not none else "—" }}</td></tr>
+          <tr><td>Largest loss</td><td class="red">{{ "₹{:+,.0f}".format(a.trade.largest_loss) if a.trade.largest_loss is not none else "—" }}</td></tr>
+          <tr><td>Best day</td><td class="green">{{ "₹{:+,.0f}".format(a.best_day) if a.best_day is not none else "—" }}</td></tr>
+          <tr><td>Worst day</td><td class="red">{{ "₹{:+,.0f}".format(a.worst_day) if a.worst_day is not none else "—" }}</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if chart %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+  const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  const labels = {{ chart["labels"] | tojson }};
+  const equity = {{ chart["equity"] | tojson }};
+  const drawdown = {{ chart["drawdown"] | tojson }};
+  let eq, dd;
+
+  function build() {
+    const accent = css('--accent') || '#7c8cff';
+    const red = css('--red') || '#f0716a';
+    const grid = css('--grid') || 'rgba(255,255,255,.06)';
+    const muted = css('--muted') || '#8b94a6';
+    const baseOpts = (fmt) => ({
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false },
+        tooltip: { callbacks: { label: (c) => '₹' + Math.round(c.parsed.y).toLocaleString() } } },
+      scales: {
+        x: { grid: { color: grid }, ticks: { color: muted, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 } },
+        y: { grid: { color: grid }, ticks: { color: muted, callback: fmt } } }
+    });
+    if (eq) eq.destroy();
+    if (dd) dd.destroy();
+    const ctx = document.getElementById('eqChart').getContext('2d');
+    const g = ctx.createLinearGradient(0, 0, 0, 300);
+    g.addColorStop(0, accent + '55'); g.addColorStop(1, accent + '00');
+    eq = new Chart(ctx, { type: 'line', data: { labels, datasets: [{
+        data: equity, borderColor: accent, backgroundColor: g, fill: true,
+        borderWidth: 2, pointRadius: 0, tension: .25 }] },
+      options: baseOpts((v) => '₹' + (v/1000).toFixed(0) + 'k') });
+    dd = new Chart(document.getElementById('ddChart'), { type: 'line', data: { labels, datasets: [{
+        data: drawdown, borderColor: red, backgroundColor: red + '33', fill: true,
+        borderWidth: 1.5, pointRadius: 0, tension: .2 }] },
+      options: baseOpts((v) => '₹' + (v/1000).toFixed(0) + 'k') });
+  }
+  build();
+  window.addEventListener('tb-theme', build);
+</script>
+{% endif %}
+{% endblock %}

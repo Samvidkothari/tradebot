@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>tradebot — Performance Report</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    @page { margin: 18mm; }
+    * { box-sizing: border-box; }
+    body { font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, sans-serif;
+           color: #131722; background: #f4f6fb; margin: 0; padding: 36px; line-height: 1.5; }
+    .sheet { max-width: 880px; margin: 0 auto; background: #fff; border: 1px solid #e2e7f0;
+             border-radius: 14px; padding: 40px 44px; box-shadow: 0 12px 32px rgba(20,30,60,.08); }
+    .head { display: flex; justify-content: space-between; align-items: flex-end;
+            border-bottom: 2px solid #131722; padding-bottom: 14px; margin-bottom: 26px; }
+    .wm { font-family: Georgia, "Fraunces", serif; font-size: 26px; font-weight: 600; }
+    .wm span { color: #b07d2a; }
+    .meta { text-align: right; font-size: 12px; color: #5d6679; }
+    h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: #5d6679;
+         margin: 30px 0 12px; }
+    .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .card { border: 1px solid #e2e7f0; border-radius: 10px; padding: 12px 14px; }
+    .card .l { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: #5d6679; font-weight: 600; }
+    .card .v { font-size: 19px; font-weight: 700; margin-top: 4px; font-variant-numeric: tabular-nums; }
+    table { width: 100%; border-collapse: collapse; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+    th, td { padding: 8px 10px; text-align: right; border-bottom: 1px solid #eaeef5; }
+    th:first-child, td:first-child { text-align: left; }
+    th { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: #5d6679; }
+    .green { color: #12a86a; } .red { color: #e0483f; }
+    .foot { margin-top: 30px; font-size: 11px; color: #8b94a6; border-top: 1px solid #eaeef5; padding-top: 12px; }
+    .actions { max-width: 880px; margin: 0 auto 16px; text-align: right; }
+    .btn { display: inline-block; padding: 8px 16px; border-radius: 9px; background: #4f5dff; color: #fff;
+           text-decoration: none; font-size: 13px; font-weight: 600; border: none; cursor: pointer; }
+    @media print { body { background: #fff; padding: 0; } .sheet { box-shadow: none; border: none; }
+                   .actions { display: none; } }
+  </style>
+</head>
+<body>
+  <div class="actions"><button class="btn" onclick="window.print()">Print / Save as PDF</button></div>
+  <div class="sheet">
+    <div class="head">
+      <div class="wm">tradebot<span>.</span></div>
+      <div class="meta">Performance Report<br>Generated {{ generated }}<br>Paper · simulated</div>
+    </div>
+
+    <h2>Paper Equity Book</h2>
+    <div class="cards">
+      <div class="card"><div class="l">Equity (cost basis)</div>
+        <div class="v">{{ "₹{:,.0f}".format(paper_equity) if paper_equity is not none else "—" }}</div></div>
+      <div class="card"><div class="l">Realised P&amp;L</div>
+        <div class="v {{ 'green' if (paper_realised or 0) >= 0 else 'red' }}">
+          {{ "₹{:+,.0f}".format(paper_realised) if paper_realised is not none else "—" }}</div></div>
+      <div class="card"><div class="l">Starting capital</div>
+        <div class="v">₹{{ "{:,.0f}".format(starting) }}</div></div>
+      <div class="card"><div class="l">Books reported</div>
+        <div class="v">{{ books|length }}</div></div>
+    </div>
+
+    {% for b in books %}
+    <h2>Intraday — {{ b.strategy }}</h2>
+    <div class="cards" style="margin-bottom:12px;">
+      <div class="card"><div class="l">Return</div>
+        <div class="v {{ 'green' if b.ret_pct >= 0 else 'red' }}">{{ "{:+.2f}%".format(b.ret_pct) }}</div></div>
+      <div class="card"><div class="l">Cum. net</div>
+        <div class="v {{ 'green' if b.cum_net >= 0 else 'red' }}">{{ "₹{:+,.0f}".format(b.cum_net) }}</div></div>
+      <div class="card"><div class="l">Sharpe</div>
+        <div class="v">{{ "%.2f"|format(b.sharpe) if b.sharpe is not none else "—" }}</div></div>
+      <div class="card"><div class="l">Max DD</div>
+        <div class="v red">{{ "{:.1f}%".format(b.max_dd_pct) }}</div></div>
+    </div>
+    <table>
+      <thead><tr><th>Metric</th><th>Value</th><th>Metric</th><th>Value</th></tr></thead>
+      <tbody>
+        <tr><td>Trades</td><td>{{ b.trade.n }}</td>
+            <td>Win rate</td><td>{{ "%.1f%%"|format(b.trade.win_rate) if b.trade.win_rate is not none else "—" }}</td></tr>
+        <tr><td>Profit factor</td>
+            <td>{{ b.trade.pf_label }}</td>
+            <td>Expectancy/trade</td>
+            <td class="{{ 'green' if (b.trade.expectancy or 0) >= 0 else 'red' }}">{{ "₹{:+,.0f}".format(b.trade.expectancy) if b.trade.expectancy is not none else "—" }}</td></tr>
+        <tr><td>Avg win</td><td class="green">{{ "₹{:+,.0f}".format(b.trade.avg_win) if b.trade.avg_win is not none else "—" }}</td>
+            <td>Avg loss</td><td class="red">{{ "₹{:+,.0f}".format(b.trade.avg_loss) if b.trade.avg_loss is not none else "—" }}</td></tr>
+        <tr><td>Sortino</td><td>{{ "%.2f"|format(b.sortino) if b.sortino is not none else "—" }}</td>
+            <td>Ann. vol</td><td>{{ "%.1f%%"|format(b.vol_pct) if b.vol_pct is not none else "—" }}</td></tr>
+      </tbody>
+    </table>
+    {% endfor %}
+
+    <div class="foot">
+      Simulated paper trading only. Metrics are derived from local ledgers and are not investment advice.
+      Sharpe/Sortino annualised at 252 trading days; drawdown measured on the compounded equity curve.
+    </div>
+  </div>
+</body>
+</html>

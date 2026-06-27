@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Order Ticket{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Order Ticket <span class="readonly">Simulated</span></h1>
+    <p class="sub">Stage and record orders against the paper book. Nothing here is sent to a broker.</p>
+  </div>
+</div>
+
+<div class="notice">
+  <strong>Paper-only.</strong> Submitting records a <code>SIMULATED</code> order in <code>orders.db</code> for
+  review and journaling. This screen has <strong>no path to live execution</strong> — it never contacts Kite or
+  places a real order. Wiring real execution would require an explicit live-trading flag and per-order confirmation.
+</div>
+
+<div class="panel">
+  <div class="panel-head"><h2 style="margin:0;">Stage a simulated order</h2></div>
+  <form method="post" action="{{ url_for('features.ticket_submit') }}">
+    <div class="form-grid" style="margin-bottom:14px;">
+      <div><label class="field">Symbol</label>
+        <input name="symbol" list="symlist" placeholder="e.g. NIFTY50" required>
+        <datalist id="symlist">{% for s in symbols %}<option value="{{ s }}">{% endfor %}</datalist></div>
+      <div><label class="field">Side</label>
+        <select name="side"><option value="BUY">BUY</option><option value="SELL">SELL</option></select></div>
+      <div><label class="field">Quantity</label><input name="qty" type="number" min="1" step="1" required></div>
+      <div><label class="field">Order type</label>
+        <select name="order_type" id="otype">
+          <option value="MARKET">MARKET</option><option value="LIMIT">LIMIT</option></select></div>
+      <div id="limitWrap" style="display:none;"><label class="field">Limit price (₹)</label>
+        <input name="limit_price" type="number" step="any"></div>
+    </div>
+    <label class="field">Note</label>
+    <input name="note" placeholder="Rationale / linked thesis" style="margin-bottom:14px;">
+    <button type="submit" class="btn primary">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12l5 5L20 7"/></svg>Record simulated order</button>
+  </form>
+</div>
+
+{% if orders %}
+<section>
+  <h2>Recorded orders</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>Time</th><th>Symbol</th><th>Side</th><th>Qty</th><th>Type</th>
+        <th>Limit</th><th>Status</th><th>Note</th><th></th>
+      </tr></thead>
+      <tbody>
+        {% for o in orders %}
+        <tr>
+          <td style="text-align:left;" class="sub">{{ o.created }}</td>
+          <td style="text-align:left;">{{ o.symbol }}</td>
+          <td class="{{ 'green' if o.side == 'BUY' else 'red' }}">{{ o.side }}</td>
+          <td class="num">{{ o.qty }}</td>
+          <td>{{ o.order_type }}</td>
+          <td class="num">{{ "₹{:,.2f}".format(o.limit_price) if o.limit_price is not none else "—" }}</td>
+          <td><span class="pill flat">{{ o.status }}</span></td>
+          <td style="text-align:left;" class="sub">{{ o.note or "" }}</td>
+          <td>
+            <form method="post" action="{{ url_for('features.ticket_delete', order_id=o.id) }}" style="display:inline;"
+                  onsubmit="return confirm('Delete this record?');">
+              <button class="btn ghost danger" type="submit">Delete</button></form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% else %}
+  <div class="empty">No simulated orders recorded yet.</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const ot = document.getElementById('otype');
+  const lw = document.getElementById('limitWrap');
+  function sync() { lw.style.display = ot.value === 'LIMIT' ? '' : 'none'; }
+  ot.addEventListener('change', sync); sync();
+</script>
+{% endblock %}

@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Journal{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Trade Journal</h1>
+    <p class="sub">Notes, tags &amp; ratings — saved locally to <code>journal.db</code>, isolated from any trading ledger.</p>
+  </div>
+  <div class="btn-row">
+    <a class="btn" href="{{ url_for('features.export_csv', kind='journal') }}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg>Export CSV</a>
+  </div>
+</div>
+
+<div class="cards">
+  <div class="card"><div class="label">Entries</div><div class="value num">{{ n }}</div></div>
+  <div class="card"><div class="label">Avg rating</div>
+    <div class="value num">{{ "%.1f / 5"|format(avg_rating) if avg_rating else "—" }}</div></div>
+</div>
+
+<div class="panel">
+  <div class="panel-head"><h2 style="margin:0;">New entry</h2></div>
+  <form method="post" action="{{ url_for('features.journal_add') }}">
+    <div class="form-grid" style="margin-bottom:16px;">
+      <div><label class="field">Book</label>
+        <select name="book">
+          <option value="">—</option>
+          {% for b in books %}<option value="{{ b }}">{{ b }}</option>{% endfor %}
+        </select></div>
+      <div><label class="field">Symbol</label><input name="symbol" placeholder="e.g. NIFTY50"></div>
+      <div><label class="field">Side</label>
+        <select name="side"><option value="">—</option><option>LONG</option><option>SHORT</option></select></div>
+      <div><label class="field">Tag</label><input name="tag" placeholder="breakout, fomo, plan…"></div>
+      <div><label class="field">Rating (1–5)</label>
+        <select name="rating"><option value="0">—</option>
+          {% for r in [1,2,3,4,5] %}<option value="{{ r }}">{{ r }}</option>{% endfor %}</select></div>
+    </div>
+    <label class="field">Title</label>
+    <input name="title" placeholder="One-line summary" style="margin-bottom:14px;">
+    <label class="field">Note</label>
+    <textarea name="note" placeholder="What was the setup? What did you learn? What would you do differently?"></textarea>
+    <div class="btn-row" style="margin-top:14px;">
+      <button type="submit" class="btn primary">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Save entry</button>
+    </div>
+  </form>
+</div>
+
+{% if entries %}
+<section>
+  <h2>Recent entries</h2>
+  {% for e in entries %}
+  <div class="panel" style="margin-bottom:14px;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:14px;">
+      <div style="min-width:0;">
+        <div style="font-size:16px;font-weight:600;margin-bottom:4px;">{{ e.title or "(untitled)" }}</div>
+        <div class="sub" style="margin:0;">
+          {{ e.created }}
+          {% if e.book %} · <span class="tag">{{ e.book }}</span>{% endif %}
+          {% if e.symbol %} · {{ e.symbol }}{% endif %}
+          {% if e.side %} · {{ e.side }}{% endif %}
+          {% if e.tag %} · #{{ e.tag }}{% endif %}
+          {% if e.rating %} · {{ "★" * e.rating }}{{ "☆" * (5 - e.rating) }}{% endif %}
+        </div>
+      </div>
+      <form method="post" action="{{ url_for('features.journal_delete', entry_id=e.id) }}"
+            onsubmit="return confirm('Delete this entry?');">
+        <button class="btn ghost danger" type="submit" title="Delete">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14"/></svg></button>
+      </form>
+    </div>
+    {% if e.note %}<div style="margin-top:12px;white-space:pre-line;color:var(--text);">{{ e.note }}</div>{% endif %}
+  </div>
+  {% endfor %}
+</section>
+{% else %}
+  <div class="empty">No journal entries yet — add your first above.</div>
+{% endif %}
+{% endblock %}
