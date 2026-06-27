@@ -1,6 +1,6 @@
 # Low-Volatility Anomaly (60d) — Backtest Report
 
-Generated: 2026-06-15  
+Generated: 2026-06-27  
 Spec: `strategies/SPEC_lowvol.md` (pre-registered, commit 664b492).  
 Strategy: monthly rebalance into the 15 LOWEST-volatility NIFTY 50 names by 60-day realized vol, equal-weight.  
 Universe: 48 stocks (survivorship-biased — current members only; see spec §2).  
@@ -10,8 +10,8 @@ Warmup 61d (60 returns); round-trip cost ≈0.323%, charged on turnover.
 
 | Metric | Low-Vol | NIFTY 50 B&H |
 |---|---|---|
-| CAGR | +11.1% | +6.6% |
-| Total return | +63.8% | +34.7% |
+| CAGR | +11.1% | +6.9% |
+| Total return | +64.9% | +37.2% |
 | Max drawdown | -15.9% | -17.2% |
 | Years | 4.7 | 4.7 |
 
@@ -28,10 +28,10 @@ Warmup 61d (60 returns); round-trip cost ≈0.323%, charged on turnover.
 
 | Metric | Low-Vol | NIFTY 50 B&H |
 |---|---|---|
-| CAGR | +7.4% | +3.5% |
-| Total return | +19.2% | +8.7% |
+| CAGR | +7.6% | +4.2% |
+| Total return | +20.0% | +10.6% |
 | Max drawdown | -15.9% | -15.8% |
-| Years | 2.4 | 2.4 |
+| Years | 2.5 | 2.5 |
 
 ## Pre-Committed PASS Criteria
 
@@ -45,8 +45,8 @@ Warmup 61d (60 returns); round-trip cost ≈0.323%, charged on turnover.
 
 ## Honest Assessment
 
-- **Full period:** low-vol +11.1% CAGR vs NIFTY +6.6% — beat buy-and-hold after all costs.
-- **Out-of-sample (Period B):** low-vol +7.4% vs NIFTY +3.5% — held up.
+- **Full period:** low-vol +11.1% CAGR vs NIFTY +6.9% — beat buy-and-hold after all costs.
+- **Out-of-sample (Period B):** low-vol +7.6% vs NIFTY +4.2% — held up.
 - **Drawdown:** worst low-vol drawdown -15.9% vs NIFTY -17.2% — this is the criterion the thesis was built to win, since it holds the calmest names.
 - **Activity:** 431 position-changes across 57 monthly rebalances (low-vol turnover is expected to be modest).
 - **Survivorship bias:** today's NIFTY 50 membership applied to the past; a true point-in-time test would likely be somewhat worse (spec §2).
