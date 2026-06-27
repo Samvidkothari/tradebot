@@ -1,0 +1,13 @@
+# Runtime dependencies (direct imports only, pinned to the working .venv).
+# Install with:  python -m venv .venv && .venv/bin/pip install -r requirements.txt
+# Dev/test tooling is separate — see requirements-dev.txt.
+#
+# Transitive dependencies are intentionally NOT listed (pip resolves them); this
+# keeps the file to the six packages the code actually imports.
+
+Flask==3.1.3            # local read-only dashboard
+kiteconnect==5.2.0      # Zerodha Kite — READ-ONLY holdings/auth only (no orders)
+numpy==2.4.6            # research analytics
+pandas==3.0.3           # data panels / backtests / research
+python-dotenv==1.2.2    # .env loading (API keys, dashboard password)
+yfinance==1.4.1         # free daily/intraday price data (no Kite market-data plan)
