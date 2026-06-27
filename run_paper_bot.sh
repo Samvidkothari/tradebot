@@ -1,9 +1,12 @@
 #!/bin/bash
 # run_paper_bot.sh — one daily unattended PAPER run of the whole bot.
-# Runs the options sims (NIFTY short strangle + defined-risk iron condor,
-# head-to-head), then refreshes the Research Engine analytics JSONs, then the digest.
+# Fetches fresh prices, runs the options sims (NIFTY short strangle + defined-risk
+# iron condor, head-to-head), refreshes the Research Engine analytics JSONs, then
+# the digest.
 # SIMULATED / RESEARCH ONLY — every "trade" is a local DB row; nothing places a
-# real order. refresh_research.py only reads cached data and writes results/*.json.
+# real order. fetch_data.py downloads daily OHLCV via yfinance; refresh_research.py
+# only reads cached data and writes results/*.json. A failed fetch (e.g. no
+# network) is non-fatal — later steps just use the existing cached data.
 #
 # Intraday (ORB + VWAP) was RETIRED 2026-06-26: the monitoring sandbox delivered
 # its finding — a thin intraday edge that does not survive realistic MIS costs
@@ -14,6 +17,8 @@ cd /Users/samvid/projects/tradebot || exit 1
 PY=".venv/bin/python"
 
 echo "================ paper-bot run $(date '+%Y-%m-%d %H:%M:%S %Z') ================"
+echo "----- fetch fresh prices (yfinance; non-fatal on failure) -----"
+"$PY" fetch_data.py --refresh || echo "  (fetch failed — continuing on cached data)"
 echo "----- options (NIFTY short strangle) -----"
 "$PY" options_sim.py
 echo "----- options (NIFTY iron condor, defined-risk) -----"
