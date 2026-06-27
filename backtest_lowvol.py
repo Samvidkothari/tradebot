@@ -28,10 +28,8 @@ import pandas as pd
 
 # Reuse the IDENTICAL cost model and benchmark/formatting helpers — the spec
 # mandates "same cost model, same data, same OOS split" as the prior backtests.
-from backtest import (
-    COST_ENTRY, COST_EXIT, COST_ROUNDTRIP,
-    bnh_metrics, _p, _pp,
-)
+from backtest import bnh_metrics, _p, _pp        # benchmark + formatting helpers
+from config import COST_ENTRY, COST_EXIT, COST_ROUNDTRIP, SPLIT_DATE
 from lowvol import (
     vol_scores, target_portfolio,
     VOL_LOOKBACK, WARMUP, TOP_N,
@@ -40,9 +38,7 @@ from lowvol import (
 # so existing `from backtest_lowvol import load_panel` callers are unaffected.
 from data_io import load_panel
 
-DATA_DIR    = Path(__file__).parent / "data"
 RESULTS_DIR = Path(__file__).parent / "results"
-SPLIT_DATE  = "2024-01-01"     # Period B (out-of-sample) starts here
 STARTING    = 1.0              # normalised capital; costs are fractions of value
 
 

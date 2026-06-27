@@ -27,10 +27,8 @@ import pandas as pd
 
 # Reuse the IDENTICAL cost model and benchmark/formatting helpers from the SMA
 # backtest — the spec mandates "same cost model, same data, same OOS split".
-from backtest import (
-    COST_ENTRY, COST_EXIT, COST_ROUNDTRIP,
-    bnh_metrics, _p, _pp,
-)
+from backtest import bnh_metrics, _p, _pp        # benchmark + formatting helpers
+from config import COST_ENTRY, COST_EXIT, COST_ROUNDTRIP, SPLIT_DATE
 from momentum import (
     momentum_scores, target_portfolio,
     FORMATION, SKIP, LOOKBACK, TOP_N,
@@ -38,9 +36,7 @@ from momentum import (
 # Data loading unified in data_io (was a byte-identical copy here); re-exported.
 from data_io import load_panel
 
-DATA_DIR    = Path(__file__).parent / "data"
 RESULTS_DIR = Path(__file__).parent / "results"
-SPLIT_DATE  = "2024-01-01"     # Period B (out-of-sample) starts here
 STARTING    = 1.0              # normalised capital; costs are fractions of value
 
 

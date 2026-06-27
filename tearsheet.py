@@ -32,7 +32,8 @@ import pandas as pd
 
 import metrics as M
 import regime as R
-from backtest_lowvol import load_panel, SPLIT_DATE
+from config import SPLIT_DATE
+from data_io import load_panel
 from strategy_base import REGISTRY, MonthlyRebalanceEngine
 
 BASE        = Path(__file__).parent

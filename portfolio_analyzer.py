@@ -33,7 +33,6 @@ import pandas as pd
 import data_io
 
 BASE        = Path(__file__).parent
-DATA_DIR    = BASE / "data"
 RESULTS_DIR = BASE / "results"
 TRADING_DAYS = 252
 

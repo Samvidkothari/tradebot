@@ -32,7 +32,7 @@ import pandas as pd
 import yfinance as yf
 
 from lowvol import target_portfolio, vol_scores, VOL_LOOKBACK, WARMUP, TOP_N
-from backtest import COST_ENTRY, COST_EXIT   # reuse the exact cost model
+from config import COST_ENTRY, COST_EXIT   # reuse the exact cost model
 
 # ── Config ────────────────────────────────────────────────────────────────────
 DATA_DIR         = Path(__file__).parent / "data"

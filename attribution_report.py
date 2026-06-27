@@ -13,7 +13,7 @@ from datetime import date
 from pathlib import Path
 
 import attribution as A
-from backtest_lowvol import load_panel
+from data_io import load_panel
 from strategy_base import REGISTRY
 
 RESULTS_DIR = Path(__file__).parent / "results"

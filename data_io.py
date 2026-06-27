@@ -21,6 +21,7 @@ Functions:
 
 from __future__ import annotations
 
+from functools import lru_cache
 from pathlib import Path
 
 import pandas as pd
@@ -28,11 +29,19 @@ import pandas as pd
 DATA_DIR     = Path(__file__).parent / "data"
 INDEX_SYMBOL = "NIFTY50"
 
+# The loaders below are memoised per-process: within a single run (e.g. one
+# refresh_research.py invocation, where ~6 runners each need the panel) the CSVs
+# are read ONCE and the result reused. Every consumer treats the returned frames
+# as READ-ONLY (they build copies / ffill / set_index, never mutate in place), so
+# sharing the cached objects is safe. Each script invocation is a fresh process →
+# always loads current data; the daily job re-fetches before this runs anyway.
+
 
 def _read(fp: Path) -> pd.DataFrame:
     return pd.read_csv(fp, parse_dates=["date"]).sort_values("date")
 
 
+@lru_cache(maxsize=2)
 def load_panel(data_dir: Path = DATA_DIR):
     """Build a daily-close panel from every stock CSV except the index.
     Returns (panel_raw, nifty_df). LITERAL copy of the backtests' original loader
@@ -54,6 +63,7 @@ def load_panel(data_dir: Path = DATA_DIR):
     return panel_raw, nifty_df
 
 
+@lru_cache(maxsize=2)
 def load_nifty(data_dir: Path = DATA_DIR) -> pd.DataFrame:
     fp = data_dir / f"{INDEX_SYMBOL}.csv"
     if not fp.exists():
@@ -61,6 +71,7 @@ def load_nifty(data_dir: Path = DATA_DIR) -> pd.DataFrame:
     return _read(fp).reset_index(drop=True)
 
 
+@lru_cache(maxsize=2)
 def symbol_frames(data_dir: Path = DATA_DIR, exclude_index: bool = True) -> dict:
     """All per-symbol OHLCV frames, keyed by symbol (index excluded by default)."""
     out = {}

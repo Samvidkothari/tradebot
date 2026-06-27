@@ -20,7 +20,7 @@ from pathlib import Path
 import pandas as pd
 
 import risk_analytics as RA
-from backtest_lowvol import load_panel
+from data_io import load_panel
 from strategy_base import REGISTRY, MonthlyRebalanceEngine
 from portfolio_analyzer import load_holdings, load_closes
 

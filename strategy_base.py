@@ -33,8 +33,8 @@ from abc import ABC, abstractmethod
 
 import pandas as pd
 
-# Reuse the IDENTICAL cost model the pre-registered backtests use.
-from backtest import COST_ENTRY, COST_EXIT
+# Reuse the IDENTICAL cost model the pre-registered backtests use (now in config).
+from config import COST_ENTRY, COST_EXIT
 import lowvol
 import momentum
 

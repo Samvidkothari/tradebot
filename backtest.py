@@ -14,34 +14,15 @@ from pathlib import Path
 import pandas as pd
 
 from strategy import generate_signals, FAST_PERIOD, SLOW_PERIOD, TREND_PERIOD
-
-# ── Cost constants (Zerodha equity delivery) ─────────────────────────────────
-# Edit these if your broker or plan changes.
-BROKERAGE_PER_SIDE = 0.000000   # ₹0 for delivery equity on Zerodha
-                                 # set to min(20/trade_value, 0.0003) for intraday
-STT_BUY            = 0.001000   # 0.10% of buy turnover
-STT_SELL           = 0.001000   # 0.10% of sell turnover
-EXCHANGE_CHARGE    = 0.0000345  # NSE: 0.00345% each side
-SEBI_CHARGE        = 0.0000010  # 0.0001% each side
-STAMP_DUTY         = 0.0001500  # 0.015% on buy only
-GST_RATE           = 0.180000   # 18% on (brokerage + exchange charges)
-SLIPPAGE_PER_SIDE  = 0.000500   # 0.05% per side — conservative for large-caps
-
-# Derived round-trip cost (do not edit — computed from above)
-_taxable_entry = BROKERAGE_PER_SIDE + EXCHANGE_CHARGE + SEBI_CHARGE
-_taxable_exit  = BROKERAGE_PER_SIDE + EXCHANGE_CHARGE + SEBI_CHARGE
-COST_ENTRY     = (SLIPPAGE_PER_SIDE + STT_BUY + STAMP_DUTY
-                  + _taxable_entry + GST_RATE * _taxable_entry)
-COST_EXIT      = (SLIPPAGE_PER_SIDE + STT_SELL
-                  + _taxable_exit  + GST_RATE * _taxable_exit)
-COST_ROUNDTRIP = COST_ENTRY + COST_EXIT
-# ─────────────────────────────────────────────────────────────────────────────
+# Cost model + OOS split now live in config.py (single source of truth);
+# re-exported here so existing `from backtest import COST_*` importers still work.
+from config import (COST_ENTRY, COST_EXIT, COST_ROUNDTRIP,  # noqa: F401
+                    SPLIT_DATE)
 
 SYMBOLS     = ["RELIANCE", "HDFCBANK", "INFY", "TCS", "ICICIBANK",
                "LT", "SBIN", "BHARTIARTL", "ITC", "HINDUNILVR"]
 DATA_DIR    = Path(__file__).parent / "data"
 RESULTS_DIR = Path(__file__).parent / "results"
-SPLIT_DATE  = "2024-01-01"   # Period B (out-of-sample) starts here
 
 
 # ── Backtest engine ───────────────────────────────────────────────────────────
