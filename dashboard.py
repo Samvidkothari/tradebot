@@ -48,6 +48,11 @@ STARTING_CAPITAL = 1_000_000  # must match paper_trader.py / intraday_sim.py
 app = Flask(__name__)
 app.secret_key = os.urandom(24)  # sessions reset on restart — that's fine
 
+# Extended features (analytics, journal, alerts, simulated order ticket, exports).
+# All writes are confined to isolated feature DBs; nothing places a live order.
+from features import bp as features_bp  # noqa: E402
+app.register_blueprint(features_bp)
+
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
 
@@ -592,6 +597,89 @@ def _condor_summary():
                 "n_closed": n_closed, "had_event": had_event}
     finally:
         conn.close()
+
+
+# ── Consolidated P&L (every paper book, read-only) ────────────────────────────
+
+def _pnl_lowvol():
+    """Low-vol equity book: realised from SELL fills + unrealised marked to the
+    latest live price (falls back to last CSV close)."""
+    conn = paper_db()
+    if conn is None:
+        return None
+    positions = conn.execute("SELECT symbol, qty, avg_price FROM positions").fetchall()
+    realised = conn.execute(
+        "SELECT COALESCE(SUM(realised_pnl),0) r FROM fills WHERE side='SELL'").fetchone()["r"]
+    conn.close()
+    warm_prices([p["symbol"] for p in positions])
+    unreal = 0.0
+    for p in positions:
+        px = live_price(p["symbol"]) or p["avg_price"]
+        unreal += (px - p["avg_price"]) * p["qty"]
+    return {"book": "Low-vol equity", "realised": realised, "unrealised": unreal,
+            "status": "active", "note": "marked to latest price · proven strategy"}
+
+
+def _pnl_option_book(db_name, label, note):
+    """One options book: realised = cash − start; unrealised = latest open mark."""
+    p = BASE_DIR / db_name
+    if not p.exists():
+        return None
+    conn = sqlite3.connect(f"file:{p}?mode=ro", uri=True)
+    conn.row_factory = sqlite3.Row
+    try:
+        cash = conn.execute("SELECT cash FROM account WHERE id=1").fetchone()
+        realised = (cash["cash"] - STARTING_CAPITAL) if cash else 0.0
+        cyc = conn.execute("SELECT id FROM cycles WHERE status='open'").fetchone()
+        unreal = 0.0
+        if cyc:
+            m = conn.execute("SELECT open_pnl FROM marks WHERE cycle_id=? "
+                             "ORDER BY mark_date DESC LIMIT 1", (cyc["id"],)).fetchone()
+            unreal = m["open_pnl"] if m else 0.0
+        return {"book": label, "realised": realised, "unrealised": unreal,
+                "status": "active", "note": note}
+    finally:
+        conn.close()
+
+
+def _pnl_intraday():
+    """Retired ORB + VWAP books — realised, frozen as evidence."""
+    if not INTRADAY_DB.exists():
+        return []
+    conn = sqlite3.connect(f"file:{INTRADAY_DB}?mode=ro", uri=True)
+    conn.row_factory = sqlite3.Row
+    try:
+        return [{"book": f"Intraday {r['strategy']}",
+                 "realised": r["cash"] - STARTING_CAPITAL, "unrealised": 0.0,
+                 "status": "retired", "note": "frozen evidence"}
+                for r in conn.execute("SELECT strategy, cash FROM account ORDER BY strategy")]
+    finally:
+        conn.close()
+
+
+def _pnl_total(sel):
+    return {"realised": sum(r["realised"] for r in sel),
+            "unrealised": sum(r["unrealised"] for r in sel),
+            "total": sum(r["total"] for r in sel)}
+
+
+@app.route("/pnl")
+@login_required
+def pnl():
+    rows = [r for r in (
+        _pnl_lowvol(),
+        _pnl_option_book("options.db", "Options strangle", "mark-to-model · inconclusive"),
+        _pnl_option_book("condor.db", "Options condor", "mark-to-model · inconclusive"),
+    ) if r]
+    rows += _pnl_intraday()
+    for r in rows:
+        r["total"] = r["realised"] + r["unrealised"]
+    active = [r for r in rows if r["status"] == "active"]
+    retired = [r for r in rows if r["status"] == "retired"]
+    return render_template(
+        "pnl.html", active="pnl", active_rows=active, retired_rows=retired,
+        active_total=_pnl_total(active), retired_total=_pnl_total(retired),
+        grand=_pnl_total(rows), started=STARTING_CAPITAL)
 
 
 # ── Backtest reports (results/*.md) ───────────────────────────────────────────

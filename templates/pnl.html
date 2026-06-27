@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}P&L{% endblock %}
+{% macro money(x) -%}
+  <span class="{{ 'green' if x >= 0 else 'red' }}">{{ "+" if x >= 0 }}₹{{ "{:,.0f}".format(x) }}</span>
+{%- endmacro %}
+{% block content %}
+  <h1>Profit &amp; Loss <span class="readonly">SIMULATED</span></h1>
+  <p class="sub">Every book is a separate ₹{{ "{:,.0f}".format(started) }} paper account — all simulated, no real money. Options figures are mark-to-model, not settled.</p>
+
+  <div class="cards">
+    <div class="card"><div class="label">Grand Total</div>
+      <div class="value {{ 'green' if grand.total >= 0 else 'red' }}">{{ "+" if grand.total >= 0 }}₹{{ "{:,.0f}".format(grand.total) }}</div>
+      <div class="delta">realised {{ "+" if grand.realised >= 0 }}₹{{ "{:,.0f}".format(grand.realised) }} · unrealised {{ "+" if grand.unrealised >= 0 }}₹{{ "{:,.0f}".format(grand.unrealised) }}</div></div>
+    <div class="card"><div class="label">Active books only</div>
+      <div class="value {{ 'green' if active_total.total >= 0 else 'red' }}">{{ "+" if active_total.total >= 0 }}₹{{ "{:,.0f}".format(active_total.total) }}</div>
+      <div class="delta">low-vol + both options books</div></div>
+    <div class="card"><div class="label">Retired (intraday)</div>
+      <div class="value {{ 'green' if retired_total.total >= 0 else 'red' }}">{{ "+" if retired_total.total >= 0 }}₹{{ "{:,.0f}".format(retired_total.total) }}</div>
+      <div class="delta">frozen — ORB + VWAP, edge didn't survive costs</div></div>
+  </div>
+
+  <section>
+    <h2>Active Books</h2>
+    <div class="table-wrap">
+      <table>
+        <tr><th>Book</th><th>Realised</th><th>Unrealised</th><th>Total</th><th>Note</th></tr>
+        {% for r in active_rows %}
+        <tr>
+          <td>{{ r.book }}</td>
+          <td>{{ money(r.realised) }}</td>
+          <td>{{ money(r.unrealised) }}</td>
+          <td>{{ money(r.total) }}</td>
+          <td style="color:var(--muted);">{{ r.note }}</td>
+        </tr>
+        {% endfor %}
+        <tr style="font-weight:600;">
+          <td>Subtotal</td>
+          <td>{{ money(active_total.realised) }}</td>
+          <td>{{ money(active_total.unrealised) }}</td>
+          <td>{{ money(active_total.total) }}</td>
+          <td></td>
+        </tr>
+      </table>
+    </div>
+  </section>
+
+  {% if retired_rows %}
+  <section>
+    <h2>Retired Books <span style="text-transform:none;letter-spacing:0;color:#e0a3a3;">· frozen evidence, not running</span></h2>
+    <div class="table-wrap">
+      <table>
+        <tr><th>Book</th><th>Realised</th><th>Unrealised</th><th>Total</th><th>Note</th></tr>
+        {% for r in retired_rows %}
+        <tr>
+          <td>{{ r.book }}</td>
+          <td>{{ money(r.realised) }}</td>
+          <td>{{ money(r.unrealised) }}</td>
+          <td>{{ money(r.total) }}</td>
+          <td style="color:var(--muted);">{{ r.note }}</td>
+        </tr>
+        {% endfor %}
+        <tr style="font-weight:600;">
+          <td>Subtotal</td>
+          <td>{{ money(retired_total.realised) }}</td>
+          <td>{{ money(retired_total.unrealised) }}</td>
+          <td>{{ money(retired_total.total) }}</td>
+          <td></td>
+        </tr>
+      </table>
+    </div>
+  </section>
+  {% endif %}
+
+  <p class="sub">Realised = actually closed/settled. Unrealised = open positions marked to current price/model (moves daily). The retired intraday loss is the paper-only cost of learning that a thin intraday edge doesn't survive transaction costs.</p>
+{% endblock %}
