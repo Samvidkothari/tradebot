@@ -1,0 +1,8 @@
+# Development / test dependencies.
+# Install with:  .venv/bin/pip install -r requirements-dev.txt
+#
+# Runtime deps (pandas, numpy, yfinance, flask, kiteconnect, python-dotenv) are
+# installed in the existing .venv and not pinned here — this file covers only the
+# tooling needed to run the test suite.
+
+pytest==9.1.1
