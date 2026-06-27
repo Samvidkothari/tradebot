@@ -21,6 +21,7 @@ import pandas as pd
 
 import risk_analytics as RA
 import schemas
+from fmt import pct as _pct          # shared formatter (was a local copy)
 from data_io import load_panel
 from strategy_base import REGISTRY, MonthlyRebalanceEngine
 from portfolio_analyzer import load_holdings, load_closes
@@ -28,10 +29,6 @@ from portfolio_analyzer import load_holdings, load_closes
 RESULTS_DIR = Path(__file__).parent / "results"
 CAPITAL = PAPER_CAPITAL
 ENGINE = MonthlyRebalanceEngine()
-
-
-def _pct(x):
-    return "—" if x is None else f"{x*100:+.2f}%"
 
 
 def main():

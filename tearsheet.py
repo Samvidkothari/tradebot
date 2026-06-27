@@ -33,6 +33,7 @@ import pandas as pd
 import metrics as M
 import regime as R
 import schemas
+from fmt import val as _f          # shared formatter (was a local copy)
 from config import SPLIT_DATE
 from data_io import load_panel
 from strategy_base import REGISTRY, MonthlyRebalanceEngine
@@ -51,12 +52,6 @@ def nifty_equity(nifty_df, start, end):
     s = nifty_df.set_index("date")["close"].sort_index()
     s = s[(s.index >= pd.Timestamp(start)) & (s.index <= pd.Timestamp(end))]
     return (s / s.iloc[0]) if len(s) else s
-
-
-def _f(x, pct=False, nd=2):
-    if x is None:
-        return "—"
-    return f"{x*100:+.{nd}f}%" if pct else f"{x:.{nd}f}"
 
 
 # ── equity-strategy tear sheet ────────────────────────────────────────────────

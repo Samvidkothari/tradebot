@@ -15,6 +15,7 @@ Everything here is simulated. Nothing places an order.
 """
 
 from config import PAPER_CAPITAL
+from fmt import rupee as _r          # shared formatter (was a local copy)
 import sqlite3
 from datetime import date, datetime
 from pathlib import Path
@@ -157,9 +158,6 @@ def build_digest():
 
 
 # ── CLI pretty-print ──────────────────────────────────────────────────────────
-
-def _r(x):
-    return f"₹{x:,.0f}"
 
 
 def main():

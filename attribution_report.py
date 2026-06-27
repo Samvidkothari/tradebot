@@ -14,14 +14,11 @@ from pathlib import Path
 
 import attribution as A
 import schemas
+from fmt import pct as _pct          # shared formatter (was a local copy)
 from data_io import load_panel
 from strategy_base import REGISTRY
 
 RESULTS_DIR = Path(__file__).parent / "results"
-
-
-def _pct(x):
-    return f"{x*100:+.2f}%"
 
 
 def main():
