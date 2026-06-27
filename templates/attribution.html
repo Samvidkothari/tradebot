@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Attribution{% endblock %}
+{% macro pct(v) -%}{% if v is none %}—{% else %}{{ "%+.2f"|format(v*100) }}%{% endif %}{%- endmacro %}
+{% block content %}
+  <h1>Performance Attribution <span class="readonly">RESEARCH</span></h1>
+  <p class="sub">Where the return came from — holdings, sectors, allocation vs selection{% if data %} · generated {{ data.generated }}{% endif %} · gross, no orders</p>
+
+  {% if error %}
+    <div class="banner">{{ error }} <code>python attribution_report.py</code></div>
+  {% else %}
+    {% for name, s in data.strategies.items() %}
+    <section>
+      <h2>{{ s.label }} <span style="text-transform:none;letter-spacing:0;color:var(--faint);">· {{ s.holdings.periods }} rebalance periods · gross total {{ pct(s.holdings.total) }}</span></h2>
+
+      <div class="cards">
+        <div class="card"><div class="label">Active vs eq-wt universe</div>
+          <div class="value {{ 'green' if s.brinson.total.active_return >= 0 else 'red' }}">{{ pct(s.brinson.total.active_return) }}</div></div>
+        <div class="card"><div class="label">Allocation effect</div>
+          <div class="value" style="font-size:20px;">{{ pct(s.brinson.total.allocation) }}</div></div>
+        <div class="card"><div class="label">Selection effect</div>
+          <div class="value" style="font-size:20px;">{{ pct(s.brinson.total.selection) }}</div></div>
+        <div class="card"><div class="label">Interaction</div>
+          <div class="value" style="font-size:20px;">{{ pct(s.brinson.total.interaction) }}</div></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+        <div>
+          <h2>Top contributors</h2>
+          <div class="table-wrap"><table>
+            <tr><th>Symbol</th><th>Contribution</th></tr>
+            {% for sym, c in s._top %}<tr><td>{{ sym }}</td><td class="green">{{ pct(c) }}</td></tr>{% endfor %}
+            {% for sym, c in s._bottom %}<tr><td>{{ sym }}</td><td class="red">{{ pct(c) }}</td></tr>{% endfor %}
+          </table></div>
+        </div>
+        <div>
+          <h2>Sector contribution</h2>
+          <div class="table-wrap"><table>
+            <tr><th>Sector</th><th>Contribution</th></tr>
+            {% for sec, c in s._sectors %}<tr><td>{{ sec }}</td><td class="{{ 'green' if c >= 0 else 'red' }}">{{ pct(c) }}</td></tr>{% endfor %}
+          </table></div>
+        </div>
+      </div>
+    </section>
+    {% endfor %}
+
+    <div class="notice">
+      Benchmark is the <b>equal-weight universe</b> (we have no official NIFTY index
+      sector weights — not faked). Contributions are gross arithmetic (no costs), so
+      they approximate the geometric, post-cost equity total. The allocation/selection/
+      <b>interaction</b> split is sensitive for concentrated long-only books — the
+      robust figure is the total <b>active return</b>; read the three effects as
+      directional, not precise.
+    </div>
+  {% endif %}
+{% endblock %}

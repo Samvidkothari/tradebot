@@ -713,6 +713,26 @@ def tearsheet():
                            regime=data.get("regime"))
 
 
+@app.route("/attribution")
+@login_required
+def attribution_view():
+    fp = RESULTS_DIR / "attribution.json"
+    if not fp.exists():
+        return render_template("attribution.html", active="attribution", data=None,
+                               error="No attribution yet — run `python attribution_report.py`.")
+    import json as _json
+    data = _json.loads(fp.read_text())
+    # Pre-sort holding contributions per strategy for display.
+    for s in data.get("strategies", {}).values():
+        bs = s["holdings"]["by_symbol"]
+        ordered = sorted(bs.items(), key=lambda kv: kv[1], reverse=True)
+        s["_top"] = ordered[:8]
+        s["_bottom"] = ordered[-5:][::-1]
+        s["_sectors"] = sorted(s["holdings"]["by_sector"].items(),
+                               key=lambda kv: kv[1], reverse=True)
+    return render_template("attribution.html", active="attribution", error=None, data=data)
+
+
 @app.route("/risk")
 @login_required
 def risk_view():
