@@ -74,9 +74,51 @@ tail; the open question is whether that insurance pays off through a real shock.
 - Hard budget of two Phase 2B strategy classes; search closed once low-vol passed.
 - **Zero order-placement code — every "trade" is a simulated database row.**
 
+## Research Engine (added 2026-06-27 — institutional analytics layer)
+
+A modular, tested research layer was built on top of the existing strategies —
+**all paper, no order-placement code**. Each module is additive, separately
+committed, and surfaced on the dashboard:
+
+| Module | What it adds |
+|---|---|
+| `metrics.py` | Sharpe, Sortino, Calmar, alpha/beta/IR, walk-forward, Monte Carlo |
+| `strategy_base.py` | `BaseStrategy` plug-in + shared engine (regression-proven identical to the pre-registered backtests) |
+| `regime.py` | Market-regime classifier (trend / volatility / character) + per-strategy compatibility |
+| `factors.py` | `BaseFeature` factor library (6 price/volume factors) + multi-factor composite |
+| `portfolio_analyzer.py` | Correlation, concentration, risk decomposition, allocation comparison, sector exposure |
+| `risk_analytics.py` | VaR / Expected Shortfall, drawdown analytics, tail stats, vol targeting, ATR sizing |
+
+32 unit/regression tests, all passing. Dashboard gained **Tear Sheets, Factors,
+Portfolio Analysis, Risk Analytics** tabs.
+
+### What the deeper analytics revealed (beyond the pass/fail report)
+- **Low-vol's edge is thin and decaying.** Full Sharpe 0.40, OOS 0.14; walk-forward
+  shows the most recent ~14 months (2025-04→2026-06) flat-to-negative (Sharpe −0.49).
+  It passed, but it is not a high-quality edge — watch before leaning harder.
+- **Momentum vs low-vol is a risk-preference choice, not "winner vs loser."**
+  Momentum has the higher Sharpe (0.53), Sortino, alpha (+5.7%) and IR; low-vol has
+  the better Calmar, recovery, drawdown and beta. Momentum "failed" only because the
+  pass criteria weight drawdown.
+- **Current regime is hostile to both:** NIFTY is bear / low-volatility /
+  mean-reverting → low-vol is "in regime", momentum is "out of regime"; both are in
+  active drawdowns (low-vol −9%, momentum −19%).
+- **Equal weight ≠ equal risk:** the low-vol book's risk is dominated by its
+  highest-vol holdings (BEL etc.); an inverse-vol overlay would lower its risk —
+  shown as research, NOT applied to the pre-registered book.
+- **Honest data limits:** fundamental factors (Quality/Value/Growth/ROE) are NOT
+  built — we have price/volume data only and refuse to fabricate them.
+
+### Boundary held
+The pasted "institutional platform / live trading" briefs called for broker APIs,
+order placement, and an autonomous trading engine. **None of that was built.** The
+live-execution layer stays gated behind a separate, deliberate decision; the entire
+Research Engine places no orders.
+
 ## Takeaways for review
 1. **One genuine winner:** low-vol — and it wins the *right* way, beating the
-   index while *reducing* drawdown.
+   index while *reducing* drawdown — but the analytics show its edge is thin and
+   recently decaying.
 2. **The recurring lesson:** friction kills thin edges — transaction costs sank
    intraday; bid-ask spread is the open question for options.
 3. **Nothing is live.** Real-money trading remains a firm no until a strategy
