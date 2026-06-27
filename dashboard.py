@@ -713,6 +713,18 @@ def tearsheet():
                            regime=data.get("regime"))
 
 
+@app.route("/risk")
+@login_required
+def risk_view():
+    fp = RESULTS_DIR / "risk.json"
+    if not fp.exists():
+        return render_template("risk.html", active="risk", data=None,
+                               error="No risk report yet — run `python risk_report.py`.")
+    import json as _json
+    return render_template("risk.html", active="risk", error=None,
+                           data=_json.loads(fp.read_text()))
+
+
 @app.route("/portfolio-analysis")
 @login_required
 def portfolio_analysis():

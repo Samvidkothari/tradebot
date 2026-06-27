@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Risk Analytics{% endblock %}
+{% macro pct(v, nd=2) -%}{% if v is none %}—{% else %}{{ "%+.{}f".format(nd)|format(v*100) }}%{% endif %}{%- endmacro %}
+{% block content %}
+  <h1>Risk Analytics <span class="readonly">RESEARCH</span></h1>
+  <p class="sub">VaR / Expected Shortfall, drawdown &amp; tail risk per strategy{% if data %} · generated {{ data.generated }}{% endif %} · daily figures, no orders</p>
+
+  {% if error %}
+    <div class="banner">{{ error }} <code>python risk_report.py</code></div>
+  {% else %}
+    <section>
+      <h2>Per-strategy risk <span style="text-transform:none;letter-spacing:0;color:var(--faint);">· VaR/CVaR are daily loss thresholds</span></h2>
+      <div class="table-wrap">
+        <table>
+          <tr><th>Strategy</th><th>VaR 95%</th><th>CVaR 95%</th><th>VaR 99%</th><th>Ann vol</th><th>Downside dev</th><th>Skew</th><th>Kurtosis</th><th>Max DD</th><th>Current DD</th><th>Ulcer</th><th>Time in DD</th></tr>
+          {% for name, s in data.strategies.items() %}
+          <tr>
+            <td>{{ s.label.split(' (')[0] }}</td>
+            <td class="red">{{ pct(s.var.hist_95) }}</td>
+            <td class="red">{{ pct(s.var.cvar_95) }}</td>
+            <td class="red">{{ pct(s.var.hist_99) }}</td>
+            <td>{{ pct(s.tail.ann_vol) }}</td>
+            <td>{{ pct(s.tail.downside_dev) }}</td>
+            <td>{{ "%.2f"|format(s.tail.skew) }}</td>
+            <td>{{ "%.2f"|format(s.tail.kurtosis) }}</td>
+            <td class="red">{{ pct(s.drawdown.max_drawdown) }}</td>
+            <td class="red">{{ pct(s.drawdown.current_drawdown) }}</td>
+            <td>{{ pct(s.drawdown.ulcer_index) }}</td>
+            <td>{{ pct(s.drawdown.time_in_drawdown, 0) }}</td>
+          </tr>
+          {% endfor %}
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h2>Volatility targeting <span style="text-transform:none;letter-spacing:0;color:var(--faint);">· to 10% annual — illustration, NOT applied to the book</span></h2>
+      <div class="cards">
+        {% for name, s in data.strategies.items() %}
+        {% set vt = s.vol_target_10pct %}
+        <div class="card">
+          <div class="label">{{ s.label.split(' (')[0] }}</div>
+          <div class="value" style="font-size:20px;">{% if vt.scale %}{{ "%.2f"|format(vt.scale) }}x{% else %}—{% endif %}</div>
+          <div class="delta">{% if vt.scale %}realised {{ pct(vt.realised_ann_vol) }} vol → {{ 'lever up' if vt.scale > 1 else 'de-risk' }} to hit 10%{% endif %}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+
+    {% if data.atr_sizing %}
+    <section>
+      <h2>ATR(14) position sizing <span style="text-transform:none;letter-spacing:0;color:var(--faint);">· risk 1% per name, 2×ATR stop — illustration</span></h2>
+      <div class="table-wrap">
+        <table>
+          <tr><th>Symbol</th><th>ATR(14)</th><th>Units</th><th>Stop distance</th></tr>
+          {% for a in data.atr_sizing %}
+          <tr><td>{{ a.symbol }}</td><td>{{ "%.1f"|format(a.atr) if a.atr else '—' }}</td><td>{{ a.units }}</td><td>₹{{ "%.0f"|format(a.stop_distance) }}</td></tr>
+          {% endfor %}
+        </table>
+      </div>
+    </section>
+    {% endif %}
+
+    <div class="notice">Risk <i>measurement</i> only. The prompt's "emergency kill switch" and "trading-halt" controls belong to the live Trading Engine, which stays gated — nothing here places, modifies, or stops an order.</div>
+  {% endif %}
+{% endblock %}
