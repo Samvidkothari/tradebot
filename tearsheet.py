@@ -32,6 +32,7 @@ import pandas as pd
 
 import metrics as M
 import regime as R
+import schemas
 from config import SPLIT_DATE
 from data_io import load_panel
 from strategy_base import REGISTRY, MonthlyRebalanceEngine
@@ -195,7 +196,8 @@ def main():
         if st:
             payload["strategies"][key] = st
 
-    (RESULTS_DIR / "tearsheets.json").write_text(json.dumps(payload, indent=2, default=str))
+    (RESULTS_DIR / "tearsheets.json").write_text(
+        json.dumps(schemas.validate("tearsheets.json", payload), indent=2, default=str))
     print_compare(sheets)
     print(f"  Saved per-strategy reports + results/tearsheets.json\n")
 

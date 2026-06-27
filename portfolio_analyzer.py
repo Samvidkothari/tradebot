@@ -31,6 +31,7 @@ import numpy as np
 import pandas as pd
 
 import data_io
+import schemas
 
 BASE        = Path(__file__).parent
 RESULTS_DIR = BASE / "results"
@@ -206,7 +207,8 @@ def main():
           ", ".join(f"{k} {v*100:.0f}%" for k, v in list(a["sectors"].items())[:6]))
     print(f"  (sector map is best-effort/static)\n{'='*68}\n")
 
-    (RESULTS_DIR / "portfolio.json").write_text(json.dumps(a, indent=2))
+    (RESULTS_DIR / "portfolio.json").write_text(
+        json.dumps(schemas.validate("portfolio.json", a), indent=2))
     print(f"  Saved → results/portfolio.json\n")
 
 

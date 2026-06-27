@@ -17,17 +17,9 @@ import io
 import json
 from pathlib import Path
 
-RESULTS = Path(__file__).parent / "results"
+import schemas      # single source of truth for the JSON contract
 
-# Top-level keys each runner's JSON must expose for the dashboard to work.
-EXPECTED_JSON = {
-    "tearsheets.json":   ["generated", "regime", "strategies"],
-    "factors.json":      ["factors", "composite", "unavailable"],
-    "portfolio.json":    ["holdings", "concentration", "sectors"],
-    "risk.json":         ["strategies"],
-    "attribution.json":  ["strategies"],
-    "data_quality.json": ["symbols", "summary"],
-}
+RESULTS = Path(__file__).parent / "results"
 
 # Every parameterless GET route (minus auth endpoints).
 ROUTES = [
@@ -45,12 +37,10 @@ def test_research_pipeline_produces_valid_json():
     with contextlib.redirect_stdout(io.StringIO()):
         rc = refresh_research.main()
     assert rc == 0, "a research runner failed"
-    for fname, keys in EXPECTED_JSON.items():
+    for fname in schemas.REQUIRED:
         fp = RESULTS / fname
         assert fp.exists(), f"{fname} not produced"
-        data = json.loads(fp.read_text())
-        for k in keys:
-            assert k in data, f"{fname} missing top-level key '{k}'"
+        schemas.validate(fname, json.loads(fp.read_text()))   # raises on drift
 
 
 def test_all_dashboard_routes_render():

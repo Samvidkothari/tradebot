@@ -13,6 +13,7 @@ from datetime import date
 from pathlib import Path
 
 import attribution as A
+import schemas
 from data_io import load_panel
 from strategy_base import REGISTRY
 
@@ -45,7 +46,8 @@ def main():
               f"allocation {_pct(t['allocation'])}, selection {_pct(t['selection'])}, "
               f"interaction {_pct(t['interaction'])}")
 
-    (RESULTS_DIR / "attribution.json").write_text(json.dumps(payload, indent=2))
+    (RESULTS_DIR / "attribution.json").write_text(
+        json.dumps(schemas.validate("attribution.json", payload), indent=2))
     print(f"\n{'='*70}\n  Saved → results/attribution.json\n")
 
 

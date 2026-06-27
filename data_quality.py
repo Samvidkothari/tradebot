@@ -31,6 +31,7 @@ import numpy as np
 import pandas as pd
 
 import data_io
+import schemas
 
 DATA_DIR    = Path(__file__).parent / "data"
 RESULTS_DIR = Path(__file__).parent / "results"
@@ -158,7 +159,8 @@ def main():
     else:
         print("  All symbols clean.")
     print(f"{'='*W}\n")
-    (RESULTS_DIR / "data_quality.json").write_text(json.dumps(r, indent=2))
+    (RESULTS_DIR / "data_quality.json").write_text(
+        json.dumps(schemas.validate("data_quality.json", r), indent=2))
     print(f"  Saved → results/data_quality.json\n")
 
 

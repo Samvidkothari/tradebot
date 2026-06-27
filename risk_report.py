@@ -20,6 +20,7 @@ from pathlib import Path
 import pandas as pd
 
 import risk_analytics as RA
+import schemas
 from data_io import load_panel
 from strategy_base import REGISTRY, MonthlyRebalanceEngine
 from portfolio_analyzer import load_holdings, load_closes
@@ -81,7 +82,8 @@ def main():
                       f"(stop ₹{size['stop_distance']:.0f})")
     print(f"{'='*72}\n")
 
-    (RESULTS_DIR / "risk.json").write_text(json.dumps(payload, indent=2))
+    (RESULTS_DIR / "risk.json").write_text(
+        json.dumps(schemas.validate("risk.json", payload), indent=2))
     print(f"  Saved → results/risk.json\n")
 
 

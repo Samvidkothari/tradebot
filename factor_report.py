@@ -18,6 +18,7 @@ from pathlib import Path
 
 import data_io
 import factors as F
+import schemas
 
 RESULTS_DIR = Path(__file__).parent / "results"
 TOP_K       = 8
@@ -63,7 +64,8 @@ def main():
           f"{', '.join(F.UNAVAILABLE_FACTORS)}")
     print(f"{'='*64}\n")
 
-    (RESULTS_DIR / "factors.json").write_text(json.dumps(payload, indent=2))
+    (RESULTS_DIR / "factors.json").write_text(
+        json.dumps(schemas.validate("factors.json", payload), indent=2))
     print(f"  Saved → results/factors.json\n")
 
 
