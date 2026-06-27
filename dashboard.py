@@ -18,6 +18,7 @@ only, so it is reachable just from this machine.
 """
 
 import csv
+import json
 import math
 import os
 import sqlite3
@@ -684,16 +685,22 @@ def pnl():
 
 # ── Research tear sheets (results/tearsheets.json) ────────────────────────────
 
+def _research_json(filename, runner):
+    """Load results/<filename>; return (data, error_message). Shared by every
+    research page so the file-exists / json-load / error wiring lives in one place."""
+    fp = RESULTS_DIR / filename
+    if not fp.exists():
+        return None, f"No data yet — run `python {runner}`."
+    return json.loads(fp.read_text()), None
+
+
 @app.route("/tearsheet")
 @login_required
 def tearsheet():
-    fp = RESULTS_DIR / "tearsheets.json"
-    if not fp.exists():
-        return render_template("tearsheet.html", active="tearsheet",
-                               error="No tear sheets yet — run `python tearsheet.py`.",
+    data, error = _research_json("tearsheets.json", "tearsheet.py")
+    if error:
+        return render_template("tearsheet.html", active="tearsheet", error=error,
                                generated=None, equity=[], options=[], metric_rows=[])
-    import json as _json
-    data = _json.loads(fp.read_text())
     strats = data.get("strategies", {})
     equity = [s for s in strats.values()
               if s.get("kind") == "equity" and s.get("sufficient")]
@@ -716,24 +723,18 @@ def tearsheet():
 @app.route("/data-quality")
 @login_required
 def data_quality_view():
-    fp = RESULTS_DIR / "data_quality.json"
-    if not fp.exists():
-        return render_template("data_quality.html", active="data_quality", data=None,
-                               error="No data-quality report yet — run `python data_quality.py`.")
-    import json as _json
-    return render_template("data_quality.html", active="data_quality", error=None,
-                           data=_json.loads(fp.read_text()))
+    data, error = _research_json("data_quality.json", "data_quality.py")
+    return render_template("data_quality.html", active="data_quality",
+                           data=data, error=error)
 
 
 @app.route("/attribution")
 @login_required
 def attribution_view():
-    fp = RESULTS_DIR / "attribution.json"
-    if not fp.exists():
-        return render_template("attribution.html", active="attribution", data=None,
-                               error="No attribution yet — run `python attribution_report.py`.")
-    import json as _json
-    data = _json.loads(fp.read_text())
+    data, error = _research_json("attribution.json", "attribution_report.py")
+    if error:
+        return render_template("attribution.html", active="attribution",
+                               data=None, error=error)
     # Pre-sort holding contributions per strategy for display.
     for s in data.get("strategies", {}).values():
         bs = s["holdings"]["by_symbol"]
@@ -748,37 +749,23 @@ def attribution_view():
 @app.route("/risk")
 @login_required
 def risk_view():
-    fp = RESULTS_DIR / "risk.json"
-    if not fp.exists():
-        return render_template("risk.html", active="risk", data=None,
-                               error="No risk report yet — run `python risk_report.py`.")
-    import json as _json
-    return render_template("risk.html", active="risk", error=None,
-                           data=_json.loads(fp.read_text()))
+    data, error = _research_json("risk.json", "risk_report.py")
+    return render_template("risk.html", active="risk", data=data, error=error)
 
 
 @app.route("/portfolio-analysis")
 @login_required
 def portfolio_analysis():
-    fp = RESULTS_DIR / "portfolio.json"
-    if not fp.exists():
-        return render_template("portfolio_analysis.html", active="portfolio_analysis",
-                               data=None, error="No analysis yet — run `python portfolio_analyzer.py`.")
-    import json as _json
+    data, error = _research_json("portfolio.json", "portfolio_analyzer.py")
     return render_template("portfolio_analysis.html", active="portfolio_analysis",
-                           error=None, data=_json.loads(fp.read_text()))
+                           data=data, error=error)
 
 
 @app.route("/factors")
 @login_required
 def factors_view():
-    fp = RESULTS_DIR / "factors.json"
-    if not fp.exists():
-        return render_template("factors.html", active="factors", data=None,
-                               error="No factor data yet — run `python factor_report.py`.")
-    import json as _json
-    return render_template("factors.html", active="factors", error=None,
-                           data=_json.loads(fp.read_text()))
+    data, error = _research_json("factors.json", "factor_report.py")
+    return render_template("factors.html", active="factors", data=data, error=error)
 
 
 # ── Backtest reports (results/*.md) ───────────────────────────────────────────
