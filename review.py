@@ -1,6 +1,11 @@
 """
 review.py — Read-only summary of the paper-trading history in portfolio.db.
 
+STANDALONE MANUAL TOOL — not imported by anything and not part of any automated
+pipeline (run it by hand when you want a one-off review of the low-vol paper
+book). The dashboard's Paper Trader tab + the Tear Sheets / Risk pages now cover
+most of this; kept because it is a convenient read-only CLI summary.
+
 Run any time (you don't need to have run paper_trader.py today). It:
   1. Lists every simulated trade (fills)
   2. Reconstructs a DAILY paper equity curve by replaying fills against fetched

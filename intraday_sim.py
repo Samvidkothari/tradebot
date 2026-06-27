@@ -1,6 +1,16 @@
 """
 intraday_sim.py — Intraday PAPER simulator (multi-strategy).
 
+============================================================================
+RETIRED 2026-06-26 — NOT part of any automated pipeline.
+The ORB + VWAP monitoring sandbox delivered its finding (a thin intraday edge
+does not survive realistic MIS costs: combined gross +Rs11,405 vs costs
+-Rs32,915 over ~10 days). Removed from run_paper_bot.sh; kept in the repo as
+runnable evidence, and intraday.db is preserved for the dashboard. See the
+CONCLUDED notes in strategies/SPEC_intraday.md and strategies/SPEC_vwap.md.
+Run manually only; nothing imports this module.
+============================================================================
+
 Runs two pre-registered intraday strategies on the same data each day:
   • ORB  — Opening-Range Breakout        (strategies/SPEC_intraday.md, eb0aae6)
   • VWAP — VWAP mean-reversion           (strategies/SPEC_vwap.md,     3ee37e0)

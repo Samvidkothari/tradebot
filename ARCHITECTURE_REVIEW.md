@@ -2,8 +2,8 @@
 
 *Lead Architect review, 2026-06-27. Grounded in the measured import graph + code scan.*
 
-> Items #1–5 of §10 were implemented immediately after this review (see commit
-> history); #6–8 remain open. All paper/research — no order-placement code.
+> Items #1–5 and #7 of §10 were implemented immediately after this review (see
+> commit history); #6 and #8 remain open. All paper/research — no order-placement code.
 
 ## 1. Current architecture
 
@@ -76,7 +76,7 @@ Graph is acyclic and layered, but two edges point the wrong way (§4).
 | 4 | Integration smoke test (pipeline JSON + all routes) | low-med | low | High ✅ done (`test_integration.py`) |
 | 5 | Dataclasses/TypedDicts for `results/*.json` payloads | medium | low | Medium ✅ done (`schemas.py` — TypedDicts + enforced `validate`) |
 | 6 | Split `dashboard.py` into Flask blueprints | medium | medium | Medium |
-| 7 | Archive `review.py` / `intraday_sim.py` explicitly | trivial | ~0 | Medium |
+| 7 | Archive `review.py` / `intraday_sim.py` explicitly | trivial | ~0 | Medium ✅ done (status banners) |
 | 8 | Consolidate the 8 formatter helpers (research side) | low | low | Low |
 
 **Guardrails:** pre-registered backtest verdicts stay byte-identical (constants-only moves, proven by regression test + re-run); no order path introduced.
