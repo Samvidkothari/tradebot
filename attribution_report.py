@@ -15,7 +15,7 @@ from pathlib import Path
 import attribution as A
 import schemas
 from fmt import pct as _pct          # shared formatter (was a local copy)
-from data_io import load_panel
+from data_layer import MarketDataManager
 from strategy_base import REGISTRY
 
 RESULTS_DIR = Path(__file__).parent / "results"
@@ -23,7 +23,7 @@ RESULTS_DIR = Path(__file__).parent / "results"
 
 def main():
     RESULTS_DIR.mkdir(exist_ok=True)
-    panel, _ = load_panel()
+    panel = MarketDataManager().close_panel()
     payload = {"generated": date.today().isoformat(), "strategies": {}}
 
     print(f"\n{'='*70}\n  PERFORMANCE ATTRIBUTION  (gross, vs equal-weight universe)\n{'='*70}")

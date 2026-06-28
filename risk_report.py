@@ -22,7 +22,7 @@ import pandas as pd
 import risk_analytics as RA
 import schemas
 from fmt import pct as _pct          # shared formatter (was a local copy)
-from data_io import load_panel
+from data_layer import MarketDataManager
 from strategy_base import REGISTRY, MonthlyRebalanceEngine
 from portfolio_analyzer import load_holdings, load_closes
 
@@ -33,7 +33,7 @@ ENGINE = MonthlyRebalanceEngine()
 
 def main():
     RESULTS_DIR.mkdir(exist_ok=True)
-    panel_raw, _ = load_panel()
+    panel_raw = MarketDataManager().close_panel()
 
     payload = {"generated": date.today().isoformat(), "strategies": {}, "atr_sizing": []}
     print(f"\n{'='*72}\n  RISK ANALYTICS — per strategy  (research only, daily figures)\n{'='*72}")

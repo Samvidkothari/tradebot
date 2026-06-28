@@ -30,8 +30,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-import data_io
 import schemas
+from data_layer import MarketDataManager
 
 BASE        = Path(__file__).parent
 RESULTS_DIR = BASE / "results"
@@ -106,7 +106,8 @@ def inverse_vol_weights(vols: np.ndarray) -> np.ndarray:
 # ── Data ──────────────────────────────────────────────────────────────────────
 
 def load_closes(symbols):
-    return data_io.close_panel(symbols=symbols)
+    panel = MarketDataManager().close_panel()       # single data-layer entry point
+    return panel[[s for s in symbols if s in panel.columns]]
 
 
 def load_holdings():
