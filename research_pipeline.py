@@ -26,6 +26,31 @@ from datetime import date, datetime
 from pathlib import Path
 
 RESULTS_DIR = Path(__file__).parent / "results"
+HISTORY_KEEP = 30   # rolling window of past runs shown on the Overview page
+
+
+def _append_history(record: dict, path: Path | None = None) -> list:
+    """Append a compact summary of a run to results/pipeline_history.json,
+    keeping the last HISTORY_KEEP. Powers the Overview 'Research History' panel."""
+    path = path or (RESULTS_DIR / "pipeline_history.json")
+    hist = []
+    if path.exists():
+        try:
+            hist = json.loads(path.read_text())
+        except (ValueError, OSError):
+            hist = []
+    hist.append({
+        "finished": record["finished"],
+        "ok": record["ok"],
+        "n_ok": record["n_ok"],
+        "n_failed": record["n_failed"],
+        "duration_s": record["duration_s"],
+        "failed": [s["name"] for s in record["stages"] if s["status"] == "failed"],
+    })
+    hist = hist[-HISTORY_KEEP:]
+    path.parent.mkdir(exist_ok=True)
+    path.write_text(json.dumps(hist, indent=2))
+    return hist
 
 
 def _run_stage(name: str, fn, skip: bool = False) -> dict:
@@ -77,6 +102,7 @@ def _build_plan(fetch: bool) -> list[tuple[str, object, bool]]:
 
 def run(fetch: bool = True, plan=None) -> dict:
     started = datetime.now()
+    is_real = plan is None            # real chain runs are logged to history; test plans aren't
     plan = plan if plan is not None else _build_plan(fetch)
     stages = [_run_stage(name, fn, skip) for name, fn, skip in plan]
     finished = datetime.now()
@@ -92,6 +118,8 @@ def run(fetch: bool = True, plan=None) -> dict:
     }
     RESULTS_DIR.mkdir(exist_ok=True)
     (RESULTS_DIR / "pipeline_run.json").write_text(json.dumps(record, indent=2))
+    if is_real:
+        _append_history(record)
     return record
 
 

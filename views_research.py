@@ -214,6 +214,80 @@ def automation_view():
                            data=data, error=error)
 
 
+# ── Overview: single monitoring page assembled from the research JSONs ─────────
+
+def _overview_data():
+    """Assemble the eight monitoring panels from results/*.json (read-only). Each
+    panel degrades to None if its source hasn't been produced yet — the template
+    shows a 'run X' hint rather than erroring. No new analytics: this READS what
+    the pipeline already wrote."""
+    ts, _ = _research_json("tearsheets.json", "tearsheet.py")
+    fa, _ = _research_json("factors.json", "factor_report.py")
+    at, _ = _research_json("attribution.json", "attribution_report.py")
+    re, _ = _research_json("risk_engine.json", "risk_engine.py")
+    hist, _ = _research_json("pipeline_history.json", "research_pipeline.py")
+    last, _ = _research_json("pipeline_run.json", "research_pipeline.py")
+
+    strategies = (ts or {}).get("strategies", {})
+
+    # 1. Portfolio Performance — the live low-vol book's headline metrics.
+    perf = None
+    lv = strategies.get("lowvol")
+    if lv and lv.get("full"):
+        f = lv["full"]
+        perf = {"label": lv.get("label", "Low-Volatility"),
+                "cagr": f.get("cagr"), "total_return": f.get("total_return"),
+                "max_drawdown": f.get("max_drawdown"), "sharpe": f.get("sharpe"),
+                "alpha": f.get("alpha")}
+
+    # 5. Strategy Comparison — every strategy, side by side, with regime fit.
+    comparison = []
+    for s in strategies.values():
+        f = s.get("full") or {}
+        rc = s.get("regime_compat") or {}
+        comparison.append({
+            "label": s.get("label", s.get("name")), "kind": s.get("kind"),
+            "cagr": f.get("cagr"), "max_drawdown": f.get("max_drawdown"),
+            "sharpe": f.get("sharpe"),
+            "fit": (None if s.get("kind") == "options"
+                    else "in" if rc.get("compatible") else "out")})
+
+    # 2. Factor Exposure — each factor's strongest name + the ranker weights.
+    factors = None
+    if fa and fa.get("factors"):
+        w = fa.get("weights", {})
+        factors = [{"name": k, "weight": w.get(k),
+                    "top_symbol": (v.get("top") or [{}])[0].get("symbol"),
+                    "top_score": (v.get("top") or [{}])[0].get("score")}
+                   for k, v in fa["factors"].items()]
+
+    # 3. Sector Allocation — the low-vol book's current sector weights.
+    sectors = None
+    if at and at.get("strategies"):
+        strat = at["strategies"].get("lowvol") or next(iter(at["strategies"].values()))
+        bysec = (strat.get("holdings") or {}).get("by_sector") or {}
+        total = sum(bysec.values()) or 1.0
+        sectors = sorted(((k, v / total) for k, v in bysec.items()),
+                         key=lambda kv: kv[1], reverse=True)
+
+    return {
+        "performance": perf,                    # 1
+        "factors": factors,                     # 2
+        "sectors": sectors,                     # 3
+        "risk": re,                             # 4
+        "comparison": comparison,               # 5
+        "history": list(reversed(hist or []))[:8],  # 6 (most recent first)
+        "last_run": last,                       # 6
+        "regime": (ts or {}).get("regime"),     # 7
+        "digest": build_digest(),               # 8
+        "generated": (ts or {}).get("generated"),
+    }
+
+
+def monitor():
+    return render_template("monitor.html", active="monitor", ov=_overview_data())
+
+
 # ── Backtest reports (results/*.md) ───────────────────────────────────────────
 
 def backtests():
@@ -240,6 +314,7 @@ def register(app):
     """Attach research routes with their ORIGINAL endpoint names (so url_for in
     templates is unchanged). Each view is login-gated."""
     rules = [
+        ("/monitor", "monitor", monitor),
         ("/home", "home", home),
         ("/pnl", "pnl", pnl),
         ("/tearsheet", "tearsheet", tearsheet),

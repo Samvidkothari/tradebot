@@ -76,6 +76,16 @@ finishes and the page shows exactly what happened. Runs unattended via
 with `python research_pipeline.py`. **Research only** — reads data, writes
 `results/*`; places no orders.
 
+**Monitor** (dashboard **Monitor** tab, `monitor.html` + `_overview_data()` in
+`views_research.py`): the single-pane-of-glass — eight panels on one page
+(Portfolio Performance, Factor Exposure, Sector Allocation, Risk Metrics,
+Strategy Comparison, Research History, Regime Status, Daily Summary), each
+assembled from the JSONs the daily pipeline already wrote and linking to its full
+tab. A consolidated **monitor**, not new analytics; degrades gracefully if a
+source is missing. (Research History reads `pipeline_history.json` — a rolling
+last-30 log `research_pipeline.py` now appends per run.) Distinct from the
+existing **Live Portfolio** page (`/overview`, real Zerodha holdings).
+
 **Market breadth** (% of names above their 200-day MA) is a single market-level
 number, not a per-stock score — it belongs to the regime engine, not this
 cross-sectional library.

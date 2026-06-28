@@ -37,6 +37,19 @@ def test_failure_is_isolated_chain_continues():
     assert rec["stages"][2]["status"] == "ok"               # ran after the failure
 
 
+def test_history_appends_and_trims(tmp_path=None):
+    import tempfile, json
+    from pathlib import Path
+    p = Path(tempfile.mkdtemp()) / "hist.json"
+    rec = lambda ok: {"finished": "2026-06-28T17:00:00", "ok": ok, "n_ok": 7,
+                      "n_failed": 0 if ok else 1, "duration_s": 1.2,
+                      "stages": [{"name": "x", "status": "ok"}]}
+    for _ in range(RP.HISTORY_KEEP + 5):
+        hist = RP._append_history(rec(True), path=p)
+    assert len(hist) == RP.HISTORY_KEEP            # trimmed to the window
+    assert hist[-1]["ok"] is True and "failed" in hist[-1]
+
+
 def _run_all():
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for fn in fns:

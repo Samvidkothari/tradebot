@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% block title %}Monitor{% endblock %}
+{% macro pct(x, signed=False) %}{% if x is not none %}{{ ("%+.1f" if signed else "%.1f")|format(x*100) }}%{% else %}—{% endif %}{% endmacro %}
+{% block content %}
+  <h1>Monitor <span class="readonly">RESEARCH</span></h1>
+  <p class="sub">Single place to monitor everything — assembled from the daily research run{% if ov.generated %} · data {{ ov.generated }}{% endif %} · read-only</p>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start;">
+
+    {# 1. Portfolio Performance #}
+    <section>
+      <h2>Portfolio Performance <a class="more" href="{{ url_for('tearsheet') }}">tear sheets →</a></h2>
+      {% if ov.performance %}
+        <p class="sub" style="margin-top:0;">{{ ov.performance.label }} (full history)</p>
+        <div class="cards">
+          <div class="card"><div class="label">CAGR</div><div class="value {{ 'green' if ov.performance.cagr and ov.performance.cagr>0 else 'red' }}">{{ pct(ov.performance.cagr, True) }}</div></div>
+          <div class="card"><div class="label">Total return</div><div class="value">{{ pct(ov.performance.total_return, True) }}</div></div>
+          <div class="card"><div class="label">Max drawdown</div><div class="value red">{{ pct(ov.performance.max_drawdown) }}</div></div>
+          <div class="card"><div class="label">Sharpe</div><div class="value">{{ "%.2f"|format(ov.performance.sharpe) if ov.performance.sharpe is not none else '—' }}</div></div>
+        </div>
+      {% else %}<div class="empty">No tear sheet yet — <code>python tearsheet.py</code></div>{% endif %}
+    </section>
+
+    {# 7. Regime Status #}
+    <section>
+      <h2>Regime Status <a class="more" href="{{ url_for('tearsheet') }}">detail →</a></h2>
+      {% if ov.regime %}
+        <div class="tags" style="margin-bottom:10px;">
+          {% for t in ov.regime.tags %}<span class="pill">{{ t }}</span>{% endfor %}
+        </div>
+        <table>
+          <tr><td>Trend</td><td><b>{{ ov.regime.trend }}</b></td></tr>
+          <tr><td>Volatility</td><td><b>{{ ov.regime.volatility }}</b></td></tr>
+          <tr><td>Character</td><td><b>{{ ov.regime.character }}</b></td></tr>
+          {% if ov.regime.breadth %}<tr><td>Breadth (&gt;200dma)</td><td><b>{{ pct(ov.regime.breadth.pct_above_200dma) }}</b> · {{ ov.regime.breadth.label }}</td></tr>{% endif %}
+        </table>
+        <p class="sub" style="margin-bottom:0;">{{ ov.regime.reason }}</p>
+      {% else %}<div class="empty">No regime data.</div>{% endif %}
+    </section>
+
+    {# 4. Risk Metrics #}
+    <section>
+      <h2>Risk Metrics <a class="more" href="{{ url_for('risk_engine_view') }}">detail →</a></h2>
+      {% if ov.risk %}
+        <p class="sub" style="margin-top:0;">
+          Status <b class="{{ 'green' if ov.risk.status=='OK' else 'red' }}">{{ ov.risk.status }}</b>
+          {% if ov.risk.emergency %}· <b class="red">EMERGENCY</b>{% endif %} — {{ ov.risk.reason }}</p>
+        <div class="table-wrap"><table>
+          <tr><th>Check</th><th>Value</th><th>Limit</th><th>Status</th></tr>
+          {% for name, c in ov.risk.checks.items() %}
+          <tr><td>{{ name.replace('_',' ') }}</td>
+              <td>{{ pct(c.value, True) }}</td><td>{{ pct(c.limit, True) }}</td>
+              <td class="{{ 'green' if c.status=='OK' else 'red' }}">{{ c.status }}</td></tr>
+          {% endfor %}
+        </table></div>
+      {% else %}<div class="empty">No risk data — <code>python risk_engine.py</code></div>{% endif %}
+    </section>
+
+    {# 3. Sector Allocation #}
+    <section>
+      <h2>Sector Allocation <a class="more" href="{{ url_for('attribution_view') }}">detail →</a></h2>
+      {% if ov.sectors %}
+        <p class="sub" style="margin-top:0;">Low-vol book, current holdings</p>
+        <table>
+          {% for sec, w in ov.sectors %}
+          <tr><td style="width:38%;">{{ sec }}</td>
+              <td><div style="background:var(--accent);height:9px;border-radius:4px;width:{{ (w*100*2)|round }}px;max-width:100%;display:inline-block;vertical-align:middle;"></div></td>
+              <td style="text-align:right;width:56px;">{{ pct(w) }}</td></tr>
+          {% endfor %}
+        </table>
+      {% else %}<div class="empty">No attribution yet — <code>python attribution_report.py</code></div>{% endif %}
+    </section>
+
+    {# 2. Factor Exposure #}
+    <section>
+      <h2>Factor Exposure <a class="more" href="{{ url_for('factors_view') }}">detail →</a></h2>
+      {% if ov.factors %}
+        <div class="table-wrap"><table>
+          <tr><th>Factor</th><th>Weight</th><th>Top name</th><th>Score</th></tr>
+          {% for f in ov.factors %}
+          <tr><td>{{ f.name.replace('_',' ') }}</td>
+              <td>{{ "%.1f"|format(f.weight) if f.weight is not none else '—' }}</td>
+              <td><b>{{ f.top_symbol or '—' }}</b></td>
+              <td>{{ "%.2f"|format(f.top_score) if f.top_score is not none else '—' }}</td></tr>
+          {% endfor %}
+        </table></div>
+      {% else %}<div class="empty">No factors yet — <code>python factor_report.py</code></div>{% endif %}
+    </section>
+
+    {# 5. Strategy Comparison #}
+    <section>
+      <h2>Strategy Comparison <a class="more" href="{{ url_for('tearsheet') }}">detail →</a></h2>
+      {% if ov.comparison %}
+        <div class="table-wrap"><table>
+          <tr><th>Strategy</th><th>CAGR</th><th>Max DD</th><th>Sharpe</th><th>Regime</th></tr>
+          {% for s in ov.comparison %}
+          <tr><td>{{ s.label }}</td>
+              <td>{{ pct(s.cagr, True) }}</td>
+              <td class="{{ 'red' if s.max_drawdown is not none }}">{{ pct(s.max_drawdown) }}</td>
+              <td>{{ "%.2f"|format(s.sharpe) if s.sharpe is not none else '—' }}</td>
+              <td>{% if s.fit == 'in' %}<span class="green">in regime</span>{% elif s.fit == 'out' %}<span class="red">out</span>{% else %}—{% endif %}</td></tr>
+          {% endfor %}
+        </table></div>
+      {% else %}<div class="empty">No strategies.</div>{% endif %}
+    </section>
+
+    {# 6. Research History #}
+    <section>
+      <h2>Research History <a class="more" href="{{ url_for('automation_view') }}">detail →</a></h2>
+      {% if ov.history %}
+        <p class="sub" style="margin-top:0;">Last {{ ov.history|length }} pipeline runs</p>
+        <div class="table-wrap"><table>
+          <tr><th>Finished</th><th>Result</th><th>Stages</th><th>Time</th></tr>
+          {% for r in ov.history %}
+          <tr><td>{{ r.finished.replace('T',' ') }}</td>
+              <td class="{{ 'green' if r.ok else 'red' }}">{{ 'OK' if r.ok else 'FAILED' }}</td>
+              <td>{{ r.n_ok }}{% if r.n_failed %} <span class="red">/ {{ r.n_failed }}✗</span>{% endif %}</td>
+              <td>{{ "%.0f"|format(r.duration_s) }}s</td></tr>
+          {% endfor %}
+        </table></div>
+      {% else %}<div class="empty">No runs logged yet — <code>python research_pipeline.py</code></div>{% endif %}
+    </section>
+
+    {# 8. Daily Summary #}
+    <section>
+      <h2>Daily Summary <a class="more" href="{{ url_for('home') }}">full digest →</a></h2>
+      {% if ov.digest and ov.digest.lowvol %}
+        {% set lv = ov.digest.lowvol %}
+        <div class="cards">
+          <div class="card"><div class="label">Low-vol holdings</div><div class="value">{{ lv.n_positions }}</div></div>
+          <div class="card"><div class="label">Book cost</div><div class="value" style="font-size:18px;">₹{{ "{:,.0f}".format(lv.book_cost) }}</div></div>
+          <div class="card"><div class="label">Last run</div><div class="value" style="font-size:16px;">{{ lv.last_run }}</div></div>
+        </div>
+        <p class="sub" style="margin-bottom:0;">Options strangle &amp; iron condor paper books continue — see Home for the full digest and Options for the books.</p>
+      {% else %}<div class="empty">No digest.</div>{% endif %}
+    </section>
+
+  </div>
+
+  <div class="notice" style="margin-top:18px;">
+    Every panel reads what the daily <a href="{{ url_for('automation_view') }}">research pipeline</a> wrote to
+    <code>results/*.json</code> — this is a consolidated <b>monitor</b>, not new analytics, and it places no orders.
+    Click any panel header for the full tab.
+  </div>
+{% endblock %}

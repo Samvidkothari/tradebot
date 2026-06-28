@@ -23,7 +23,7 @@ RESULTS = Path(__file__).parent / "results"
 
 # Every parameterless GET route (minus auth endpoints).
 ROUTES = [
-    "/", "/home", "/pnl", "/paper", "/intraday", "/intraday/compare",
+    "/", "/monitor", "/home", "/pnl", "/paper", "/intraday", "/intraday/compare",
     "/options", "/options/book", "/charts", "/backtests",
     "/tearsheet", "/factors", "/feature-store", "/multi-factor", "/optimizer",
     "/portfolio-analysis", "/risk", "/risk-engine", "/attribution",

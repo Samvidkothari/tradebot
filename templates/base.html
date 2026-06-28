@@ -197,6 +197,10 @@
     .pill.up { background: var(--green-dim); color: var(--green); }
     .pill.down { background: var(--red-dim); color: var(--red); }
     .pill.flat { background: rgba(255,255,255,.06); color: var(--muted); }
+    .pill { background: rgba(255,255,255,.06); color: var(--muted); }
+    .more { float: right; font-size: 12px; font-weight: 500; color: var(--muted); text-decoration: none; }
+    .more:hover { color: var(--accent); }
+    .tags { display: flex; flex-wrap: wrap; gap: 6px; }
     .tag { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 9px;
            border-radius: 6px; background: rgba(124,140,255,.14); color: var(--accent-ink); }
 
@@ -302,6 +306,8 @@
 
     <div class="nav-group-label">Monitor</div>
     <nav>
+      <a href="{{ url_for('monitor') }}" class="{{ 'active' if active == 'monitor' }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>Monitor</a>
       <a href="{{ url_for('home') }}" class="{{ 'active' if active == 'home' }}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l9-9 9 9M5 10v10h14V10"/></svg>Home</a>
       <a href="{{ url_for('pnl') }}" class="{{ 'active' if active == 'pnl' }}">
