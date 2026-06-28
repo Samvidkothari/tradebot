@@ -2,9 +2,12 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
   "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
-  com.tradebot.paperbot — runs the whole PAPER bot (intraday ORB+VWAP +
-  options short strangle) at 15:45 IST on weekdays (Mon–Fri) via
-  run_paper_bot.sh. Simulated only; places no real orders.
+  com.tradebot.paperbot — runs the whole PAPER bot at 15:45 IST on weekdays
+  (Mon–Fri) via run_paper_bot.sh: fetch fresh prices, the options paper sims
+  (short strangle + iron condor), then the 10-stage research automation pipeline
+  (validate → features → factors → backtests → walk-forward · Monte Carlo →
+  reports → research summary → dashboard → archive), then the digest.
+  Simulated only; places no real orders. (Intraday ORB+VWAP was retired.)
   Install:  cp deploy/com.tradebot.paperbot.plist ~/Library/LaunchAgents/
             launchctl load -w ~/Library/LaunchAgents/com.tradebot.paperbot.plist
   Remove:   launchctl unload -w ~/Library/LaunchAgents/com.tradebot.paperbot.plist

@@ -69,12 +69,20 @@ live trading; the Emergency flag would prompt a human, never an auto-halt).
 **Research automation** (`research_pipeline.py`, dashboard **Automation** tab):
 the daily after-close orchestrator — Download → Validate → Update Features →
 Update Factors → Run Backtests → Tear sheets + Walk-forward → Generate Reports →
-Update Dashboard. Each stage is timed and its status recorded to
-`results/pipeline_run.json`; a failed stage is captured (not fatal) so the chain
-finishes and the page shows exactly what happened. Runs unattended via
-`run_paper_bot.sh` (launchd) after the price fetch (`--no-fetch`), or manually
-with `python research_pipeline.py`. **Research only** — reads data, writes
-`results/*`; places no orders.
+Generate research summary → Update Dashboard → Archive results (10 stages).
+Walk-forward AND Monte Carlo are both computed inside the tear-sheet stage.
+Each stage is timed and its status recorded to `results/pipeline_run.json`; a
+failed stage is captured (not fatal) so the chain finishes and the page shows
+exactly what happened. Runs **fully unattended** every weekday 15:45 IST via
+launchd (`com.tradebot.paperbot` → `run_paper_bot.sh`, after the price fetch,
+`--no-fetch`), or manually with `python research_pipeline.py`. **Research only**
+— reads data, writes `results/*`; places no orders.
+
+Two pipeline outputs worth calling out: **`research_summary.py`** writes a dated
+markdown brief (`results/research_summary.md` — regime, strategy performance incl.
+walk-forward + Monte Carlo, risk, top factor signals) that auto-appears in the
+**Reports** tab; and the **Archive results** stage snapshots every `results/*.json`
++ the summary into `results/archive/<date>/` so each day's analytics are kept.
 
 **Monitor** (dashboard **Monitor** tab, `monitor.html` + `_overview_data()` in
 `views_research.py`): the single-pane-of-glass — eight panels on one page

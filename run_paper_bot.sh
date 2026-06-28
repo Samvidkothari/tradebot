@@ -25,8 +25,8 @@ echo "----- options (NIFTY short strangle) -----"
 "$PY" options_sim.py
 echo "----- options (NIFTY iron condor, defined-risk) -----"
 "$PY" condor_sim.py
-echo "----- research automation pipeline (validate → features → factors → backtests → walk-forward → reports) -----"
-"$PY" research_pipeline.py --no-fetch   # data already fetched above; runs the full chain + writes results/pipeline_run.json
+echo "----- research automation pipeline (validate → features → factors → backtests → walk-forward · Monte Carlo → reports → summary → archive) -----"
+"$PY" research_pipeline.py --no-fetch   # data already fetched above; runs the full 10-stage chain + writes results/pipeline_run.json, research_summary.md, results/archive/<date>/
 echo "----- daily digest -----"
 "$PY" digest.py
 echo "================ paper-bot run complete ================"

@@ -67,9 +67,12 @@ def _run_stage(name: str, fn, skip: bool = False) -> dict:
 
 
 def _build_plan(fetch: bool) -> list[tuple[str, object, bool]]:
+    import shutil
+
     import attribution_report, backtest_lowvol, backtest_momentum, data_quality
     import factor_report, feature_store, fetch_data, market_intel, multifactor
-    import portfolio_analyzer, portfolio_optimizer, risk_engine, risk_report, tearsheet
+    import portfolio_analyzer, portfolio_optimizer, research_summary, risk_engine
+    import risk_report, tearsheet
 
     def backtests():
         backtest_lowvol.main()
@@ -88,15 +91,28 @@ def _build_plan(fetch: bool) -> list[tuple[str, object, bool]]:
         if missing:
             raise FileNotFoundError(f"dashboard artifacts missing: {missing}")
 
+    def archive():
+        # snapshot the day's analytics (JSONs + the summary) under results/archive/<date>/
+        dest = RESULTS_DIR / "archive" / date.today().isoformat()
+        dest.mkdir(parents=True, exist_ok=True)
+        for fp in list(RESULTS_DIR.glob("*.json")) + [RESULTS_DIR / "research_summary.md"]:
+            if fp.exists() and fp.name != "pipeline_history.json":
+                shutil.copy2(fp, dest / fp.name)
+
+    # Walk-forward AND Monte Carlo are both computed inside tearsheet.main() (each
+    # equity strategy carries walk_forward + monte_carlo), so that one stage covers
+    # both — named explicitly here.
     return [
-        ("Download data",               lambda: fetch_data.main(refresh=True), not fetch),
-        ("Validate data",               data_quality.main, False),
-        ("Update features",             feature_store.main, False),
-        ("Update factors",              factor_report.main, False),
-        ("Run backtests",               backtests, False),
-        ("Tear sheets + walk-forward",  tearsheet.main, False),
-        ("Generate reports",            reports, False),
-        ("Update dashboard",            update_dashboard, False),
+        ("Download data",                    lambda: fetch_data.main(refresh=True), not fetch),
+        ("Validate data",                    data_quality.main, False),
+        ("Update features",                  feature_store.main, False),
+        ("Update factors",                   factor_report.main, False),
+        ("Run backtests",                    backtests, False),
+        ("Tear sheets · walk-forward · Monte Carlo", tearsheet.main, False),
+        ("Generate reports",                 reports, False),
+        ("Generate research summary",        research_summary.main, False),
+        ("Update dashboard",                 update_dashboard, False),
+        ("Archive results",                  archive, False),
     ]
 
 
