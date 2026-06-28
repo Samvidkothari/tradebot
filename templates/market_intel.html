@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Market Intel{% endblock %}
+{% block content %}
+  <h1>Indian Market Intelligence <span class="readonly">RESEARCH</span></h1>
+  <p class="sub">NSE calendar, expiries, sectors, corporate actions &amp; surveillance{% if data %} · as of {{ data.as_of }}{% endif %} · read-only</p>
+
+  {% if error %}
+    <div class="banner">{{ error }} <code>python market_intel.py</code></div>
+  {% else %}
+    <div class="cards">
+      <div class="card"><div class="label">Next weekly expiry</div>
+        <div class="value" style="font-size:20px;">{{ data.expiries.next_weekly }}</div>
+        <div class="delta">{{ data.expiries.days_to_weekly }} days</div></div>
+      <div class="card"><div class="label">Next monthly expiry</div>
+        <div class="value" style="font-size:20px;">{{ data.expiries.next_monthly }}</div>
+        <div class="delta">{{ data.expiries.days_to_monthly }} days</div></div>
+      <div class="card"><div class="label">NSE sessions cached</div><div class="value">{{ data.sessions }}</div></div>
+      <div class="card"><div class="label">Symbols / sectors</div>
+        <div class="value" style="font-size:20px;">{{ data.n_symbols }} / {{ data.sectors|length }}</div></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+      <section>
+        <h2>Sector classification</h2>
+        <div class="table-wrap"><table>
+          <tr><th>Sector</th><th>Names</th></tr>
+          {% for sec, n in data.sectors.items() %}<tr><td>{{ sec }}</td><td>{{ n }}</td></tr>{% endfor %}
+        </table></div>
+      </section>
+      <section>
+        <h2>Corporate actions</h2>
+        {% if data.corporate_actions.available %}
+        <div class="table-wrap"><table>
+          <tr><th>Date</th><th>Symbol</th><th>Type</th><th>Value</th></tr>
+          {% for a in data.corporate_actions.recent %}
+          <tr><td>{{ a.date }}</td><td>{{ a.symbol }}</td><td>{{ a.type }}</td><td>{{ a.value }}</td></tr>
+          {% endfor %}
+        </table></div>
+        {% else %}
+        <div class="notice">{{ data.corporate_actions.note }}</div>
+        {% endif %}
+      </section>
+    </div>
+
+    <section>
+      <h2>Circuit-like moves <span style="text-transform:none;letter-spacing:0;color:var(--faint);">· |move| ≥ {{ "%.0f"|format(data.circuits.band*100) }}% (approximate)</span></h2>
+      {% if data.circuits.recent %}
+      <div class="table-wrap"><table>
+        <tr><th>Date</th><th>Symbol</th><th>Move</th></tr>
+        {% for c in data.circuits.recent %}<tr><td>{{ c.date }}</td><td>{{ c.symbol }}</td><td class="{{ 'green' if c.move > 0 else 'red' }}">{{ "%+.1f"|format(c.move*100) }}%</td></tr>{% endfor %}
+      </table></div>
+      {% else %}<div class="empty">No moves above the band in the lookback.</div>{% endif %}
+    </section>
+
+    <div class="notice">
+      <b>Honest data scope:</b> NSE holidays/sessions, weekly/monthly expiries, and
+      sector classification are accurate; split/dividend history is real (yfinance,
+      via <code>--fetch</code>). <b>ASM/GSM surveillance lists, per-stock circuit
+      limits, bonus-vs-split, and rights issues need an official NSE feed we don't
+      have</b> — shown as config slots (<code>surveillance.json</code>) /
+      approximations, never fabricated. Surveillance flagged now:
+      {{ data.surveillance.flagged|length }}.
+    </div>
+  {% endif %}
+{% endblock %}

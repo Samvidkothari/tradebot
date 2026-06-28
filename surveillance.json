@@ -1,0 +1,6 @@
+{
+  "_README": "Market-surveillance / circuit config (data). ASM (Additional Surveillance Measure) and GSM (Graded Surveillance Measure) are NSE surveillance lists that need an OFFICIAL NSE feed we don't have — they ship as empty CONFIG SLOTS to populate manually; the filter then excludes flagged names from a universe. circuit_band is the daily price band used to FLAG circuit-like moves (NSE sets per-stock bands of 2/5/10/20% — without a feed we can only approximate with one default band).",
+  "asm": [],
+  "gsm": [],
+  "circuit_band": 0.20
+}

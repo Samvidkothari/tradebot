@@ -202,6 +202,12 @@ def risk_engine_view():
                            data=data, error=error)
 
 
+def market_intel_view():
+    data, error = _research_json("market_intel.json", "market_intel.py")
+    return render_template("market_intel.html", active="market_intel",
+                           data=data, error=error)
+
+
 # ── Backtest reports (results/*.md) ───────────────────────────────────────────
 
 def backtests():
@@ -236,6 +242,7 @@ def register(app):
         ("/multi-factor", "multifactor_view", multifactor_view),
         ("/optimizer", "optimizer_view", optimizer_view),
         ("/risk-engine", "risk_engine_view", risk_engine_view),
+        ("/market-intel", "market_intel_view", market_intel_view),
         ("/portfolio-analysis", "portfolio_analysis", portfolio_analysis),
         ("/risk", "risk_view", risk_view),
         ("/attribution", "attribution_view", attribution_view),

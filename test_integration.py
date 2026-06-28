@@ -26,7 +26,8 @@ ROUTES = [
     "/", "/home", "/pnl", "/paper", "/intraday", "/intraday/compare",
     "/options", "/options/book", "/charts", "/backtests",
     "/tearsheet", "/factors", "/feature-store", "/multi-factor", "/optimizer",
-    "/portfolio-analysis", "/risk", "/risk-engine", "/attribution", "/data-quality",
+    "/portfolio-analysis", "/risk", "/risk-engine", "/attribution",
+    "/data-quality", "/market-intel",
     "/analytics", "/journal", "/alerts", "/ticket", "/report",
 ]
 

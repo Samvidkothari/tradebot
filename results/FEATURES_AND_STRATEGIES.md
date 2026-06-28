@@ -51,6 +51,14 @@ portfolio-heat (vol target) de-risk. Constraints in `optimizer.json`. Research l
 ("better allocation & diversification") — it does NOT alter the pre-registered
 equal-weight low-vol book and places no orders.
 
+**Indian market intelligence** (`market_intel.py` + `expiry_calendar.py`, dashboard
+**Market Intel** tab): NSE sessions/holidays (data-derived), weekly/monthly F&O
+expiries (Thursday convention, holiday-adjusted), sector classification, REAL
+split/dividend history (yfinance `--fetch`), and config-driven surveillance
+(`surveillance.json`). Honest limits: ASM/GSM lists, per-stock circuit limits,
+bonus-vs-split, and rights issues need an official NSE feed (config slots /
+approximations, not fabricated).
+
 **Risk engine** (`risk_engine.py`, dashboard **Risk Engine** tab): downside-
 protection MONITOR for the low-vol book — daily-loss limit, max-drawdown, sector
 exposure, correlation, ATR position sizing, and an aggregate **Emergency** flag

@@ -30,6 +30,7 @@ RUNNERS = [
     ("multifactor",        "multifactor.json"),
     ("portfolio_optimizer", "optimizer.json"),
     ("risk_engine",         "risk_engine.json"),
+    ("market_intel",        "market_intel.json"),
 ]
 
 

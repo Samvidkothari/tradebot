@@ -85,6 +85,8 @@ REQUIRED: dict[str, list[str]] = {
     "multifactor.json": ["as_of", "model", "weights", "top"],
     "optimizer.json": ["candidates", "scheme", "weights", "cash", "diagnostics"],
     "risk_engine.json": ["status", "emergency", "reason", "checks", "atr_sizing"],
+    "market_intel.json": ["expiries", "sectors", "surveillance", "circuits",
+                          "corporate_actions", "n_symbols"],
 }
 
 
