@@ -28,6 +28,7 @@ RUNNERS = [
     ("data_quality",       "data_quality.json"),
     ("feature_store",      "feature_store.json"),
     ("multifactor",        "multifactor.json"),
+    ("portfolio_optimizer", "optimizer.json"),
 ]
 
 

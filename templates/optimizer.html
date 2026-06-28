@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Optimizer{% endblock %}
+{% block content %}
+  <h1>Portfolio Optimizer <span class="readonly">RESEARCH</span></h1>
+  <p class="sub">Constraint-aware allocation over the multi-factor top picks{% if data %} · {{ data.scheme }} · as of {{ data.as_of }}{% endif %} · research only, not applied to any book</p>
+
+  {% if error %}
+    <div class="banner">{{ error }} <code>python portfolio_optimizer.py</code></div>
+  {% else %}
+    {% set d = data.diagnostics %}
+    <div class="cards">
+      <div class="card"><div class="label">Positions</div><div class="value">{{ d.n_positions }}</div>
+        <div class="delta">effective N {{ d.effective_n }}</div></div>
+      <div class="card"><div class="label">Portfolio vol (heat)</div>
+        <div class="value {{ 'green' if not d.target_vol or d.portfolio_vol <= d.target_vol + 1e-6 else 'red' }}">{{ "%.1f"|format(d.portfolio_vol*100) }}%</div>
+        <div class="delta">target {{ "%.0f"|format((d.target_vol or 0)*100) }}%</div></div>
+      <div class="card"><div class="label">Cash buffer</div><div class="value">{{ "%.0f"|format(data.cash*100) }}%</div></div>
+      <div class="card"><div class="label">Max position / sector</div>
+        <div class="value" style="font-size:18px;">{{ "%.1f"|format(d.max_position*100) }}% / {{ "%.0f"|format(d.max_sector*100) }}%</div></div>
+    </div>
+
+    <div class="notice">Constraints (config <code>optimizer.json</code>): max position {{ "%.0f"|format(data.constraints.max_position*100) }}% · sector ≤ {{ "%.0f"|format(data.constraints.sector_limit*100) }}% · correlation ≤ {{ data.constraints.correlation_limit }} · cash buffer {{ "%.0f"|format(data.constraints.cash_buffer*100) }}% · heat target {{ "%.0f"|format((data.constraints.target_vol or 0)*100) }}%. <b>Research only</b> — a target allocation for analysis; it does not alter the pre-registered equal-weight low-vol book and places no orders.</div>
+
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:20px;">
+      <section>
+        <h2>Target weights</h2>
+        <div class="table-wrap"><table>
+          <tr><th>Symbol</th><th>Sector</th><th>Weight</th></tr>
+          {% for sym, w in data.weights.items() %}
+          <tr><td>{{ sym }}</td><td style="color:var(--muted);">{{ data.sector_of[sym] if data.sector_of else '' }}</td>
+              <td class="green">{{ "%.1f"|format(w*100) }}%</td></tr>
+          {% endfor %}
+          <tr style="font-weight:600;"><td>Cash</td><td></td><td>{{ "%.1f"|format(data.cash*100) }}%</td></tr>
+        </table></div>
+      </section>
+      <section>
+        <h2>Sector exposure</h2>
+        <div class="table-wrap"><table>
+          <tr><th>Sector</th><th>Weight</th></tr>
+          {% for sec, w in data.sectors.items() %}
+          <tr><td>{{ sec }}</td><td class="{{ 'red' if w > data.constraints.sector_limit + 1e-3 else '' }}">{{ "%.0f"|format(w*100) }}%</td></tr>
+          {% endfor %}
+        </table></div>
+      </section>
+    </div>
+  {% endif %}
+{% endblock %}

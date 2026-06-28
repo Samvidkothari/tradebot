@@ -1,0 +1,9 @@
+{
+  "_README": "Portfolio optimizer constraints (config data). RESEARCH ONLY — produces a constraint-respecting target allocation for analysis; it does NOT alter the pre-registered equal-weight low-vol paper book and places no orders.",
+  "scheme": "inverse_vol",
+  "max_position": 0.10,
+  "sector_limit": 0.35,
+  "correlation_limit": 0.85,
+  "cash_buffer": 0.05,
+  "target_vol": 0.12
+}

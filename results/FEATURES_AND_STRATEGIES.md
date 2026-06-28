@@ -44,6 +44,13 @@ lens** — NOT a pre-registered tradeable strategy (weights are easy to overfit;
 tradeable version would need Phase 2B pre-registration with one fixed weight set
 committed before any backtest).
 
+**Portfolio optimizer** (`portfolio_optimizer.py`, dashboard **Optimizer** tab):
+constraint-aware allocation over the ranker's top picks — equal / inverse-vol base,
+then max-position, sector limits, correlation penalty, cash buffer, and a
+portfolio-heat (vol target) de-risk. Constraints in `optimizer.json`. Research lens
+("better allocation & diversification") — it does NOT alter the pre-registered
+equal-weight low-vol book and places no orders.
+
 **Market breadth** (% of names above their 200-day MA) is a single market-level
 number, not a per-stock score — it belongs to the regime engine, not this
 cross-sectional library.

@@ -83,6 +83,7 @@ REQUIRED: dict[str, list[str]] = {
     "feature_store.json": ["as_of", "data_version", "n_features",
                            "materialize", "features"],
     "multifactor.json": ["as_of", "model", "weights", "top"],
+    "optimizer.json": ["candidates", "scheme", "weights", "cash", "diagnostics"],
 }
 
 

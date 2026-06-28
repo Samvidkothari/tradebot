@@ -190,6 +190,12 @@ def multifactor_view():
                            data=data, error=error)
 
 
+def optimizer_view():
+    data, error = _research_json("optimizer.json", "portfolio_optimizer.py")
+    return render_template("optimizer.html", active="optimizer",
+                           data=data, error=error)
+
+
 # ── Backtest reports (results/*.md) ───────────────────────────────────────────
 
 def backtests():
@@ -222,6 +228,7 @@ def register(app):
         ("/factors", "factors_view", factors_view),
         ("/feature-store", "feature_store_view", feature_store_view),
         ("/multi-factor", "multifactor_view", multifactor_view),
+        ("/optimizer", "optimizer_view", optimizer_view),
         ("/portfolio-analysis", "portfolio_analysis", portfolio_analysis),
         ("/risk", "risk_view", risk_view),
         ("/attribution", "attribution_view", attribution_view),
