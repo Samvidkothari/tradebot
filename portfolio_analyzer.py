@@ -37,26 +37,11 @@ BASE        = Path(__file__).parent
 RESULTS_DIR = BASE / "results"
 TRADING_DAYS = 252
 
-# Best-effort STATIC sector map for the NIFTY universe. Public knowledge, changes
-# rarely; treat as approximate (membership/sector can drift). Unmapped -> "Other".
-SECTOR_MAP = {
-    "HDFCBANK": "Financials", "ICICIBANK": "Financials", "KOTAKBANK": "Financials",
-    "AXISBANK": "Financials", "SBIN": "Financials", "INDUSINDBK": "Financials",
-    "BAJFINANCE": "Financials", "BAJAJFINSV": "Financials", "SHRIRAMFIN": "Financials",
-    "HDFCLIFE": "Financials", "SBILIFE": "Financials", "JIOFIN": "Financials",
-    "TCS": "IT", "INFY": "IT", "HCLTECH": "IT", "WIPRO": "IT", "TECHM": "IT", "LTIM": "IT",
-    "RELIANCE": "Energy", "ONGC": "Energy",
-    "NTPC": "Utilities", "POWERGRID": "Utilities",
-    "COALINDIA": "Metals & Mining", "TATASTEEL": "Metals & Mining",
-    "JSWSTEEL": "Metals & Mining", "HINDALCO": "Metals & Mining",
-    "MARUTI": "Auto", "M&M": "Auto", "TATAMOTORS": "Auto", "BAJAJ-AUTO": "Auto",
-    "EICHERMOT": "Auto", "HEROMOTOCO": "Auto",
-    "HINDUNILVR": "FMCG", "ITC": "FMCG", "NESTLEIND": "FMCG", "TATACONSUM": "FMCG",
-    "SUNPHARMA": "Pharma", "DRREDDY": "Pharma", "CIPLA": "Pharma", "APOLLOHOSP": "Healthcare",
-    "ULTRACEMCO": "Materials", "GRASIM": "Materials", "ASIANPAINT": "Materials",
-    "LT": "Infra", "ADANIENT": "Infra", "ADANIPORTS": "Infra",
-    "BHARTIARTL": "Telecom", "TITAN": "Consumer", "TRENT": "Consumer", "BEL": "Defense",
-}
+# Sector map now lives in config (universes.json), exposed via the Universe
+# Manager. Re-exported here as symbol -> sector for backward compatibility
+# (e.g. attribution.py's `from portfolio_analyzer import SECTOR_MAP`).
+from universe import UniverseManager
+SECTOR_MAP = UniverseManager().SECTOR_MAP
 
 
 # ── Pure portfolio maths ──────────────────────────────────────────────────────

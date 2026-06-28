@@ -62,6 +62,27 @@ needs an official NSE feed we don't have (stated, not faked).
 changes iff content changes; `changed_symbols(previous)`; `write()`/`read()`
 (`data/_manifest.json`). Used to key the feature cache and to drive incremental updates.
 
+## Universe Manager (`universe.py` + `universes.json`)
+Configuration-driven stock universes — **no hardcoded lists in code** (membership
+lives in `universes.json`). Supports `NIFTY50`, `NIFTY_NEXT_50`, `NIFTY100`,
+`NIFTY200` (composable via unions), `fno`, sector-wise, and custom universes.
+
+```python
+from universe import UniverseManager
+um = UniverseManager()
+um.members("NIFTY200")     # full configured membership (composed)
+um.resolve("NIFTY200")     # members ∩ symbols we actually have data for  ← use this
+um.sector("Financials")    # sector-wise; um.sectors() lists them
+um.coverage("NIFTY50")     # {configured, available, missing}
+um.custom(["RELIANCE","ITC"])
+```
+`members()` = full membership; `resolve()` = intersected with available data, so
+research never gets a symbol it can't load. **Config slots:** `NIFTY_NEXT_50`,
+`NIFTY200_EXTRA`, `fno` ship empty — fill from an official NSE source, then fetch
+their data; the manager works fully regardless. `fetch_data` and
+`portfolio_analyzer.SECTOR_MAP` now source from here (backward-compatible —
+byte-identical to the old hardcoded values).
+
 ## Usage
 ```python
 from data_layer import DataPipeline

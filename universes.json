@@ -1,0 +1,159 @@
+{
+  "_README": "Universe membership config (data, not code). Indices/F&O we have no price data for are CONFIG SLOTS (empty []) \u2014 fill from an official NSE source, then fetch their data. resolve() always intersects with available data. Lists are point-in-time.",
+  "indices": {
+    "NIFTY50": [
+      "ADANIENT",
+      "ADANIPORTS",
+      "APOLLOHOSP",
+      "ASIANPAINT",
+      "AXISBANK",
+      "BAJAJ-AUTO",
+      "BAJFINANCE",
+      "BAJAJFINSV",
+      "BEL",
+      "BHARTIARTL",
+      "CIPLA",
+      "COALINDIA",
+      "DRREDDY",
+      "EICHERMOT",
+      "GRASIM",
+      "HCLTECH",
+      "HDFCBANK",
+      "HDFCLIFE",
+      "HEROMOTOCO",
+      "HINDALCO",
+      "HINDUNILVR",
+      "ICICIBANK",
+      "INDUSINDBK",
+      "INFY",
+      "ITC",
+      "JIOFIN",
+      "JSWSTEEL",
+      "KOTAKBANK",
+      "LT",
+      "LTIM",
+      "M&M",
+      "MARUTI",
+      "NESTLEIND",
+      "NTPC",
+      "ONGC",
+      "POWERGRID",
+      "RELIANCE",
+      "SBILIFE",
+      "SBIN",
+      "SHRIRAMFIN",
+      "SUNPHARMA",
+      "TATACONSUM",
+      "TATAMOTORS",
+      "TATASTEEL",
+      "TCS",
+      "TECHM",
+      "TITAN",
+      "TRENT",
+      "ULTRACEMCO",
+      "WIPRO"
+    ],
+    "NIFTY_NEXT_50": [],
+    "NIFTY100": {
+      "compose": [
+        "NIFTY50",
+        "NIFTY_NEXT_50"
+      ]
+    },
+    "NIFTY200_EXTRA": [],
+    "NIFTY200": {
+      "compose": [
+        "NIFTY100",
+        "NIFTY200_EXTRA"
+      ]
+    }
+  },
+  "fno": [],
+  "sectors": {
+    "Financials": [
+      "HDFCBANK",
+      "ICICIBANK",
+      "KOTAKBANK",
+      "AXISBANK",
+      "SBIN",
+      "INDUSINDBK",
+      "BAJFINANCE",
+      "BAJAJFINSV",
+      "SHRIRAMFIN",
+      "HDFCLIFE",
+      "SBILIFE",
+      "JIOFIN"
+    ],
+    "IT": [
+      "TCS",
+      "INFY",
+      "HCLTECH",
+      "WIPRO",
+      "TECHM",
+      "LTIM"
+    ],
+    "Energy": [
+      "RELIANCE",
+      "ONGC"
+    ],
+    "Utilities": [
+      "NTPC",
+      "POWERGRID"
+    ],
+    "Metals & Mining": [
+      "COALINDIA",
+      "TATASTEEL",
+      "JSWSTEEL",
+      "HINDALCO"
+    ],
+    "Auto": [
+      "MARUTI",
+      "M&M",
+      "TATAMOTORS",
+      "BAJAJ-AUTO",
+      "EICHERMOT",
+      "HEROMOTOCO"
+    ],
+    "FMCG": [
+      "HINDUNILVR",
+      "ITC",
+      "NESTLEIND",
+      "TATACONSUM"
+    ],
+    "Pharma": [
+      "SUNPHARMA",
+      "DRREDDY",
+      "CIPLA"
+    ],
+    "Healthcare": [
+      "APOLLOHOSP"
+    ],
+    "Materials": [
+      "ULTRACEMCO",
+      "GRASIM",
+      "ASIANPAINT"
+    ],
+    "Infra": [
+      "LT",
+      "ADANIENT",
+      "ADANIPORTS"
+    ],
+    "Telecom": [
+      "BHARTIARTL"
+    ],
+    "Consumer": [
+      "TITAN",
+      "TRENT"
+    ],
+    "Defense": [
+      "BEL"
+    ]
+  },
+  "custom": {
+    "example_watchlist": [
+      "RELIANCE",
+      "ITC",
+      "HDFCBANK"
+    ]
+  }
+}

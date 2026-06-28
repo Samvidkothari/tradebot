@@ -15,28 +15,17 @@ import pandas as pd
 import yfinance as yf
 
 # ── Config ────────────────────────────────────────────────────────────────────
-# Full NIFTY 50 universe (current constituents) for cross-sectional momentum.
-# yfinance ticker = NSE symbol + ".NS".  Some names (M&M, BAJAJ-AUTO) keep
-# their punctuation. Any ticker that fails to download is skipped, not fatal —
-# the validation summary shows which succeeded.
+# The download universe is the NIFTY 50, sourced from the config-driven Universe
+# Manager (membership lives in universes.json — no hardcoded list in code).
+# yfinance ticker = NSE symbol + ".NS"; any ticker that fails to download is
+# skipped, not fatal (the validation summary shows which succeeded).
 #
-# NOTE (survivorship bias): this is TODAY's index membership applied to the
-# past. Stocks dropped from the index over the window are absent, and current
-# members were partly selected for having done well. Momentum results on this
-# list will look better than a true point-in-time universe would. Flagged in
-# the report too.
-_NIFTY50 = [
-    "ADANIENT", "ADANIPORTS", "APOLLOHOSP", "ASIANPAINT", "AXISBANK",
-    "BAJAJ-AUTO", "BAJFINANCE", "BAJAJFINSV", "BEL", "BHARTIARTL",
-    "CIPLA", "COALINDIA", "DRREDDY", "EICHERMOT", "GRASIM",
-    "HCLTECH", "HDFCBANK", "HDFCLIFE", "HEROMOTOCO", "HINDALCO",
-    "HINDUNILVR", "ICICIBANK", "INDUSINDBK", "INFY", "ITC",
-    "JIOFIN", "JSWSTEEL", "KOTAKBANK", "LT", "LTIM",
-    "M&M", "MARUTI", "NESTLEIND", "NTPC", "ONGC",
-    "POWERGRID", "RELIANCE", "SBILIFE", "SBIN", "SHRIRAMFIN",
-    "SUNPHARMA", "TATACONSUM", "TATAMOTORS", "TATASTEEL", "TCS",
-    "TECHM", "TITAN", "TRENT", "ULTRACEMCO", "WIPRO",
-]
+# NOTE (survivorship bias): this is TODAY's index membership applied to the past
+# — current members were partly selected for having done well, so results look
+# better than a true point-in-time universe would. Flagged in the report too.
+from universe import UniverseManager
+
+_NIFTY50 = UniverseManager().members("NIFTY50")
 SYMBOLS = {name: f"{name}.NS" for name in _NIFTY50}
 SYMBOLS["NIFTY50"] = "^NSEI"        # NIFTY 50 index as benchmark
 
