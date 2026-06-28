@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Automation{% endblock %}
+{% block content %}
+  <h1>Research Automation <span class="readonly">RESEARCH</span></h1>
+  <p class="sub">Daily after-close pipeline · Download → Validate → Features → Factors → Backtests → Walk-forward → Reports → Dashboard{% if data %} · last run {{ data.finished }}{% endif %} · read-only</p>
+
+  {% if error %}
+    <div class="banner">{{ error }} <code>python research_pipeline.py</code></div>
+  {% else %}
+    <div class="cards">
+      <div class="card"><div class="label">Last run</div>
+        <div class="value {{ 'green' if data.ok else 'red' }}">{{ 'OK' if data.ok else 'FAILED' }}</div>
+        <div class="delta">{{ data.finished }}</div></div>
+      <div class="card"><div class="label">Stages ok</div>
+        <div class="value">{{ data.n_ok }}<span style="color:var(--faint);font-size:16px;"> / {{ data.stages|length }}</span></div>
+        {% if data.n_failed %}<div class="delta red">{{ data.n_failed }} failed</div>{% endif %}</div>
+      <div class="card"><div class="label">Wall time</div><div class="value">{{ "%.0f"|format(data.duration_s) }}s</div></div>
+      <div class="card"><div class="label">Started</div>
+        <div class="value" style="font-size:18px;">{{ data.started.split('T')[1] if 'T' in data.started else data.started }}</div></div>
+    </div>
+
+    <section>
+      <h2>Pipeline stages</h2>
+      <div class="table-wrap"><table>
+        <tr><th>#</th><th>Stage</th><th>Status</th><th>Duration</th><th>Detail</th></tr>
+        {% for s in data.stages %}
+        <tr>
+          <td style="color:var(--faint);">{{ loop.index }}</td>
+          <td><b>{{ s.name }}</b></td>
+          <td class="{{ 'green' if s.status == 'ok' else 'red' if s.status == 'failed' else '' }}">
+            {{ '✓ ok' if s.status == 'ok' else '✗ failed' if s.status == 'failed' else '· skipped' }}</td>
+          <td>{{ "%.1f"|format(s.duration_s) }}s</td>
+          <td style="color:var(--faint);">{{ s.message or '' }}</td>
+        </tr>
+        {% endfor %}
+      </table></div>
+    </section>
+
+    <div class="notice">
+      Runs unattended after market close via <code>run_paper_bot.sh</code> (launchd).
+      A failing stage is captured, not fatal — the rest of the chain still runs, so
+      this page always reflects exactly what happened. <b>Research only</b> — the
+      pipeline reads data and writes <code>results/*</code>; it places no orders.
+      Run manually with <code>python research_pipeline.py</code>.
+    </div>
+  {% endif %}
+{% endblock %}

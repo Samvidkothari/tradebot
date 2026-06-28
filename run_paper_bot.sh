@@ -1,12 +1,14 @@
 #!/bin/bash
 # run_paper_bot.sh — one daily unattended PAPER run of the whole bot.
 # Fetches fresh prices, runs the options sims (NIFTY short strangle + defined-risk
-# iron condor, head-to-head), refreshes the Research Engine analytics JSONs, then
-# the digest.
+# iron condor, head-to-head), runs the research automation pipeline (validate →
+# features → factors → backtests → walk-forward → reports → dashboard), then the
+# digest.
 # SIMULATED / RESEARCH ONLY — every "trade" is a local DB row; nothing places a
-# real order. fetch_data.py downloads daily OHLCV via yfinance; refresh_research.py
-# only reads cached data and writes results/*.json. A failed fetch (e.g. no
-# network) is non-fatal — later steps just use the existing cached data.
+# real order. fetch_data.py downloads daily OHLCV via yfinance; research_pipeline.py
+# only reads cached data and writes results/*.json (incl. pipeline_run.json, the
+# run record the Automation page shows). A failed fetch (e.g. no network) is
+# non-fatal — later steps just use the existing cached data.
 #
 # Intraday (ORB + VWAP) was RETIRED 2026-06-26: the monitoring sandbox delivered
 # its finding — a thin intraday edge that does not survive realistic MIS costs
@@ -23,8 +25,8 @@ echo "----- options (NIFTY short strangle) -----"
 "$PY" options_sim.py
 echo "----- options (NIFTY iron condor, defined-risk) -----"
 "$PY" condor_sim.py
-echo "----- research engine refresh (all analytics JSONs) -----"
-"$PY" refresh_research.py
+echo "----- research automation pipeline (validate → features → factors → backtests → walk-forward → reports) -----"
+"$PY" research_pipeline.py --no-fetch   # data already fetched above; runs the full chain + writes results/pipeline_run.json
 echo "----- daily digest -----"
 "$PY" digest.py
 echo "================ paper-bot run complete ================"

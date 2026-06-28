@@ -1,6 +1,6 @@
 # Low-Volatility Anomaly (60d) — Backtest Report
 
-Generated: 2026-06-27  
+Generated: 2026-06-28  
 Spec: `strategies/SPEC_lowvol.md` (pre-registered, commit 664b492).  
 Strategy: monthly rebalance into the 15 LOWEST-volatility NIFTY 50 names by 60-day realized vol, equal-weight.  
 Universe: 48 stocks (survivorship-biased — current members only; see spec §2).  

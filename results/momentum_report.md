@@ -1,6 +1,6 @@
 # Cross-Sectional Momentum (12-1) — Backtest Report
 
-Generated: 2026-06-27  
+Generated: 2026-06-28  
 Spec: `strategies/SPEC_momentum.md` (pre-registered, commit cd1b698).  
 Strategy: monthly rebalance into the top 15 NIFTY 50 names by 12-1 momentum (skip most-recent month), equal-weight.  
 Universe: 48 stocks (survivorship-biased — current members only; see spec §2).  

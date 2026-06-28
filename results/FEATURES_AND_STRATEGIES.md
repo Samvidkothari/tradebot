@@ -66,6 +66,16 @@ exposure, correlation, ATR position sizing, and an aggregate **Emergency** flag
 — it FLAGS breaches; it does not place, modify, or stop any order (there is no
 live trading; the Emergency flag would prompt a human, never an auto-halt).
 
+**Research automation** (`research_pipeline.py`, dashboard **Automation** tab):
+the daily after-close orchestrator — Download → Validate → Update Features →
+Update Factors → Run Backtests → Tear sheets + Walk-forward → Generate Reports →
+Update Dashboard. Each stage is timed and its status recorded to
+`results/pipeline_run.json`; a failed stage is captured (not fatal) so the chain
+finishes and the page shows exactly what happened. Runs unattended via
+`run_paper_bot.sh` (launchd) after the price fetch (`--no-fetch`), or manually
+with `python research_pipeline.py`. **Research only** — reads data, writes
+`results/*`; places no orders.
+
 **Market breadth** (% of names above their 200-day MA) is a single market-level
 number, not a per-stock score — it belongs to the regime engine, not this
 cross-sectional library.

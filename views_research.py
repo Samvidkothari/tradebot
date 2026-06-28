@@ -208,6 +208,12 @@ def market_intel_view():
                            data=data, error=error)
 
 
+def automation_view():
+    data, error = _research_json("pipeline_run.json", "research_pipeline.py")
+    return render_template("automation.html", active="automation",
+                           data=data, error=error)
+
+
 # ── Backtest reports (results/*.md) ───────────────────────────────────────────
 
 def backtests():
@@ -243,6 +249,7 @@ def register(app):
         ("/optimizer", "optimizer_view", optimizer_view),
         ("/risk-engine", "risk_engine_view", risk_engine_view),
         ("/market-intel", "market_intel_view", market_intel_view),
+        ("/automation", "automation_view", automation_view),
         ("/portfolio-analysis", "portfolio_analysis", portfolio_analysis),
         ("/risk", "risk_view", risk_view),
         ("/attribution", "attribution_view", attribution_view),
