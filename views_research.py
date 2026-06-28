@@ -214,6 +214,24 @@ def automation_view():
                            data=data, error=error)
 
 
+def research_assistant_view():
+    data, error = _research_json("research_assistant.json", "research_assistant.py")
+    groups = []
+    if data:
+        sev_order = {"warn": 0, "watch": 1, "info": 2, "good": 3}
+        area_order = ["Daily performance", "Alpha decay", "Overfitting",
+                      "Factor performance", "Improvements", "Technical debt"]
+        by_area = {}
+        for f in data["findings"]:
+            by_area.setdefault(f["area"], []).append(f)
+        for area in area_order + [a for a in by_area if a not in area_order]:
+            if area in by_area:
+                groups.append((area, sorted(by_area[area],
+                                            key=lambda x: sev_order.get(x["severity"], 9))))
+    return render_template("research_assistant.html", active="research_assistant",
+                           data=data, groups=groups, error=error)
+
+
 # ── Overview: single monitoring page assembled from the research JSONs ─────────
 
 def _overview_data():
@@ -325,6 +343,7 @@ def register(app):
         ("/risk-engine", "risk_engine_view", risk_engine_view),
         ("/market-intel", "market_intel_view", market_intel_view),
         ("/automation", "automation_view", automation_view),
+        ("/research-assistant", "research_assistant_view", research_assistant_view),
         ("/portfolio-analysis", "portfolio_analysis", portfolio_analysis),
         ("/risk", "risk_view", risk_view),
         ("/attribution", "attribution_view", attribution_view),

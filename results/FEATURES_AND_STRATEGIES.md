@@ -94,6 +94,21 @@ source is missing. (Research History reads `pipeline_history.json` — a rolling
 last-30 log `research_pipeline.py` now appends per run.) Distinct from the
 existing **Live Portfolio** page (`/overview`, real Zerodha holdings).
 
+**AI Research Assistant** (`research_assistant.py`, dashboard **AI Assistant**
+tab + `research_assistant.md` in Reports): a **deterministic, rule-based**
+read-only analyst (not a black-box LLM) that reviews the day's artifacts and
+emits findings, each with the numbers behind it and an explained recommendation.
+Covers: daily performance, strategy analysis, **alpha decay** (full vs OOS CAGR/
+Sharpe), **overfitting** (negative walk-forward segments, dispersion, Monte-Carlo
+P(CAGR<0), IS-vs-OOS gap), **factor performance** (signal crowding, data-scope
+gaps), suggested improvements, and **tech-debt** review. Thresholds are fixed
+module constants (documented, not tuned to results). Current run flags momentum's
+OOS Sharpe collapse 0.53→0.09 with 2/4 negative WF segments (🔴 overfitting) and
+low-vol's milder decay (🟡). **Hard guarantees by construction:** it never
+modifies a strategy (no write access to specs/code, no mutator/order API — a test
+asserts this) and places no orders. Runs as the "AI research review" pipeline
+stage.
+
 **Market breadth** (% of names above their 200-day MA) is a single market-level
 number, not a per-stock score — it belongs to the regime engine, not this
 cross-sectional library.

@@ -31,6 +31,7 @@ RUNNERS = [
     ("portfolio_optimizer", "optimizer.json"),
     ("risk_engine",         "risk_engine.json"),
     ("market_intel",        "market_intel.json"),
+    ("research_assistant",   "research_assistant.json"),   # reads the above; keep last
 ]
 
 

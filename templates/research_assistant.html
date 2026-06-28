@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}AI Assistant{% endblock %}
+{% set icon = {"warn":"🔴","watch":"🟡","info":"🔵","good":"🟢"} %}
+{% block content %}
+  <h1>AI Research Assistant <span class="readonly">READ-ONLY</span></h1>
+  <p class="sub">Reviews performance, decay, overfitting, factors &amp; tech debt — explains every recommendation{% if data %} · {{ data.generated }}{% endif %} · never modifies strategies, never places orders</p>
+
+  {% if error %}
+    <div class="banner">{{ error }} <code>python research_assistant.py</code></div>
+  {% else %}
+    <div class="cards">
+      <div class="card"><div class="label">Headline</div>
+        <div class="value" style="font-size:16px;line-height:1.4;">{{ data.headline }}</div></div>
+      <div class="card"><div class="label">Needs attention</div><div class="value red">{{ data.summary.warn }}</div></div>
+      <div class="card"><div class="label">To watch</div><div class="value">{{ data.summary.watch }}</div></div>
+      <div class="card"><div class="label">Healthy</div><div class="value green">{{ data.summary.good }}</div></div>
+    </div>
+
+    {% for area, findings in groups %}
+    <section>
+      <h2>{{ area }}</h2>
+      {% for f in findings %}
+      <div class="finding">
+        <div class="finding-head">{{ icon[f.severity] }} <b>{{ f.title }}</b></div>
+        <p class="finding-detail">{{ f.detail }}</p>
+        <p class="finding-rec"><span class="rec-label">Recommendation</span> {{ f.recommendation }}</p>
+      </div>
+      {% endfor %}
+    </section>
+    {% endfor %}
+
+    <div class="notice">
+      <b>{{ data.disclaimer }}</b> Deterministic and rule-based — each finding shows the numbers
+      it is based on (thresholds are fixed module constants, not tuned to results). The full
+      markdown brief is in the <a href="{{ url_for('backtests') }}">Reports</a> tab
+      (<code>research_assistant.md</code>), regenerated every day by the pipeline.
+    </div>
+  {% endif %}
+
+  <style>
+    .finding { border-left: 3px solid var(--border); padding: 8px 0 8px 14px; margin: 10px 0; }
+    .finding-head { font-size: 14px; margin-bottom: 4px; }
+    .finding-detail { color: var(--muted); margin: 4px 0; }
+    .finding-rec { margin: 6px 0 0; }
+    .rec-label { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: .04em;
+                 text-transform: uppercase; color: var(--accent); margin-right: 6px; }
+  </style>
+{% endblock %}
