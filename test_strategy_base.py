@@ -10,11 +10,12 @@ Runs standalone (`python test_strategy_base.py`) or under pytest. Needs the
 cached data panel in data/ (run fetch_data.py first).
 """
 
+import numpy as np
 import pandas as pd
 
 from backtest_lowvol import load_panel, run_lowvol
 from backtest_momentum import run_momentum
-from strategy_base import MonthlyRebalanceEngine, REGISTRY
+from strategy_base import MonthlyRebalanceEngine, REGISTRY, BaseStrategy
 
 
 def _assert_identical(old, new, label):
@@ -46,6 +47,26 @@ def test_registry_metadata():
         assert strat.top_n > 0
         assert strat.supported_regimes          # every strategy declares its regimes
         assert strat.economic_rationale          # ...and its rationale
+        assert strat.universe == "NIFTY50"       # ...and the universe it trades
+
+
+def test_engine_universe_filter_drops_non_members():
+    """A declared universe restricts the panel to its members (order-preserving)."""
+    idx = pd.bdate_range("2021-01-01", periods=80)
+    cols = ["RELIANCE", "ITC", "FAKE_NONMEMBER"]
+    panel = pd.DataFrame(
+        100 + np.random.default_rng(0).normal(0, 1, (80, 3)), index=idx, columns=cols)
+    seen = {}
+
+    class _S(BaseStrategy):
+        name, warmup_pos, top_n, universe = "t", 1, 1, "NIFTY50"
+        def select(self, p, day):
+            seen["cols"] = list(p.columns)
+            return [p.columns[0]]
+
+    MonthlyRebalanceEngine().run(_S(), panel)
+    assert "FAKE_NONMEMBER" not in seen["cols"]   # non-member dropped
+    assert seen["cols"] == ["RELIANCE", "ITC"]     # members kept, order preserved
 
 
 def _run_all():

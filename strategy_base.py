@@ -51,6 +51,8 @@ class BaseStrategy(ABC):
     warmup_pos: int = 0                 # min integer index before first rebalance
     supported_regimes: tuple = ()       # declared; consumed by the future regime engine
     economic_rationale: str = ""
+    universe: str | None = None         # config-driven universe (UniverseManager);
+                                        # None = trade whatever panel is passed
 
     @abstractmethod
     def select(self, panel_raw: pd.DataFrame, day) -> list[str]:
@@ -59,7 +61,7 @@ class BaseStrategy(ABC):
 
     def as_dict(self) -> dict:
         return {"name": self.name, "label": self.label, "top_n": self.top_n,
-                "warmup_pos": self.warmup_pos,
+                "warmup_pos": self.warmup_pos, "universe": self.universe,
                 "supported_regimes": list(self.supported_regimes),
                 "economic_rationale": self.economic_rationale}
 
@@ -89,6 +91,16 @@ class MonthlyRebalanceEngine:
     def run(self, strategy: BaseStrategy, panel_raw: pd.DataFrame):
         """Returns (equity Series, n_changes, history) — same contract as the
         pre-registered run_lowvol / run_momentum."""
+        # Config-driven universe selection: keep only the strategy's universe
+        # members (order-preserving). For NIFTY50 over the current data this keeps
+        # every column → a no-op, so results are byte-identical; it only bites once
+        # the data spans more than the declared universe.
+        if strategy.universe:
+            from universe import UniverseManager
+            members = set(UniverseManager().members(strategy.universe))
+            keep = [c for c in panel_raw.columns if c in members]
+            panel_raw = panel_raw[keep]
+
         panel_val = panel_raw.ffill()
         rebals = self.rebalance_dates(panel_raw, strategy.warmup_pos)
         if not rebals:
@@ -154,6 +166,7 @@ class LowVolStrategy(BaseStrategy):
     label = "Low-Volatility (15 lowest-vol)"
     top_n = lowvol.TOP_N
     warmup_pos = lowvol.VOL_LOOKBACK
+    universe = "NIFTY50"
     supported_regimes = ("low_volatility", "sideways", "bear", "bull")
     economic_rationale = ("Low-volatility anomaly: calmer stocks earn higher "
                           "risk-adjusted returns than CAPM predicts; defensive in "
@@ -168,6 +181,7 @@ class MomentumStrategy(BaseStrategy):
     label = "Momentum (12-1, top-15)"
     top_n = momentum.TOP_N
     warmup_pos = momentum.LOOKBACK
+    universe = "NIFTY50"
     supported_regimes = ("bull", "trending")
     economic_rationale = ("Cross-sectional 12-1 momentum: recent relative winners "
                           "keep winning over 1–12 months; works in trending markets, "
