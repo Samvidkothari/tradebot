@@ -44,6 +44,28 @@ def test_insufficient_data_is_safe():
     assert c["trend"] is None and c["tags"] == []
 
 
+def test_breadth_broad_when_most_above_ma():
+    # all names trending up → everyone above their 200d MA → broad
+    idx = pd.bdate_range("2020-01-01", periods=300)
+    up = pd.DataFrame({f"S{i}": 100 * (1.0005 ** np.arange(300)) for i in range(10)}, index=idx)
+    b = R.breadth(up)
+    assert b["label"] == "broad" and b["pct_above_200dma"] >= 0.9
+    assert b["n"] == 10
+
+
+def test_breadth_narrow_when_most_below_ma():
+    idx = pd.bdate_range("2020-01-01", periods=300)
+    down = pd.DataFrame({f"S{i}": 100 * (0.9995 ** np.arange(300)) for i in range(10)}, index=idx)
+    b = R.breadth(down)
+    assert b["label"] == "narrow" and b["pct_above_200dma"] <= 0.1
+
+
+def test_breadth_insufficient_data():
+    idx = pd.bdate_range("2020-01-01", periods=50)
+    short = pd.DataFrame({"A": range(50)}, index=idx)
+    assert R.breadth(short)["label"] is None
+
+
 def test_compatibility_intersects():
     comp = R.compatibility(("bull", "trending"), ["bull", "low_volatility", "trending"])
     assert comp["compatible"] is True

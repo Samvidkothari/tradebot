@@ -20,6 +20,12 @@
           {% for t in regime.tags %}<span class="tag">{{ t.replace('_',' ') }}</span>{% endfor %}
         </div>
         <div class="sub" style="margin:0;">{{ regime.reason }}</div>
+        {% if regime.breadth and regime.breadth.label %}
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <span class="pill {{ 'up' if regime.breadth.label == 'broad' else 'down' if regime.breadth.label == 'narrow' else 'flat' }}">breadth: {{ regime.breadth.label }}</span>
+          <span class="sub" style="margin:0;font-size:12px;">{{ "%.0f"|format(regime.breadth.pct_above_200dma*100) }}% above 200d MA · {{ "%.0f"|format(regime.breadth.pct_above_50dma*100) }}% above 50d MA{% if regime.breadth.pct_advancing is not none %} · {{ "%.0f"|format(regime.breadth.pct_advancing*100) }}% advancing today{% endif %}</span>
+        </div>
+        {% endif %}
         <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;">
           {% for s in equity %}
           <span class="pill {{ 'up' if s.regime_compat and s.regime_compat.compatible else 'down' }}">

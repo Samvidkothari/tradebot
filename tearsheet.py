@@ -171,6 +171,7 @@ def main():
     print("done")
 
     reg = R.classify(nifty_df.set_index("date")["close"])
+    reg["breadth"] = R.breadth(panel_raw)        # market participation (cross-section)
     print(f"  market regime: {', '.join(reg['tags']) or 'unknown'}")
 
     sheets = []

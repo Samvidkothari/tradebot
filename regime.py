@@ -136,3 +136,43 @@ def compatibility(supported_regimes, tags) -> dict:
     matched = sorted(sup & live)
     return {"compatible": bool(matched), "matched": matched,
             "supported": sorted(sup), "missing": sorted(live - sup)}
+
+
+# ── Market breadth (a market-level metric, computed from the cross-section) ────
+
+BREADTH_BROAD  = 0.60     # >= this fraction above the 200-day MA → broad
+BREADTH_NARROW = 0.40     # <= this → narrow (a thin, fragile advance)
+
+
+def breadth(panel: pd.DataFrame, as_of=None) -> dict:
+    """Market participation from the close PANEL (all names): the share above their
+    200-/50-day MA and the share advancing today. This is a single MARKET-level
+    read — the complement to the index-only `classify()` — not a per-stock factor.
+    'broad' = strength is widespread; 'narrow' = carried by a few names."""
+    df = panel.dropna(how="all")
+    if as_of is not None:
+        df = df[df.index <= pd.Timestamp(as_of)]
+    out = {"label": None, "n": 0, "pct_above_200dma": None,
+           "pct_above_50dma": None, "pct_advancing": None,
+           "reason": "insufficient data"}
+    if len(df) < 200:
+        return out
+
+    last = df.iloc[-1]
+    ma200, ma50 = df.tail(200).mean(), df.tail(50).mean()
+    v200 = last.notna() & ma200.notna()
+    v50 = last.notna() & ma50.notna()
+    above200 = float((last[v200] > ma200[v200]).mean())
+    above50 = float((last[v50] > ma50[v50]).mean())
+    rets = (df.iloc[-1] / df.iloc[-2] - 1).dropna()
+    adv = float((rets > 0).mean()) if len(rets) else None
+    label = ("broad" if above200 >= BREADTH_BROAD
+             else "narrow" if above200 <= BREADTH_NARROW else "mixed")
+    return {
+        "label": label, "n": int(v200.sum()),
+        "pct_above_200dma": round(above200, 3),
+        "pct_above_50dma": round(above50, 3),
+        "pct_advancing": round(adv, 3) if adv is not None else None,
+        "reason": f"{int(above200*100)}% of {int(v200.sum())} names above their "
+                  f"200-day MA ({label}); {int(above50*100)}% above 50-day MA.",
+    }
