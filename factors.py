@@ -58,6 +58,8 @@ class BaseFeature(ABC):
     name: str = "base"
     description: str = ""
     direction: str = "high"     # "high" = larger raw is better; "low" = smaller is better
+    inputs: tuple = ("close",)  # panels this feature reads (metadata for the store)
+    version: str = "1"          # bump when the definition changes (cache invalidation)
 
     @abstractmethod
     def raw(self, ctx: PanelContext, pos: int) -> pd.Series:
@@ -132,6 +134,7 @@ class VolCompressionFactor(BaseFeature):
 
 class LiquidityFactor(BaseFeature):
     name, description, direction = "liquidity", "20-day average traded value (close x volume)", "high"
+    inputs = ("close", "volume")
     WINDOW = 20
 
     def raw(self, ctx, pos):

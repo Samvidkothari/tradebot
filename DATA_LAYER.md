@@ -39,11 +39,23 @@ reports `symbols_needing_refetch()` to the updater. It does **not** fabricate sp
 ratios — we have no raw feed / actions calendar. `adjust()` is the hook for real
 back-adjustment if such a feed is added. (`CorporateActionAdjuster` is a kept alias.)
 
-### FeatureStore + FeatureCache
-`get(factor, as_of)`, `scores(as_of)`, `composite(weights, as_of)`. Lookups go
-in-memory → disk (`FeatureCache`, version-keyed) → compute. `FeatureCache` files
-are named `<version>_<factor>_<pos>.pkl`; a new version writes new files, so stale
-features never leak; `prune_other_versions()` cleans old ones.
+### Feature store (`feature_store.py`) — calculate → store → version → reuse
+A proper store, not a throwaway cache:
+- **`FeatureRegistry`** — every feature + metadata (`description`, `direction`,
+  `inputs`) and a **`feature_version`** = hash of the feature's *definition* (its
+  source + a declared `version`). Change the logic → the version changes.
+- **`FeatureCache`** — persistent, keyed by **(data_version × feature_version)**, so
+  a data change OR a feature-logic change invalidates exactly the right entries
+  (`<dataver>_<featver>_<factor>_<pos>.pkl`). `invalidate_stale()` prunes old ones.
+- **`FeatureStore`** — `get` / `scores` / `composite` look up memory → disk →
+  compute. **`materialize(as_of)`** is an INCREMENTAL refresh: computes only what's
+  missing and returns `{computed, reused}`. Result: research reuses prior work
+  instead of recomputing it every run.
+```python
+from feature_store import FeatureStore, FeatureRegistry
+FeatureRegistry().all_metadata()          # catalog + versions
+store.materialize()  # → {'computed': [...], 'reused': [...]}  ← faster research
+```
 
 ### IncrementalUpdater
 `plan(last_date, today)` (pure → `full`/`incremental`/`uptodate`), `plan_all()`

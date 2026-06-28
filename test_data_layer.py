@@ -66,17 +66,16 @@ def test_feature_store_frame_and_composite():
     assert comp.max() <= 1.0 and comp.min() >= 0.0
 
 
-def test_feature_cache_roundtrip_and_version_keyed():
+def test_feature_cache_roundtrip_and_invalidation():
     tmp = Path(tempfile.mkdtemp())
     s = pd.Series([0.1, 0.9], index=["A", "B"])
-    c1 = DL.FeatureCache("ver1", cache_dir=tmp)
-    assert c1.get("momentum", 5) is None           # empty
-    c1.put("momentum", 5, s)
-    pd.testing.assert_series_equal(c1.get("momentum", 5), s)
-    # A different version sees no cache (auto-invalidation).
-    assert DL.FeatureCache("ver2", cache_dir=tmp).get("momentum", 5) is None
-    # Disabled when version is None.
-    assert DL.FeatureCache(None, cache_dir=tmp).get("momentum", 5) is None
+    c = DL.FeatureCache("dv1", cache_dir=tmp)
+    assert c.get("momentum", "fv1", 5) is None      # empty
+    c.put("momentum", "fv1", 5, s)
+    pd.testing.assert_series_equal(c.get("momentum", "fv1", 5), s)
+    assert c.get("momentum", "fv2", 5) is None       # feature-version change → miss
+    assert DL.FeatureCache("dv2", cache_dir=tmp).get("momentum", "fv1", 5) is None  # data change
+    assert DL.FeatureCache(None, cache_dir=tmp).get("momentum", "fv1", 5) is None   # disabled
 
 
 # ── CorporateActionManager ────────────────────────────────────────────────────

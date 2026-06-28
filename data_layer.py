@@ -25,8 +25,7 @@ import factors as F
 import fetch_data
 from trading_calendar import TradingCalendar
 
-FEATURE_CACHE_DIR = data_io.DATA_DIR / "_feature_cache"
-CA_LOG_PATH       = data_io.DATA_DIR / "_corporate_actions.json"
+CA_LOG_PATH = data_io.DATA_DIR / "_corporate_actions.json"
 
 
 class DataQualityError(RuntimeError):
@@ -204,89 +203,10 @@ class CorporateActionManager:
 CorporateActionAdjuster = CorporateActionManager
 
 
-# ── 4. FeatureCache + FeatureStore — cached calculations, fast reloads ────────
-
-class FeatureCache:
-    """Persistent, VERSION-KEYED cache of computed factor-score cross-sections.
-    A new data version → new cache files, so stale features never leak."""
-
-    def __init__(self, version: str | None, cache_dir: Path = FEATURE_CACHE_DIR):
-        self.version = version
-        self.dir = Path(cache_dir)
-        self.enabled = version is not None
-        if self.enabled:
-            self.dir.mkdir(parents=True, exist_ok=True)
-
-    def _path(self, factor: str, pos: int) -> Path:
-        return self.dir / f"{self.version}_{factor}_{pos}.pkl"
-
-    def get(self, factor: str, pos: int):
-        if not self.enabled:
-            return None
-        p = self._path(factor, pos)
-        return pd.read_pickle(p) if p.exists() else None
-
-    def put(self, factor: str, pos: int, series: pd.Series):
-        if self.enabled:
-            series.to_pickle(self._path(factor, pos))
-
-    def prune_other_versions(self) -> int:
-        """Delete cache files from other data versions. Returns count removed."""
-        if not self.enabled or not self.dir.exists():
-            return 0
-        removed = 0
-        for f in self.dir.glob("*.pkl"):
-            if not f.name.startswith(f"{self.version}_"):
-                f.unlink(); removed += 1
-        return removed
-
-
-class FeatureStore:
-    """Factor scores from the clean panel, computed on demand and cached both
-    in-memory and on disk (version-keyed) for fast reloads across runs."""
-
-    def __init__(self, manager: MarketDataManager, only=None):
-        self.manager = manager
-        self._ctx = None
-        self._mem: dict = {}
-        self.factors = {k: v for k, v in F.FACTORS.items()
-                        if (only is None or k in only)}
-        self.cache = FeatureCache(getattr(manager, "version", None))
-
-    def _context(self) -> F.PanelContext:
-        if self._ctx is None:
-            self._ctx = self.manager.context()
-        return self._ctx
-
-    def _pos(self, as_of) -> int:
-        idx = self._context().close.index
-        if as_of is None:
-            return len(idx) - 1
-        loc = idx.get_indexer([pd.Timestamp(as_of)], method="ffill")[0]
-        return max(int(loc), 0)
-
-    def get(self, factor: str, as_of=None) -> pd.Series:
-        pos = self._pos(as_of)
-        key = (factor, pos)
-        if key in self._mem:                       # 1) in-memory (fastest)
-            return self._mem[key]
-        disk = self.cache.get(factor, pos)         # 2) disk (fast reload)
-        if disk is not None:
-            self._mem[key] = disk
-            return disk
-        s = self.factors[factor].score(self._context(), pos)   # 3) compute
-        self._mem[key] = s
-        self.cache.put(factor, pos, s)
-        return s
-
-    def scores(self, as_of=None) -> pd.DataFrame:
-        return pd.DataFrame({k: self.get(k, as_of) for k in self.factors})
-
-    def composite(self, weights: dict, as_of=None) -> pd.Series:
-        return F.composite(self._context(), self._pos(as_of), weights)
-
-    def cache_size(self) -> int:
-        return len(self._mem)
+# ── 4. Feature store — registry, metadata, versioning, cache (feature_store.py) ─
+# The store/cache/registry now live in feature_store.py (calculate→store→version→
+# reuse). Re-exported here so `from data_layer import FeatureStore` keeps working.
+from feature_store import FeatureCache, FeatureRegistry, FeatureStore  # noqa: E402,F401
 
 
 # ── 5. IncrementalUpdater — no duplicated downloads ───────────────────────────
