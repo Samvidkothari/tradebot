@@ -36,9 +36,13 @@ All are cross-sectional `BaseFeature` plug-ins, normalised to [0,1]. ATR/ADX rea
 high/low; relative-strength/beta/correlation read the NIFTY benchmark;
 sector_strength reads the sector map — all wired through the data layer.
 
-**Illustrative multi-factor composite:** equal weight on `momentum +
-low_volatility + trend` (see the dashboard **Factors** / **Feature Store** tabs).
-This is research analysis, **not** a tradeable strategy.
+**Multi-factor ranker** (`multifactor.py`, dashboard **Multi-Factor** tab):
+config-driven weighted blend of factor scores → ranking → top stocks, with the
+per-factor breakdown (models in `factor_models.json`; default `core4` = momentum +
+low-vol + trend + liquidity, equal weight, NIFTY50). A robust-selection **research
+lens** — NOT a pre-registered tradeable strategy (weights are easy to overfit; a
+tradeable version would need Phase 2B pre-registration with one fixed weight set
+committed before any backtest).
 
 **Market breadth** (% of names above their 200-day MA) is a single market-level
 number, not a per-stock score — it belongs to the regime engine, not this

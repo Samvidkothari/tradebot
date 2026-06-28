@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Multi-Factor{% endblock %}
+{% block content %}
+  <h1>Multi-Factor Ranker <span class="readonly">RESEARCH</span></h1>
+  <p class="sub">Weighted factor score → ranking → top stocks{% if data %} · model <b>{{ data.model }}</b> · as of {{ data.as_of }}{% endif %} · research lens, not a tradeable strategy</p>
+
+  {% if error %}
+    <div class="banner">{{ error }} <code>python multifactor.py</code></div>
+  {% else %}
+    <div class="cards">
+      <div class="card"><div class="label">Model</div><div class="value" style="font-size:18px;">{{ data.model }}</div>
+        <div class="delta">{{ data.description }}</div></div>
+      <div class="card"><div class="label">Universe</div><div class="value" style="font-size:18px;">{{ data.universe or 'all' }}</div></div>
+      <div class="card"><div class="label">Weights</div>
+        <div class="value" style="font-size:14px;">{% for f, w in data.weights.items() %}{{ f.replace('_',' ') }} {{ "%g"|format(w) }}{% if not loop.last %} · {% endif %}{% endfor %}</div></div>
+    </div>
+
+    <section>
+      <h2>Top Stocks <span style="text-transform:none;letter-spacing:0;color:var(--faint);">· by weighted composite, with the per-factor breakdown</span></h2>
+      <div class="table-wrap">
+        <table>
+          <tr><th>#</th><th>Symbol</th><th>Composite</th>{% for f in data.weights %}<th>{{ f.replace('_',' ') }}</th>{% endfor %}</tr>
+          {% for d in data.top %}
+          <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ d.symbol }}</td>
+            <td class="green">{{ "%.3f"|format(d.composite) }}</td>
+            {% for f in data.weights %}
+            {% set v = d.factors[f] %}
+            <td style="color:{{ 'var(--green)' if v >= 0.66 else 'var(--red)' if v <= 0.33 else 'var(--muted)' }};">{{ "%.2f"|format(v) }}</td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </table>
+      </div>
+    </section>
+
+    <div class="notice">Each factor score is normalised to [0,1] (1 = most attractive); the composite is their weighted average. <b>Research only</b> — weights are config (<code>factor_models.json</code>) and easy to overfit, so this ranks stocks for analysis; it is NOT a pre-registered tradeable strategy and places no orders.</div>
+  {% endif %}
+{% endblock %}

@@ -27,6 +27,7 @@ RUNNERS = [
     ("attribution_report", "attribution.json"),
     ("data_quality",       "data_quality.json"),
     ("feature_store",      "feature_store.json"),
+    ("multifactor",        "multifactor.json"),
 ]
 
 

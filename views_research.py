@@ -184,6 +184,12 @@ def feature_store_view():
                            data=data, error=error)
 
 
+def multifactor_view():
+    data, error = _research_json("multifactor.json", "multifactor.py")
+    return render_template("multifactor.html", active="multifactor",
+                           data=data, error=error)
+
+
 # ── Backtest reports (results/*.md) ───────────────────────────────────────────
 
 def backtests():
@@ -215,6 +221,7 @@ def register(app):
         ("/tearsheet", "tearsheet", tearsheet),
         ("/factors", "factors_view", factors_view),
         ("/feature-store", "feature_store_view", feature_store_view),
+        ("/multi-factor", "multifactor_view", multifactor_view),
         ("/portfolio-analysis", "portfolio_analysis", portfolio_analysis),
         ("/risk", "risk_view", risk_view),
         ("/attribution", "attribution_view", attribution_view),

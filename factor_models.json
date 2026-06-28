@@ -1,0 +1,11 @@
+{
+  "_README": "Multi-factor RANKING models — config-driven weights (data, not code). A weighted blend of [0,1] factor scores produces a composite ranking. RESEARCH ONLY: this is a stock-selection lens, NOT a pre-registered tradeable strategy (that would need Phase 2B pre-registration with one fixed weight set committed before any backtest). Weights are easy to overfit — treat rankings as analysis, not signals to trade.",
+  "default": "core4",
+  "models": {
+    "core4": {
+      "description": "Momentum + Low-Vol + Trend + Liquidity (equal weight)",
+      "universe": "NIFTY50",
+      "weights": {"momentum": 1.0, "low_volatility": 1.0, "trend": 1.0, "liquidity": 1.0}
+    }
+  }
+}

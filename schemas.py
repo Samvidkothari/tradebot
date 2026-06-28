@@ -82,6 +82,7 @@ REQUIRED: dict[str, list[str]] = {
                           "cache_stale_days", "summary", "symbols"],
     "feature_store.json": ["as_of", "data_version", "n_features",
                            "materialize", "features"],
+    "multifactor.json": ["as_of", "model", "weights", "top"],
 }
 
 
