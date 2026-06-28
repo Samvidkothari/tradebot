@@ -16,9 +16,9 @@ import json
 from datetime import date
 from pathlib import Path
 
-import data_io
 import factors as F
 import schemas
+from data_layer import MarketDataManager, FeatureStore
 
 RESULTS_DIR = Path(__file__).parent / "results"
 TOP_K       = 8
@@ -27,18 +27,11 @@ TOP_K       = 8
 COMPOSITE_WEIGHTS = {"momentum": 1.0, "low_volatility": 1.0, "trend": 1.0}
 
 
-def load_context():
-    """Aligned close + volume panels (via the shared data_io loader)."""
-    close = data_io.close_panel()
-    volume = data_io.volume_panel(like=close)
-    return F.PanelContext(close=close, volume=(volume if not volume.empty else None))
-
-
 def main():
     RESULTS_DIR.mkdir(exist_ok=True)
-    ctx = load_context()
-    pos = len(ctx.close) - 1
-    as_of = ctx.close.index[-1].date().isoformat()
+    mgr = MarketDataManager()
+    store = FeatureStore(mgr)              # cached, version-keyed factor scores
+    as_of = mgr.as_of()
 
     payload = {"generated": date.today().isoformat(), "as_of": as_of,
                "unavailable": F.UNAVAILABLE_FACTORS,
@@ -46,7 +39,7 @@ def main():
 
     print(f"\n{'='*64}\n  FACTOR LIBRARY — leaderboards as of {as_of}  (research only)\n{'='*64}")
     for name, feat in F.FACTORS.items():
-        s = feat.score(ctx, pos).sort_values(ascending=False)
+        s = store.get(name).sort_values(ascending=False)
         top = [{"symbol": sym, "score": round(float(v), 3)} for sym, v in s.head(TOP_K).items()]
         payload["factors"][name] = {"description": feat.description,
                                     "direction": feat.direction, "n": int(len(s)),
@@ -54,7 +47,7 @@ def main():
         leaders = ", ".join(f"{d['symbol']}" for d in top[:5]) or "—"
         print(f"  {name:<16} ({feat.direction:<4}) n={len(s):<3} top: {leaders}")
 
-    comp = F.composite(ctx, pos, COMPOSITE_WEIGHTS)
+    comp = store.composite(COMPOSITE_WEIGHTS)
     payload["composite"] = [{"symbol": sym, "score": round(float(v), 3)}
                             for sym, v in comp.head(TOP_K).items()]
     print(f"\n  Composite (momentum + low-vol + trend, equal weight):")

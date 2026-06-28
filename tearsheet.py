@@ -35,7 +35,7 @@ import regime as R
 import schemas
 from fmt import val as _f          # shared formatter (was a local copy)
 from config import SPLIT_DATE
-from data_io import load_panel
+from data_layer import MarketDataManager
 from strategy_base import REGISTRY, MonthlyRebalanceEngine
 
 BASE        = Path(__file__).parent
@@ -165,8 +165,9 @@ def print_compare(equity_sheets):
 
 def main():
     RESULTS_DIR.mkdir(exist_ok=True)
-    print("Loading data panel (shared)...", end=" ", flush=True)
-    panel_raw, nifty_df = load_panel()
+    print("Loading data panel (via data layer)...", end=" ", flush=True)
+    mgr = MarketDataManager()
+    panel_raw, nifty_df = mgr.close_panel(), mgr.nifty()
     print("done")
 
     reg = R.classify(nifty_df.set_index("date")["close"])
