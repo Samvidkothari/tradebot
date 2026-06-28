@@ -80,6 +80,8 @@ REQUIRED: dict[str, list[str]] = {
     "attribution.json":  ["generated", "strategies"],
     "data_quality.json": ["panel_start", "panel_end", "n_symbols",
                           "cache_stale_days", "summary", "symbols"],
+    "feature_store.json": ["as_of", "data_version", "n_features",
+                           "materialize", "features"],
 }
 
 

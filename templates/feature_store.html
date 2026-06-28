@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Feature Store{% endblock %}
+{% block content %}
+  <h1>Feature Store <span class="readonly">RESEARCH</span></h1>
+  <p class="sub">Calculate → store → version → reuse{% if data %} · as of {{ data.as_of }} · data {{ data.data_version }}{% endif %} · research only</p>
+
+  {% if error %}
+    <div class="banner">{{ error }} <code>python feature_store.py</code></div>
+  {% else %}
+    <div class="cards">
+      <div class="card"><div class="label">Features</div><div class="value">{{ data.n_features }}</div></div>
+      <div class="card"><div class="label">Last refresh — computed</div>
+        <div class="value">{{ data.materialize.computed|length }}</div></div>
+      <div class="card"><div class="label">Last refresh — reused</div>
+        <div class="value green">{{ data.materialize.reused|length }}</div></div>
+      <div class="card"><div class="label">Data version</div>
+        <div class="value" style="font-size:16px;font-family:var(--mono);">{{ data.data_version }}</div></div>
+    </div>
+
+    {% if data.materialize.computed %}
+    <div class="notice">Recomputed this run: <b>{{ data.materialize.computed|join(', ') }}</b> (new data or changed feature definition). The rest were reused from cache.</div>
+    {% else %}
+    <div class="notice" style="background:linear-gradient(180deg,rgba(76,195,138,.10),transparent);border-color:rgba(76,195,138,.35);color:#bfe9d2;">All {{ data.n_features }} features reused from cache — nothing recomputed. (Faster research.)</div>
+    {% endif %}
+
+    <section>
+      <h2>Feature Registry</h2>
+      <div class="table-wrap">
+        <table>
+          <tr><th>Feature</th><th>Description</th><th>Direction</th><th>Inputs</th><th>Version</th><th>Last refresh</th></tr>
+          {% for name, m in data.features.items() %}
+          <tr>
+            <td>{{ name }}</td>
+            <td style="color:var(--muted);">{{ m.description }}</td>
+            <td>{{ m.direction }}</td>
+            <td>{{ m.inputs|join(', ') }}</td>
+            <td style="font-family:var(--mono);">{{ m.version }}</td>
+            <td class="{{ 'green' if name in data.materialize.reused else '' }}">{{ 'reused' if name in data.materialize.reused else 'computed' }}</td>
+          </tr>
+          {% endfor %}
+        </table>
+      </div>
+    </section>
+
+    <p class="sub">Each feature's <b>version</b> is a hash of its definition; the on-disk cache is keyed by (data version × feature version), so a data change <i>or</i> a feature-logic change invalidates exactly the right entries.</p>
+  {% endif %}
+{% endblock %}

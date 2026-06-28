@@ -25,7 +25,7 @@ RESULTS = Path(__file__).parent / "results"
 ROUTES = [
     "/", "/home", "/pnl", "/paper", "/intraday", "/intraday/compare",
     "/options", "/options/book", "/charts", "/backtests",
-    "/tearsheet", "/factors", "/portfolio-analysis", "/risk",
+    "/tearsheet", "/factors", "/feature-store", "/portfolio-analysis", "/risk",
     "/attribution", "/data-quality",
     "/analytics", "/journal", "/alerts", "/ticket", "/report",
 ]

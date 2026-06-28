@@ -178,6 +178,12 @@ def factors_view():
     return render_template("factors.html", active="factors", data=data, error=error)
 
 
+def feature_store_view():
+    data, error = _research_json("feature_store.json", "feature_store.py")
+    return render_template("feature_store.html", active="feature_store",
+                           data=data, error=error)
+
+
 # ── Backtest reports (results/*.md) ───────────────────────────────────────────
 
 def backtests():
@@ -208,6 +214,7 @@ def register(app):
         ("/pnl", "pnl", pnl),
         ("/tearsheet", "tearsheet", tearsheet),
         ("/factors", "factors_view", factors_view),
+        ("/feature-store", "feature_store_view", feature_store_view),
         ("/portfolio-analysis", "portfolio_analysis", portfolio_analysis),
         ("/risk", "risk_view", risk_view),
         ("/attribution", "attribution_view", attribution_view),

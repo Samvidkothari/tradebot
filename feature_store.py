@@ -22,11 +22,15 @@ from __future__ import annotations
 
 import hashlib
 import inspect
+import json
+from datetime import date
 from pathlib import Path
 
 import pandas as pd
 
 import factors as F
+
+RESULTS_DIR = Path(__file__).parent / "results"
 
 CACHE_DIR = Path(__file__).parent / "data" / "_feature_cache"
 
@@ -178,3 +182,30 @@ class FeatureStore:
 
     def cache_size(self) -> int:
         return len(self._mem)
+
+
+def main():
+    """Materialise the store and write results/feature_store.json for the dashboard."""
+    import schemas
+    from data_layer import MarketDataManager        # lazy → avoid import cycle
+
+    RESULTS_DIR.mkdir(exist_ok=True)
+    store = FeatureStore(MarketDataManager())
+    mat = store.materialize()
+    payload = {
+        "generated": date.today().isoformat(),
+        "as_of": mat["as_of"],
+        "data_version": mat["data_version"],
+        "n_features": mat["n_features"],
+        "materialize": {"computed": mat["computed"], "reused": mat["reused"]},
+        "features": store.registry.all_metadata(),
+    }
+    (RESULTS_DIR / "feature_store.json").write_text(
+        json.dumps(schemas.validate("feature_store.json", payload), indent=2))
+    print(f"  Feature store: {mat['n_features']} features · "
+          f"{len(mat['computed'])} computed / {len(mat['reused'])} reused · "
+          f"data {mat['data_version']} → results/feature_store.json")
+
+
+if __name__ == "__main__":
+    main()
