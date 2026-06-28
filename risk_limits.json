@@ -1,0 +1,9 @@
+{
+  "_README": "Risk-engine limits (config data). MONITORING ONLY — the engine flags breaches and raises an Emergency status; it does NOT place, modify, or stop any order (there is no live trading). In a hypothetical semi-auto live system the Emergency flag would prompt a human to act — never an automatic halt. Limits are fractions (e.g. -0.03 = a 3% loss).",
+  "daily_loss_limit": -0.03,
+  "max_drawdown_limit": -0.20,
+  "sector_limit": 0.35,
+  "correlation_limit": 0.50,
+  "atr_risk_pct": 0.01,
+  "atr_multiplier": 2.0
+}

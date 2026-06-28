@@ -196,6 +196,12 @@ def optimizer_view():
                            data=data, error=error)
 
 
+def risk_engine_view():
+    data, error = _research_json("risk_engine.json", "risk_engine.py")
+    return render_template("risk_engine.html", active="risk_engine",
+                           data=data, error=error)
+
+
 # ── Backtest reports (results/*.md) ───────────────────────────────────────────
 
 def backtests():
@@ -229,6 +235,7 @@ def register(app):
         ("/feature-store", "feature_store_view", feature_store_view),
         ("/multi-factor", "multifactor_view", multifactor_view),
         ("/optimizer", "optimizer_view", optimizer_view),
+        ("/risk-engine", "risk_engine_view", risk_engine_view),
         ("/portfolio-analysis", "portfolio_analysis", portfolio_analysis),
         ("/risk", "risk_view", risk_view),
         ("/attribution", "attribution_view", attribution_view),

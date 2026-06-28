@@ -51,6 +51,13 @@ portfolio-heat (vol target) de-risk. Constraints in `optimizer.json`. Research l
 ("better allocation & diversification") — it does NOT alter the pre-registered
 equal-weight low-vol book and places no orders.
 
+**Risk engine** (`risk_engine.py`, dashboard **Risk Engine** tab): downside-
+protection MONITOR for the low-vol book — daily-loss limit, max-drawdown, sector
+exposure, correlation, ATR position sizing, and an aggregate **Emergency** flag
+(raised on a hard-limit breach). Limits in `risk_limits.json`. **Monitoring only**
+— it FLAGS breaches; it does not place, modify, or stop any order (there is no
+live trading; the Emergency flag would prompt a human, never an auto-halt).
+
 **Market breadth** (% of names above their 200-day MA) is a single market-level
 number, not a per-stock score — it belongs to the regime engine, not this
 cross-sectional library.

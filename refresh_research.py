@@ -29,6 +29,7 @@ RUNNERS = [
     ("feature_store",      "feature_store.json"),
     ("multifactor",        "multifactor.json"),
     ("portfolio_optimizer", "optimizer.json"),
+    ("risk_engine",         "risk_engine.json"),
 ]
 
 

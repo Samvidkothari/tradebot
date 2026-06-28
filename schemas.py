@@ -84,6 +84,7 @@ REQUIRED: dict[str, list[str]] = {
                            "materialize", "features"],
     "multifactor.json": ["as_of", "model", "weights", "top"],
     "optimizer.json": ["candidates", "scheme", "weights", "cash", "diagnostics"],
+    "risk_engine.json": ["status", "emergency", "reason", "checks", "atr_sizing"],
 }
 
 

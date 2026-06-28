@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Risk Engine{% endblock %}
+{% macro pct(v) -%}{% if v is none %}—{% else %}{{ "%+.2f"|format(v*100) }}%{% endif %}{%- endmacro %}
+{% block content %}
+  <h1>Risk Engine <span class="readonly">MONITORING</span></h1>
+  <p class="sub">Downside-protection monitor for the low-vol book{% if data %} · as of {{ data.as_of }}{% endif %} · flags breaches, places/halts no orders</p>
+
+  {% if error %}
+    <div class="banner">{{ error }} <code>python risk_engine.py</code></div>
+  {% else %}
+    {% if data.status == 'EMERGENCY' %}
+    <div class="banner"><b>🛑 EMERGENCY — {{ data.reason }}.</b> A hard risk limit is breached. This is a MONITORING flag (what a human would act on); nothing is auto-halted and no order is placed.</div>
+    {% elif data.status == 'WARN' %}
+    <div class="notice"><b>⚠ WARN — {{ data.reason }}.</b> A soft limit is breached.</div>
+    {% else %}
+    <div class="notice" style="background:linear-gradient(180deg,rgba(76,195,138,.10),transparent);border-color:rgba(76,195,138,.35);color:#bfe9d2;"><b>✓ OK — {{ data.reason }}.</b></div>
+    {% endif %}
+
+    <section>
+      <h2>Risk limits</h2>
+      <div class="table-wrap">
+        <table>
+          <tr><th>Check</th><th>Type</th><th>Value</th><th>Limit</th><th>Status</th></tr>
+          {% for name, c in data.checks.items() %}
+          <tr>
+            <td>{{ name.replace('_',' ') }}</td>
+            <td>{{ 'hard' if c.hard else 'soft' }}</td>
+            <td>{{ pct(c.value) }}</td>
+            <td>{{ pct(c.limit) }}</td>
+            <td class="{{ 'red' if c.status == 'BREACH' else 'green' if c.status == 'OK' else '' }}">{{ c.status }}</td>
+          </tr>
+          {% endfor %}
+        </table>
+      </div>
+      <p class="sub" style="margin-top:10px;">Hard limits (daily loss, max drawdown) raise <b>Emergency</b>; soft limits (sector, correlation) raise <b>Warn</b>.</p>
+    </section>
+
+    {% if data.atr_sizing %}
+    <section>
+      <h2>ATR position sizing <span style="text-transform:none;letter-spacing:0;color:var(--faint);">· vol-based size per holding (illustration)</span></h2>
+      <div class="table-wrap">
+        <table>
+          <tr><th>Symbol</th><th>ATR(14)</th><th>Units (vol-sized)</th></tr>
+          {% for a in data.atr_sizing %}
+          <tr><td>{{ a.symbol }}</td><td>{{ a.atr if a.atr else '—' }}</td><td>{{ a.units }}</td></tr>
+          {% endfor %}
+        </table>
+      </div>
+    </section>
+    {% endif %}
+
+    <div class="notice">{{ data.note }} The "Emergency stop" is a status flag — in a hypothetical semi-auto live system it would prompt a human to act, never an automatic halt. There is no live trading.</div>
+  {% endif %}
+{% endblock %}
