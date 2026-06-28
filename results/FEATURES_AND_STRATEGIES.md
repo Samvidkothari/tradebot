@@ -24,14 +24,29 @@ composite. Implemented in `factors.py` (`BaseFeature` plug-ins).
 | **vol_compression** | lower better | 10d vol / 60d vol | Compressed volatility precedes expansion |
 | **liquidity** | higher better | 20-day avg traded value (close × volume) | Tradability / capacity |
 
-**Illustrative multi-factor composite:** equal weight on `momentum +
-low_volatility + trend` (see the dashboard **Factors** tab). This is research
-analysis, **not** a tradeable strategy — a multi-factor strategy would need Phase
-2B pre-registration, and the equity strategy-class budget is closed.
+**16 factors total** (expanded from 6), grouped:
+- **Technical:** momentum, trend, **atr** (range vol), **adx** (trend strength),
+  **relative_strength** (vs NIFTY), **relative_volume** (attention).
+- **Statistical:** low_volatility, **volatility** (20d), **zscore** (mean-reversion),
+  **beta** (vs NIFTY), **correlation** (vs NIFTY), **trend_persistence** (efficiency ratio),
+  reversal, vol_compression.
+- **Market:** **sector_strength** (the stock's sector's 63d strength), liquidity.
 
-**Not implemented (no data — refused to fabricate):** Quality (ROE/ROCE), Value
-(P/E, P/B), Earnings/Sales Growth, Operating Margin, Delivery %, Institutional
-Buying. These light up only if a fundamentals feed is added.
+All are cross-sectional `BaseFeature` plug-ins, normalised to [0,1]. ATR/ADX read
+high/low; relative-strength/beta/correlation read the NIFTY benchmark;
+sector_strength reads the sector map — all wired through the data layer.
+
+**Illustrative multi-factor composite:** equal weight on `momentum +
+low_volatility + trend` (see the dashboard **Factors** / **Feature Store** tabs).
+This is research analysis, **not** a tradeable strategy.
+
+**Market breadth** (% of names above their 200-day MA) is a single market-level
+number, not a per-stock score — it belongs to the regime engine, not this
+cross-sectional library.
+
+**Not built (no data — "future" factors, refused to fabricate):** ROE, ROCE,
+EPS Growth, Sales Growth, Quality, Value (P/E, P/B), Operating Margin, Delivery %,
+Institutional Buying. These light up only if a fundamentals feed is added.
 
 ---
 

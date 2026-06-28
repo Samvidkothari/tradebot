@@ -24,6 +24,18 @@ def _ctx(n_days=300, n_syms=5):
     return F.PanelContext(close=cdf, volume=vol), syms
 
 
+def _rich_ctx(n_days=300, n_syms=6):
+    """Full context: close, volume, high, low, benchmark (index), sectors."""
+    ctx, syms = _ctx(n_days, n_syms)
+    close = ctx.close
+    high = close * 1.01
+    low = close * 0.99
+    benchmark = close.mean(axis=1)                      # synthetic index
+    sectors = {s: ("SEC_A" if i % 2 == 0 else "SEC_B") for i, s in enumerate(syms)}
+    return F.PanelContext(close=close, volume=ctx.volume, high=high, low=low,
+                          benchmark=benchmark, sectors=sectors), syms
+
+
 def test_scores_in_unit_interval():
     ctx, _ = _ctx()
     pos = len(ctx.close) - 1
@@ -31,6 +43,23 @@ def test_scores_in_unit_interval():
         s = feat.score(ctx, pos)
         if len(s):
             assert s.min() >= 0.0 and s.max() <= 1.0, feat.name
+
+
+def test_new_factors_compute_and_normalise():
+    ctx, _ = _rich_ctx()
+    pos = len(ctx.close) - 1
+    for name in ("volatility", "zscore", "trend_persistence", "relative_volume",
+                 "atr", "adx", "relative_strength", "beta", "correlation",
+                 "sector_strength"):
+        s = F.FACTORS[name].score(ctx, pos)
+        assert len(s) >= 2, f"{name} produced nothing"
+        assert s.min() >= 0.0 and s.max() <= 1.0, name
+
+
+def test_library_is_richer():
+    assert len(F.FACTORS) >= 16
+    assert {"atr", "adx", "beta", "correlation", "relative_strength",
+            "sector_strength", "zscore", "volatility"} <= set(F.FACTORS)
 
 
 def test_momentum_winner_ranks_top():

@@ -85,8 +85,18 @@ class MarketDataManager:
         return c.index[-1].date().isoformat() if len(c) else None
 
     def context(self) -> F.PanelContext:
+        from universe import UniverseManager      # lazy → avoid import cycle
         close = data_io.close_panel()
-        return F.PanelContext(close=close, volume=data_io.volume_panel(like=close))
+        nifty = data_io.load_nifty().set_index("date")["close"]
+        nifty.index = pd.to_datetime(nifty.index).normalize()
+        return F.PanelContext(
+            close=close,
+            volume=data_io.volume_panel(like=close),
+            high=data_io.field_panel("high", like=close),
+            low=data_io.field_panel("low", like=close),
+            benchmark=nifty.reindex(close.index),
+            sectors=UniverseManager().SECTOR_MAP,
+        )
 
     # versioning -------------------------------------------------------------
     @property

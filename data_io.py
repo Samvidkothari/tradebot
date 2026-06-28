@@ -100,3 +100,14 @@ def volume_panel(symbols=None, data_dir: Path = DATA_DIR, like: pd.DataFrame = N
         {s: df.set_index("date")["volume"] for s, df in frames.items()
          if "volume" in df.columns}).sort_index()
     return vp.reindex(like.index) if (like is not None and not vp.empty) else vp
+
+
+def field_panel(field: str, symbols=None, data_dir: Path = DATA_DIR, like=None):
+    """Generic OHLCV-field panel (e.g. 'high', 'low'); optionally reindexed to `like`."""
+    frames = symbol_frames(data_dir)
+    if symbols is not None:
+        frames = {s: frames[s] for s in symbols if s in frames}
+    p = pd.DataFrame(
+        {s: df.set_index("date")[field] for s, df in frames.items()
+         if field in df.columns}).sort_index()
+    return p.reindex(like.index) if (like is not None and not p.empty) else p
