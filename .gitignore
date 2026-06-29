@@ -14,3 +14,16 @@ options.db
 options.db.*
 condor.db
 condor.db.*
+journal.db
+journal.db.*
+alerts.db
+alerts.db.*
+orders.db
+orders.db.*
+_backup_pre_redesign/
+archive/
+
+# OS / editor / agent cruft
+.DS_Store
+.claude/
+.codex/
