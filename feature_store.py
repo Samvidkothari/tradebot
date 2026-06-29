@@ -34,6 +34,13 @@ RESULTS_DIR = Path(__file__).parent / "results"
 
 CACHE_DIR = Path(__file__).parent / "data" / "_feature_cache"
 
+# Pandas pickles aren't portable across major/minor versions — a file written by
+# one pandas can raise on read under another (e.g. a StringDtype unpickle error).
+# Scope every cache file by the running pandas major.minor so a different version
+# simply misses and recomputes into its own file instead of crashing a research
+# run. Combined with the guarded read in FeatureCache.get(), the cache self-heals.
+_PD_TAG = "pd" + ".".join(pd.__version__.split(".")[:2])
+
 
 def _feature_version(feat) -> str:
     """Definition hash — changes iff the feature's source or declared version does."""
@@ -84,25 +91,36 @@ class FeatureCache:
             self.dir.mkdir(parents=True, exist_ok=True)
 
     def _path(self, factor: str, feature_version: str, pos: int) -> Path:
-        return self.dir / f"{self.data_version}_{feature_version}_{factor}_{pos}.pkl"
+        return self.dir / f"{self.data_version}_{_PD_TAG}_{feature_version}_{factor}_{pos}.pkl"
 
     def get(self, factor: str, feature_version: str, pos: int):
         if not self.enabled:
             return None
         p = self._path(factor, feature_version, pos)
-        return pd.read_pickle(p) if p.exists() else None
+        if not p.exists():
+            return None
+        try:
+            return pd.read_pickle(p)
+        except Exception:
+            # Unreadable (cross-version pickle, partial/corrupt write): treat as a
+            # miss so the caller recomputes and overwrites. A stale cache file must
+            # never crash a research run.
+            return None
 
     def put(self, factor: str, feature_version: str, pos: int, series: pd.Series):
         if self.enabled:
             series.to_pickle(self._path(factor, feature_version, pos))
 
     def invalidate_stale(self) -> int:
-        """Delete cache files from OTHER data versions. Returns count removed."""
+        """Delete cache files from OTHER data versions or OTHER pandas runtimes.
+        Returns count removed. Keeps only the current (data_version, pandas) set,
+        which also sweeps up cross-version pickles that would otherwise linger."""
         if not self.enabled or not self.dir.exists():
             return 0
+        keep = f"{self.data_version}_{_PD_TAG}_"
         removed = 0
         for f in self.dir.glob("*.pkl"):
-            if not f.name.startswith(f"{self.data_version}_"):
+            if not f.name.startswith(keep):
                 f.unlink(); removed += 1
         return removed
 

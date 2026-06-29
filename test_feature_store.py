@@ -2,6 +2,9 @@
 test_feature_store.py — registry, metadata, feature versioning, incremental store.
 """
 
+import tempfile
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 
@@ -57,6 +60,34 @@ def test_store_get_scores_composite():
     assert set(store.scores().columns) == set(F.FACTORS)
     comp = store.composite({"momentum": 1.0, "trend": 1.0})
     assert list(comp) == sorted(comp, reverse=True)
+
+
+def test_cache_path_is_pandas_version_scoped():
+    with tempfile.TemporaryDirectory() as d:
+        cache = FS.FeatureCache("dv1", cache_dir=Path(d))
+        p = cache._path("momentum", "abc123", 5)
+        assert FS._PD_TAG in p.name and p.name.startswith("dv1_")
+
+
+def test_cache_unreadable_pickle_is_a_miss_not_a_crash():
+    with tempfile.TemporaryDirectory() as d:
+        cache = FS.FeatureCache("dv1", cache_dir=Path(d))
+        cache.put("momentum", "abc123", 5, pd.Series([1.0, 2.0, 3.0]))
+        assert cache.get("momentum", "abc123", 5) is not None        # round-trips
+        # A cross-version / corrupt pickle must self-heal to a miss, never raise.
+        cache._path("momentum", "abc123", 5).write_bytes(b"not a pickle")
+        assert cache.get("momentum", "abc123", 5) is None
+
+
+def test_invalidate_drops_other_version_and_runtime_files():
+    with tempfile.TemporaryDirectory() as d:
+        dd = Path(d)
+        cache = FS.FeatureCache("dv1", cache_dir=dd)
+        cache.put("momentum", "abc123", 5, pd.Series([1.0]))          # current keep-set
+        (dd / "dvOLD_pd9.9_abc123_momentum_5.pkl").write_bytes(b"x")  # other data version
+        (dd / "dv1_pd9.9_abc123_momentum_5.pkl").write_bytes(b"x")    # other pandas runtime
+        assert cache.invalidate_stale() == 2
+        assert cache.get("momentum", "abc123", 5) is not None         # current kept
 
 
 def _run_all():
