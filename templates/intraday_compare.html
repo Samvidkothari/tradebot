@@ -16,7 +16,7 @@
     <a href="{{ url_for('intraday_compare') }}"
        style="padding:7px 16px; border-radius:9px; font-size:13px; font-weight:600;
               text-decoration:none; color:var(--text);
-              background:rgba(124,140,255,.14); border:1px solid rgba(124,140,255,.4);">
+              background:rgba(210,169,94,.14); border:1px solid rgba(210,169,94,.4);">
       Compare
     </a>
   </div>
@@ -35,6 +35,10 @@
                     background:{{ s.color }}; margin-right:7px; vertical-align:middle;"></span>{{ s.strategy }}</th>
           {% endfor %}
         </tr>
+        <tr><td>Trend</td>
+          {% for s in summary %}<td class="spark-cell" style="text-align:left;">{{ s.spark_svg|safe }}</td>{% endfor %}</tr>
+        <tr><td>Status</td>
+          {% for s in summary %}<td>{% if s.pill %}<span class="pill {{ s.pill.cls }}">{{ s.pill.label }}</span>{% endif %}</td>{% endfor %}</tr>
         <tr><td>Book Equity</td>
           {% for s in summary %}<td>₹{{ "{:,.0f}".format(s.equity) }}</td>{% endfor %}</tr>
         <tr><td>Cumulative Net P&amp;L</td>

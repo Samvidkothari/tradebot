@@ -23,10 +23,12 @@
     <h2>Active Books</h2>
     <div class="table-wrap">
       <table>
-        <tr><th>Book</th><th>Realised</th><th>Unrealised</th><th>Total</th><th>Note</th></tr>
+        <tr><th>Book</th><th class="spark-cell">Trend</th><th>Status</th><th>Realised</th><th>Unrealised</th><th>Total</th><th>Note</th></tr>
         {% for r in active_rows %}
         <tr>
           <td>{{ r.book }}</td>
+          <td class="spark-cell">{{ r.spark_svg|safe }}</td>
+          <td>{% if r.pill %}<span class="pill {{ r.pill.cls }}">{{ r.pill.label }}</span>{% endif %}</td>
           <td>{{ money(r.realised) }}</td>
           <td>{{ money(r.unrealised) }}</td>
           <td>{{ money(r.total) }}</td>
@@ -35,6 +37,7 @@
         {% endfor %}
         <tr style="font-weight:600;">
           <td>Subtotal</td>
+          <td></td><td></td>
           <td>{{ money(active_total.realised) }}</td>
           <td>{{ money(active_total.unrealised) }}</td>
           <td>{{ money(active_total.total) }}</td>
@@ -49,10 +52,12 @@
     <h2>Retired Books <span style="text-transform:none;letter-spacing:0;color:#e0a3a3;">· frozen evidence, not running</span></h2>
     <div class="table-wrap">
       <table>
-        <tr><th>Book</th><th>Realised</th><th>Unrealised</th><th>Total</th><th>Note</th></tr>
+        <tr><th>Book</th><th class="spark-cell">Trend</th><th>Status</th><th>Realised</th><th>Unrealised</th><th>Total</th><th>Note</th></tr>
         {% for r in retired_rows %}
         <tr>
           <td>{{ r.book }}</td>
+          <td class="spark-cell">{{ r.spark_svg|safe }}</td>
+          <td>{% if r.pill %}<span class="pill {{ r.pill.cls }}">{{ r.pill.label }}</span>{% endif %}</td>
           <td>{{ money(r.realised) }}</td>
           <td>{{ money(r.unrealised) }}</td>
           <td>{{ money(r.total) }}</td>
@@ -61,6 +66,7 @@
         {% endfor %}
         <tr style="font-weight:600;">
           <td>Subtotal</td>
+          <td></td><td></td>
           <td>{{ money(retired_total.realised) }}</td>
           <td>{{ money(retired_total.unrealised) }}</td>
           <td>{{ money(retired_total.total) }}</td>

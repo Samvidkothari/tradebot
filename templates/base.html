@@ -6,7 +6,7 @@
   <title>tradebot — {% block title %}Dashboard{% endblock %}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     /* ─────────────────────────────────────────────────────────────
        tradebot design system  ·  v2
@@ -15,48 +15,51 @@
        empty / banner / readonly / green / red / num / section / h1 / h2.
        ───────────────────────────────────────────────────────────── */
     :root, [data-theme="dark"] {
-      --bg: #080a0f; --bg-2: #0c0f16;
-      --panel: #11141d; --elev: #161a25; --elev-2: #1b2030;
-      --border: #232a39; --border-soft: #1a202c;
+      --bg: #0a0c12; --bg-2: #0e1118;
+      --panel: #12151e; --elev: #171b27; --elev-2: #1c2130;
+      --border: #232a38; --border-soft: #1a2029;
       --text: #eef1f7; --muted: #8b94a6; --faint: #5b6373;
-      --accent: #7c8cff; --accent-ink: #b9c2ff; --accent-2: #d4af6a;
-      --green: #45c98a; --green-dim: rgba(69,201,138,.14);
-      --red: #f0716a; --red-dim: rgba(240,113,106,.14);
+      --accent: #d2a95e; --accent-ink: #e7c98a; --accent-2: #d2a95e;
+      --green: #41cd8b; --green-dim: rgba(65,205,139,.14);
+      --red: #f0655b; --red-dim: rgba(240,101,91,.14);
       --warn: #e7b75f;
       --grid: rgba(255,255,255,.05);
       --shadow: 0 1px 2px rgba(0,0,0,.45), 0 10px 30px rgba(0,0,0,.30);
       --shadow-sm: 0 1px 2px rgba(0,0,0,.35);
       --radius: 16px; --radius-sm: 11px;
-      --glow: radial-gradient(900px 480px at 10% -10%, rgba(124,140,255,.13), transparent 60%),
-              radial-gradient(820px 520px at 102% -4%, rgba(212,175,106,.07), transparent 55%);
+      --glow: radial-gradient(900px 480px at 10% -10%, rgba(210,169,94,.10), transparent 60%),
+              radial-gradient(820px 520px at 102% -4%, rgba(65,205,139,.05), transparent 55%);
     }
     [data-theme="light"] {
       --bg: #f4f6fb; --bg-2: #eef1f7;
       --panel: #ffffff; --elev: #ffffff; --elev-2: #f7f9fd;
       --border: #e2e7f0; --border-soft: #eaeef5;
       --text: #131722; --muted: #5d6679; --faint: #8b94a6;
-      --accent: #4f5dff; --accent-ink: #3a47d6; --accent-2: #b07d2a;
+      --accent: #b07d2a; --accent-ink: #936b27; --accent-2: #b07d2a;
       --green: #12a86a; --green-dim: rgba(18,168,106,.12);
       --red: #e0483f; --red-dim: rgba(224,72,63,.10);
       --warn: #b8801f;
       --grid: rgba(0,0,0,.06);
       --shadow: 0 1px 2px rgba(20,30,60,.06), 0 12px 32px rgba(20,30,60,.10);
       --shadow-sm: 0 1px 2px rgba(20,30,60,.06);
-      --glow: radial-gradient(900px 480px at 10% -10%, rgba(79,93,255,.10), transparent 60%),
-              radial-gradient(820px 520px at 102% -4%, rgba(176,125,42,.06), transparent 55%);
+      --glow: radial-gradient(900px 480px at 10% -10%, rgba(176,125,42,.10), transparent 60%),
+              radial-gradient(820px 520px at 102% -4%, rgba(18,168,106,.06), transparent 55%);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
     body {
       background: var(--bg); color: var(--text);
-      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       font-size: 15px; line-height: 1.55; letter-spacing: -0.006em;
       display: flex; min-height: 100vh;
       background-image: var(--glow); background-attachment: fixed;
       transition: background-color .3s ease, color .3s ease;
     }
-    .num, .mono { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+    .num, .mono, .card .value { font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+    table tbody td { font-family: "JetBrains Mono", ui-monospace, monospace; }
+    table tbody td:first-child { font-family: "Space Grotesk", sans-serif; }
     a { color: var(--accent-ink); }
 
     /* ── Sidebar ─────────────────────────────────────────────── */
@@ -73,15 +76,16 @@
     }
     .brand .mark {
       width: 34px; height: 34px; border-radius: 10px; flex: none;
-      background: linear-gradient(145deg, var(--accent), #5566e0);
-      display: grid; place-items: center; color: #fff;
-      box-shadow: 0 4px 14px rgba(124,140,255,.4); font-weight: 700;
+      background: linear-gradient(145deg, var(--accent), #b07d2a);
+      display: grid; place-items: center; color: #1a1305;
+      box-shadow: 0 4px 14px rgba(210,169,94,.4); font-weight: 700;
+      font-family: "Fraunces", Georgia, serif;
     }
     .brand .wm { font-family: "Fraunces", Georgia, serif; font-size: 21px; font-weight: 600;
                  letter-spacing: -0.02em; line-height: 1; }
     .brand .wm span { color: var(--accent-2); }
     .brand .wm small {
-      display: block; font-family: "Inter", sans-serif; color: var(--faint);
+      display: block; font-family: "Space Grotesk", sans-serif; color: var(--faint);
       font-size: 9.5px; font-weight: 600; letter-spacing: .15em;
       text-transform: uppercase; margin-top: 5px;
     }
@@ -102,8 +106,8 @@
       width: 3px; height: 0; border-radius: 0 3px 3px 0;
       background: var(--accent); transition: height .2s ease;
     }
-    nav a:hover { color: var(--text); background: rgba(124,140,255,.07); }
-    nav a.active { color: var(--text); background: rgba(124,140,255,.13); }
+    nav a:hover { color: var(--text); background: rgba(210,169,94,.07); }
+    nav a.active { color: var(--text); background: rgba(210,169,94,.13); }
     nav a.active svg { opacity: 1; color: var(--accent-ink); }
     nav a.active::before { height: 22px; }
     .side-foot { margin-top: auto; padding: 14px 22px 0; border-top: 1px solid var(--border-soft);
@@ -140,7 +144,7 @@
     .live-dot { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; color: var(--muted); }
     .live-dot i { width: 7px; height: 7px; border-radius: 50%; background: var(--green);
                   box-shadow: 0 0 0 0 var(--green); animation: pulse 2s infinite; }
-    @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(69,201,138,.5);} 70%{box-shadow:0 0 0 6px rgba(69,201,138,0);} 100%{box-shadow:0 0 0 0 rgba(69,201,138,0);} }
+    @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(65,205,139,.5);} 70%{box-shadow:0 0 0 6px rgba(65,205,139,0);} 100%{box-shadow:0 0 0 0 rgba(65,205,139,0);} }
     .page { padding: 34px 52px 0; max-width: 1280px; }
 
     /* buttons */
@@ -152,8 +156,8 @@
     }
     .btn svg { width: 15px; height: 15px; }
     .btn:hover { border-color: var(--accent); transform: translateY(-1px); }
-    .btn.primary { background: linear-gradient(145deg, var(--accent), #5566e0); border-color: transparent;
-                   color: #fff; box-shadow: 0 4px 14px rgba(124,140,255,.32); }
+    .btn.primary { background: linear-gradient(145deg, var(--accent), #b07d2a); border-color: transparent;
+                   color: #1a1305; box-shadow: 0 4px 14px rgba(210,169,94,.32); }
     .btn.primary:hover { filter: brightness(1.06); }
     .btn.ghost { background: transparent; }
     .btn.danger { color: var(--red); border-color: var(--red); }
@@ -178,7 +182,7 @@
       padding: 18px 20px; box-shadow: var(--shadow);
       transition: transform .2s ease, border-color .2s ease;
     }
-    .cards .card:hover { transform: translateY(-2px); border-color: rgba(124,140,255,.4); }
+    .cards .card:hover { transform: translateY(-2px); border-color: rgba(210,169,94,.4); }
     .card .label {
       color: var(--muted); font-size: 11px; font-weight: 600;
       text-transform: uppercase; letter-spacing: .09em; display: flex; align-items: center; gap: 6px;
@@ -197,12 +201,15 @@
     .pill.up { background: var(--green-dim); color: var(--green); }
     .pill.down { background: var(--red-dim); color: var(--red); }
     .pill.flat { background: rgba(255,255,255,.06); color: var(--muted); }
+    .pill.warnpill { background: rgba(231,183,95,.14); color: var(--warn); }
+    .spark-cell { width: 100px; }
+    .spark-cell svg { width: 92px; height: 24px; }
     .pill { background: rgba(255,255,255,.06); color: var(--muted); }
     .more { float: right; font-size: 12px; font-weight: 500; color: var(--muted); text-decoration: none; }
     .more:hover { color: var(--accent); }
     .tags { display: flex; flex-wrap: wrap; gap: 6px; }
     .tag { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 9px;
-           border-radius: 6px; background: rgba(124,140,255,.14); color: var(--accent-ink); }
+           border-radius: 6px; background: rgba(210,169,94,.14); color: var(--accent-ink); }
 
     /* ── Panels ──────────────────────────────────────────────── */
     .panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
@@ -228,7 +235,7 @@
     td { border-top: 1px solid var(--grid); }
     tbody tr:first-child td, tr:first-child td { border-top: none; }
     table tr { transition: background .12s ease; }
-    table tbody tr:hover td, table tr:hover td { background: rgba(124,140,255,.06); }
+    table tbody tr:hover td, table tr:hover td { background: rgba(210,169,94,.06); }
     .green { color: var(--green); } .red { color: var(--red); }
 
     /* ── Forms ───────────────────────────────────────────────── */
@@ -240,7 +247,7 @@
       border: 1px solid var(--border); border-radius: 10px; transition: border-color .15s, box-shadow .15s;
     }
     input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent);
-      box-shadow: 0 0 0 3px rgba(124,140,255,.18); }
+      box-shadow: 0 0 0 3px rgba(210,169,94,.18); }
     textarea { resize: vertical; min-height: 84px; }
     .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px,1fr)); gap: 16px; }
 
@@ -265,7 +272,7 @@
       letter-spacing: .1em; font-weight: 700; margin-bottom: 14px;
     }
     .readonly {
-      display: inline-flex; align-items: center; gap: 5px; font-family: "Inter", sans-serif;
+      display: inline-flex; align-items: center; gap: 5px; font-family: "Space Grotesk", sans-serif;
       font-size: 10.5px; font-weight: 700; letter-spacing: .07em; color: var(--accent-2);
       border: 1px solid rgba(212,175,106,.45); border-radius: 20px;
       padding: 2px 10px; margin-left: 12px; vertical-align: middle; text-transform: uppercase;
@@ -274,9 +281,9 @@
            border-radius: 10px; padding: 3px; gap: 3px; }
     .seg a { padding: 6px 13px; border-radius: 7px; font-size: 13px; font-weight: 500;
              color: var(--muted); text-decoration: none; transition: all .14s; }
-    .seg a.active { background: rgba(124,140,255,.16); color: var(--text); }
+    .seg a.active { background: rgba(210,169,94,.16); color: var(--text); }
     .seg a:hover:not(.active) { color: var(--text); }
-    ::selection { background: rgba(124,140,255,.3); }
+    ::selection { background: rgba(210,169,94,.3); }
     ::-webkit-scrollbar { width: 11px; height: 11px; }
     ::-webkit-scrollbar-thumb { background: var(--elev-2); border: 3px solid var(--bg); border-radius: 10px; }
     ::-webkit-scrollbar-thumb:hover { background: #2b333f; }
@@ -383,7 +390,8 @@
       </button>
       <div class="crumb">tradebot&nbsp; / &nbsp;<b>{% block crumb %}{{ active|capitalize if active else 'Dashboard' }}{% endblock %}</b></div>
       <div class="topbar-spacer"></div>
-      <div class="live-dot"><i></i> read-only · local</div>
+      <div class="live-dot"><i></i> NSE&nbsp;·&nbsp;open</div>
+      <span class="readonly" style="margin-left:6px;">paper · read-only</span>
     </div>
     <div class="page">
       {% block content %}{% endblock %}

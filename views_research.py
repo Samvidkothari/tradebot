@@ -16,7 +16,8 @@ from flask import abort, render_template
 
 from digest import build_digest
 from web_common import (BASE_DIR, RESULTS_DIR, INTRADAY_DB, STARTING_CAPITAL,
-                        login_required, paper_db, live_price, warm_prices)
+                        login_required, paper_db, live_price, warm_prices,
+                        BOOK_STATUS, status_for, sparkline_svg, ro_db)
 import sqlite3
 
 
@@ -97,6 +98,7 @@ def pnl():
     rows += _pnl_intraday()
     for r in rows:
         r["total"] = r["realised"] + r["unrealised"]
+        _enrich_book(r)
     active = [r for r in rows if r["status"] == "active"]
     retired = [r for r in rows if r["status"] == "retired"]
     return render_template(
@@ -232,6 +234,142 @@ def research_assistant_view():
                            data=data, groups=groups, error=error)
 
 
+# ── Portfolio Overview hero (combined paper books, dated series) ───────────────
+
+def _ro(db_name):
+    return ro_db(BASE_DIR / db_name)
+
+
+def _cumulative(rows, key):
+    cum, out = 0.0, []
+    for r in rows:
+        cum += (r[key] or 0.0)
+        out.append(round(cum, 2))
+    return out
+
+
+def _lowvol_spark():
+    conn = paper_db()
+    if conn is None:
+        return []
+    rows = conn.execute(
+        "SELECT COALESCE(SUM(realised_pnl),0) v FROM fills WHERE side='SELL' "
+        "GROUP BY run_date ORDER BY run_date").fetchall()
+    conn.close()
+    return _cumulative(rows, "v")
+
+
+def _intraday_spark(strategy):
+    c = _ro("intraday.db")
+    if c is None:
+        return []
+    rows = c.execute("SELECT net_pnl FROM days WHERE strategy=? ORDER BY trade_date",
+                     (strategy,)).fetchall()
+    c.close()
+    return _cumulative(rows, "net_pnl")
+
+
+def _option_spark(db_name):
+    c = _ro(db_name)
+    if c is None:
+        return []
+    rows = c.execute("SELECT open_pnl FROM marks ORDER BY mark_date").fetchall()
+    c.close()
+    return [r["open_pnl"] or 0.0 for r in rows]
+
+
+def _combined_curve():
+    """Combined cumulative realised P&L by date across the dated books
+    (low-vol SELL realised + every intraday strategy's daily net)."""
+    inc = {}
+    conn = paper_db()
+    if conn is not None:
+        for r in conn.execute(
+            "SELECT run_date d, COALESCE(SUM(realised_pnl),0) v FROM fills "
+            "WHERE side='SELL' GROUP BY run_date"):
+            inc[r["d"]] = inc.get(r["d"], 0.0) + (r["v"] or 0.0)
+        conn.close()
+    c = _ro("intraday.db")
+    if c is not None:
+        for r in c.execute(
+            "SELECT trade_date d, COALESCE(SUM(net_pnl),0) v FROM days GROUP BY trade_date"):
+            inc[r["d"]] = inc.get(r["d"], 0.0) + (r["v"] or 0.0)
+        c.close()
+    # Settled options/condor cycles count as realised P&L on their close date.
+    for db in ("options.db", "condor.db"):
+        c = _ro(db)
+        if c is None:
+            continue
+        for r in c.execute(
+            "SELECT close_date d, COALESCE(SUM(settle_pnl),0) v FROM cycles "
+            "WHERE status='closed' AND close_date IS NOT NULL GROUP BY close_date"):
+            if r["d"]:
+                inc[r["d"]] = inc.get(r["d"], 0.0) + (r["v"] or 0.0)
+        c.close()
+    if not inc:
+        return None
+    dates = sorted(inc)
+    cum, vals = 0.0, []
+    for d in dates:
+        cum += inc[d]
+        vals.append(round(cum, 2))
+    return {"labels": dates, "values": vals}
+
+
+def _enrich_book(r):
+    """Attach a spark series, status key + pill, and spark SVG to a P&L row,
+    choosing the right series source from the book's name. Shared by the
+    overview hero and the consolidated P&L page so they stay consistent."""
+    name = r["book"]
+    low = name.lower()
+    if low.startswith("intraday "):
+        r["spark"] = _intraday_spark(name.replace("Intraday ", ""))
+    elif "strangle" in low:
+        r["spark"] = _option_spark("options.db")
+    elif "condor" in low:
+        r["spark"] = _option_spark("condor.db")
+    elif "low-vol" in low or "lowvol" in low:
+        r["spark"] = _lowvol_spark()
+    else:
+        r["spark"] = []
+    if "total" not in r:
+        r["total"] = r["realised"] + r["unrealised"]
+    r["status_key"] = status_for(None, name)
+    r["pill"] = BOOK_STATUS.get(r["status_key"], BOOK_STATUS["paper"])
+    r["spark_svg"] = sparkline_svg(r["spark"])
+    return r
+
+
+def _book_rows():
+    """Every paper book with realised/unrealised, a UI status, and a spark series."""
+    rows = []
+    lv = _pnl_lowvol()
+    if lv:
+        rows.append(dict(lv))
+    for db, label in (("options.db", "Options strangle"), ("condor.db", "Options condor")):
+        ob = _pnl_option_book(db, label, "mark-to-model")
+        if ob:
+            rows.append(dict(ob))
+    rows += [dict(r) for r in _pnl_intraday()]
+    return [_enrich_book(r) for r in rows]
+
+
+def overview_hero():
+    rows = _book_rows()
+    curve = _combined_curve()
+    realised = sum(r["realised"] for r in rows)
+    unrealised = sum(r["unrealised"] for r in rows)
+    best = max(rows, key=lambda r: r["total"]) if rows else None
+    worst = min(rows, key=lambda r: r["total"]) if rows else None
+    return {
+        "rows": rows, "curve": curve,
+        "realised": realised, "unrealised": unrealised, "total": realised + unrealised,
+        "n_books": len(rows),
+        "n_active": sum(1 for r in rows if r["status"] == "active"),
+        "best": best, "worst": worst,
+    }
+
+
 # ── Overview: single monitoring page assembled from the research JSONs ─────────
 
 def _overview_data():
@@ -267,6 +405,8 @@ def _overview_data():
             "label": s.get("label", s.get("name")), "kind": s.get("kind"),
             "cagr": f.get("cagr"), "max_drawdown": f.get("max_drawdown"),
             "sharpe": f.get("sharpe"),
+            "pill": BOOK_STATUS.get(status_for(s.get("kind"), s.get("label") or s.get("name")),
+                                    BOOK_STATUS["paper"]),
             "fit": (None if s.get("kind") == "options"
                     else "in" if rc.get("compatible") else "out")})
 
@@ -303,7 +443,8 @@ def _overview_data():
 
 
 def monitor():
-    return render_template("monitor.html", active="monitor", ov=_overview_data())
+    return render_template("monitor.html", active="monitor",
+                           ov=_overview_data(), hero=overview_hero())
 
 
 # ── Backtest reports (results/*.md) ───────────────────────────────────────────

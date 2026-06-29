@@ -9,8 +9,14 @@
 {% block content %}
 <div class="page-head">
   <div>
-    <h1>Performance Analytics</h1>
+    <h1>Performance Analytics{% if a and a.status %} <span class="pill {{ a.status.cls }}" style="margin-left:10px;vertical-align:middle;">{{ a.status.label }}</span>{% endif %}</h1>
     <p class="sub">Risk &amp; return metrics computed from the local paper ledgers — read-only.</p>
+    {% if a and a.equity_spark %}
+    <div style="margin-top:10px;display:flex;align-items:center;gap:10px;">
+      {{ a.equity_spark|safe }}
+      <span class="sub" style="margin:0;">equity trend · {{ selected }}</span>
+    </div>
+    {% endif %}
   </div>
   {% if a %}
   <div class="btn-row">

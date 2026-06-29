@@ -5,6 +5,54 @@
   <h1>Monitor <span class="readonly">RESEARCH</span></h1>
   <p class="sub">Single place to monitor everything — assembled from the daily research run{% if ov.generated %} · data {{ ov.generated }}{% endif %} · read-only</p>
 
+  {# ── Portfolio Overview hero — combined paper books, live read of the ledgers ── #}
+  {% if hero %}
+  <section>
+    <h2>Portfolio Overview</h2>
+    <div class="cards">
+      <div class="card"><div class="label">Total P&amp;L</div>
+        <div class="value {{ 'green' if hero.total >= 0 else 'red' }}">{{ "+" if hero.total >= 0 }}₹{{ "{:,.0f}".format(hero.total) }}</div>
+        <div class="delta">realised + unrealised</div></div>
+      <div class="card"><div class="label">Realised</div>
+        <div class="value {{ 'green' if hero.realised >= 0 else 'red' }}">{{ "+" if hero.realised >= 0 }}₹{{ "{:,.0f}".format(hero.realised) }}</div></div>
+      <div class="card"><div class="label">Unrealised</div>
+        <div class="value {{ 'green' if hero.unrealised >= 0 else 'red' }}">{{ "+" if hero.unrealised >= 0 }}₹{{ "{:,.0f}".format(hero.unrealised) }}</div></div>
+      <div class="card"><div class="label">Paper books</div>
+        <div class="value">{{ hero.n_books }}<small> · {{ hero.n_active }} active</small></div>
+        {% if hero.best %}<div class="delta">best: {{ hero.best.book }}</div>{% endif %}</div>
+    </div>
+
+    {% if hero.curve %}
+    <div class="panel">
+      <div class="panel-head"><h2 style="margin:0;">Combined Cumulative P&amp;L</h2>
+        <span class="sub" style="margin:0;">all paper books · realised, by date</span></div>
+      <div style="position:relative;height:230px;"><canvas id="heroChart"></canvas></div>
+    </div>
+    {% endif %}
+
+    {% if hero.rows %}
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Book</th><th class="spark-cell">Trend</th><th>Status</th>
+          <th>Realised</th><th>Unrealised</th><th>Total</th></tr></thead>
+        <tbody>
+        {% for r in hero.rows %}
+          <tr>
+            <td>{{ r.book }}<div class="sub" style="margin:0;font-size:11px;">{{ r.note }}</div></td>
+            <td class="spark-cell">{{ r.spark_svg|safe }}</td>
+            <td>{% if r.pill %}<span class="pill {{ r.pill.cls }}">{{ r.pill.label }}</span>{% endif %}</td>
+            <td class="{{ 'green' if r.realised >= 0 else 'red' }}">{{ "+" if r.realised >= 0 }}₹{{ "{:,.0f}".format(r.realised) }}</td>
+            <td class="{{ 'green' if r.unrealised >= 0 else 'red' }}">{{ "+" if r.unrealised >= 0 }}₹{{ "{:,.0f}".format(r.unrealised) }}</td>
+            <td class="{{ 'green' if r.total >= 0 else 'red' }}">{{ "+" if r.total >= 0 }}₹{{ "{:,.0f}".format(r.total) }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </section>
+  {% endif %}
+
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start;">
 
     {# 1. Portfolio Performance #}
@@ -92,9 +140,10 @@
       <h2>Strategy Comparison <a class="more" href="{{ url_for('tearsheet') }}">detail →</a></h2>
       {% if ov.comparison %}
         <div class="table-wrap"><table>
-          <tr><th>Strategy</th><th>CAGR</th><th>Max DD</th><th>Sharpe</th><th>Regime</th></tr>
+          <tr><th>Strategy</th><th>Status</th><th>CAGR</th><th>Max DD</th><th>Sharpe</th><th>Regime</th></tr>
           {% for s in ov.comparison %}
           <tr><td>{{ s.label }}</td>
+              <td>{% if s.pill %}<span class="pill {{ s.pill.cls }}">{{ s.pill.label }}</span>{% endif %}</td>
               <td>{{ pct(s.cagr, True) }}</td>
               <td class="{{ 'red' if s.max_drawdown is not none }}">{{ pct(s.max_drawdown) }}</td>
               <td>{{ "%.2f"|format(s.sharpe) if s.sharpe is not none else '—' }}</td>
@@ -142,4 +191,35 @@
     <code>results/*.json</code> — this is a consolidated <b>monitor</b>, not new analytics, and it places no orders.
     Click any panel header for the full tab.
   </div>
+{% endblock %}
+
+{% block scripts %}
+{% if hero and hero.curve %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+  (function () {
+    var css = function (v) { return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); };
+    function build() {
+      var gold = css('--accent') || '#d2a95e', grid = css('--grid') || 'rgba(255,255,255,.06)', muted = css('--muted') || '#8b94a6';
+      var el = document.getElementById('heroChart'); if (!el) return;
+      var ctx = el.getContext('2d');
+      var g = ctx.createLinearGradient(0, 0, 0, 230); g.addColorStop(0, gold + '55'); g.addColorStop(1, gold + '00');
+      if (window._hero) window._hero.destroy();
+      window._hero = new Chart(ctx, {
+        type: 'line',
+        data: { labels: {{ hero.curve['labels'] | tojson }},
+          datasets: [{ data: {{ hero.curve['values'] | tojson }}, borderColor: gold, backgroundColor: g,
+            fill: true, borderWidth: 2, pointRadius: 0, tension: .25 }] },
+        options: { responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false },
+            tooltip: { callbacks: { label: function (c) { return '₹' + Math.round(c.parsed.y).toLocaleString(); } } } },
+          scales: { x: { grid: { color: grid }, ticks: { color: muted, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 } },
+            y: { grid: { color: grid }, ticks: { color: muted, callback: function (v) { return '₹' + (v / 1000).toFixed(0) + 'k'; } } } } }
+      });
+    }
+    build();
+    window.addEventListener('tb-theme', build);
+  })();
+</script>
+{% endif %}
 {% endblock %}

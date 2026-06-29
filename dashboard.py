@@ -18,6 +18,7 @@ only, so it is reachable just from this machine.
 """
 
 import csv
+import hmac
 import math
 import os
 import sqlite3
@@ -34,10 +35,18 @@ load_dotenv()
 # used by views_research).
 from web_common import (BASE_DIR, DATA_DIR, INTRADAY_DB, OPTIONS_DB,
                         STARTING_CAPITAL, login_required,
-                        last_close, live_price, warm_prices, paper_db)
+                        last_close, live_price, warm_prices, paper_db,
+                        BOOK_STATUS, status_for, sparkline_svg)
 
 app = Flask(__name__)
-app.secret_key = os.urandom(24)  # sessions reset on restart — that's fine
+# Stable secret from .env (DASHBOARD_SECRET_KEY) so sessions survive restarts;
+# falls back to a per-process random key if it isn't set (you'll just re-login).
+app.secret_key = os.getenv("DASHBOARD_SECRET_KEY") or os.urandom(24)
+
+# Hot-reload templates so edits show on refresh without a full server restart.
+# (Prevents the "new template + stale Python" 500s seen during development.)
+app.config["TEMPLATES_AUTO_RELOAD"] = True
+app.jinja_env.auto_reload = True
 
 # Extended features (analytics, journal, alerts, simulated order ticket, exports).
 # All writes are confined to isolated feature DBs; nothing places a live order.
@@ -60,7 +69,8 @@ def login():
     if request.method == "POST":
         if not configured:
             error = "No password set. Add DASHBOARD_PASSWORD=... to .env and restart."
-        elif request.form.get("password") == os.getenv("DASHBOARD_PASSWORD"):
+        elif hmac.compare_digest(request.form.get("password", ""),
+                                 os.getenv("DASHBOARD_PASSWORD", "")):
             session["authed"] = True
             return redirect(url_for("home"))
         else:
@@ -297,7 +307,7 @@ def intraday_compare():
             error="No strategy books yet — run intraday_sim.py.",
             summary=[], rows=[], chart=None, strategies=[])
 
-    palette = ["#7c8cff", "#caa45d", "#4cc38a", "#f0716a"]
+    palette = ["#d2a95e", "#41cd8b", "#7aa2f7", "#f0655b"]
 
     # Per-strategy headline metrics.
     summary = []
@@ -334,6 +344,12 @@ def intraday_compare():
             vals.append(round(cum, 2))
         series.append({"name": s, "data": vals, "color": palette[i % len(palette)]})
     chart = {"labels": all_dates, "series": series} if all_dates else None
+
+    # Attach an inline sparkline + status pill to each strategy's summary row.
+    spark_by = {ser["name"]: ser["data"] for ser in series}
+    for so in summary:
+        so["spark_svg"] = sparkline_svg(spark_by.get(so["strategy"], []), color=so["color"])
+        so["pill"] = BOOK_STATUS.get(status_for(None, so["strategy"]), BOOK_STATUS["paper"])
 
     # Per-day table (newest first): each strategy's net for that date.
     rows = [{"date": d, "nets": {s: daynet[s].get(d) for s in strategies}}
@@ -527,5 +543,21 @@ def _condor_summary():
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
+    # Keep the price cache warm in the background so pages don't wait on yfinance.
+    # Watches the low-vol book's current holdings; started only here (when actually
+    # serving), never during tests / smoke / scheduled imports.
+    from web_common import start_price_refresher
+
+    def _watched_symbols():
+        c = paper_db()
+        if c is None:
+            return []
+        try:
+            return [r["symbol"] for r in c.execute("SELECT symbol FROM positions")]
+        finally:
+            c.close()
+
+    start_price_refresher(_watched_symbols, interval=180)
+
     print("\n  tradebot dashboard →  http://127.0.0.1:5050\n")
     app.run(host="127.0.0.1", port=5050, debug=False)
