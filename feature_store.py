@@ -148,9 +148,19 @@ class FeatureStore:
         return self._ctx
 
     def _pos(self, as_of) -> int:
-        idx = self._context().close.index
+        ctx = self._context()
+        idx = ctx.close.index
         if as_of is None:
-            return len(idx) - 1
+            # "Latest" = the last bar that actually has prices. A trailing all-NaN
+            # or near-empty bar (an incomplete latest session, or a trading-calendar
+            # reindex that runs ahead of the data) must not be selected, or every
+            # point-in-time factor that reads the last bar silently empties — which
+            # cascades to an empty ranking and an empty optimisation downstream.
+            priced = ctx.close.notna().sum(axis=1).to_numpy()
+            pos = len(idx) - 1
+            while pos > 0 and priced[pos] < 2:
+                pos -= 1
+            return pos
         loc = idx.get_indexer([pd.Timestamp(as_of)], method="ffill")[0]
         return max(int(loc), 0)
 

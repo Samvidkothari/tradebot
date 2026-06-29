@@ -71,6 +71,18 @@ def test_config_loads():
     assert 0 < c.max_position <= 1 and 0 <= c.cash_buffer < 1
 
 
+def test_empty_universe_degrades_to_valid_all_cash():
+    # No candidates must NOT crash the pipeline: optimize() returns a schema-valid
+    # all-cash payload (regression for the 'no symbols' → schema-crash path).
+    import schemas
+    rets = pd.DataFrame(index=pd.RangeIndex(10))          # rows, zero columns
+    res = PortfolioOptimizer(rets, {}, Constraints.from_config()).optimize()
+    assert res["weights"] == {} and res["cash"] == 1.0
+    assert res["diagnostics"]["n_positions"] == 0
+    payload = {"generated": "2026-06-29", "as_of": "2026-06-26", "candidates": [], **res}
+    schemas.validate("optimizer.json", payload)           # must not raise
+
+
 def _run_all():
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for fn in fns:

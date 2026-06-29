@@ -90,6 +90,20 @@ def test_invalidate_drops_other_version_and_runtime_files():
         assert cache.get("momentum", "abc123", 5) is not None         # current kept
 
 
+def test_pos_skips_trailing_all_nan_bar():
+    # A trailing all-NaN bar (incomplete latest session) must not be chosen as
+    # "latest", or every point-in-time factor empties. Regression for the
+    # ranker-returns-nothing → optimizer-crash cascade.
+    mgr = _FakeManager(n=300)
+    nan_row = pd.DataFrame([[np.nan] * mgr._c.shape[1]],
+                           index=[mgr._c.index[-1] + pd.Timedelta(days=1)],
+                           columns=mgr._c.columns)
+    mgr._c = pd.concat([mgr._c, nan_row])
+    store = FS.FeatureStore(mgr)
+    n = len(store._context().close.index)
+    assert store._pos(None) == n - 2          # the last *priced* bar, not the NaN one
+
+
 def _run_all():
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for fn in fns:

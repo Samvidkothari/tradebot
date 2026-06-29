@@ -121,7 +121,24 @@ class PortfolioOptimizer:
     # ── full pipeline ─────────────────────────────────────────────────────────
     def optimize(self) -> dict:
         if not self.symbols:
-            return {"error": "no symbols"}
+            # No candidates → degrade to a valid all-cash allocation rather than a
+            # schema-invalid {"error": ...} payload that would crash the pipeline.
+            return {
+                "scheme": self.c.scheme,
+                "weights": {}, "sector_of": {}, "sectors": {},
+                "cash": 1.0,
+                "diagnostics": {
+                    "portfolio_vol": 0.0, "target_vol": self.c.target_vol,
+                    "max_position": 0.0, "max_sector": 0.0,
+                    "effective_n": 0.0, "n_positions": 0,
+                },
+                "constraints": {
+                    "max_position": self.c.max_position, "sector_limit": self.c.sector_limit,
+                    "correlation_limit": self.c.correlation_limit,
+                    "cash_buffer": self.c.cash_buffer, "target_vol": self.c.target_vol,
+                },
+                "note": "no candidates — empty (all-cash) allocation",
+            }
         w = self._base()
         # iterate the position/sector projections so both bind together
         for _ in range(5):
