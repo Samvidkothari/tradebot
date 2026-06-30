@@ -85,3 +85,13 @@ def test_start_spawns_records_and_completes(iso, monkeypatch):
 
 def test_stop_unknown_job_is_falsey(iso):
     assert controls.stop("nope") is False
+
+
+def test_cli_is_enabled_exit_codes():
+    # The scheduled bot calls `python controls.py is-enabled <key>` to skip a
+    # book switched off in the dashboard. Defaults: strategies on, momentum off.
+    import sys
+    base = [sys.executable, "controls.py"]
+    assert subprocess.run(base + ["is-enabled", "strangle"]).returncode == 0
+    assert subprocess.run(base + ["is-enabled", "momentum"]).returncode == 1
+    assert subprocess.run(base + ["bogus-cmd"]).returncode == 2   # usage

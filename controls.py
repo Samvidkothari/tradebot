@@ -283,3 +283,14 @@ def register_controls(app, guard):
     ]
     for path, endpoint, fn, methods in rules:
         app.add_url_rule(path, endpoint, guard(fn), methods=methods)
+
+
+# ── CLI: let the scheduled bot honour the enable/disable flags ────────────────
+# Usage:  python controls.py is-enabled <key>   → exit 0 if enabled, 1 if disabled
+# So run_paper_bot.sh can skip a book the user switched off in the dashboard.
+if __name__ == "__main__":
+    import sys
+    if len(sys.argv) >= 3 and sys.argv[1] == "is-enabled":
+        sys.exit(0 if is_enabled(sys.argv[2]) else 1)
+    print("usage: python controls.py is-enabled <strategy-key>", file=sys.stderr)
+    sys.exit(2)

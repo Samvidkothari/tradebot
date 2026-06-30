@@ -18,13 +18,24 @@
 cd /Users/samvid/projects/tradebot || exit 1
 PY=".venv/bin/python"
 
+# A book runs only if it's enabled in the dashboard (Strategies → toggle, stored
+# in controls.db). Unknown/unset keys default to enabled, so behaviour is
+# unchanged unless you switch a book off. A flag-check error never blocks a run.
+is_on(){ "$PY" controls.py is-enabled "$1" 2>/dev/null; rc=$?; [ "$rc" -ne 1 ]; }
+
 echo "================ paper-bot run $(date '+%Y-%m-%d %H:%M:%S %Z') ================"
 echo "----- fetch fresh prices (yfinance; non-fatal on failure) -----"
 "$PY" fetch_data.py --refresh || echo "  (fetch failed — continuing on cached data)"
-echo "----- options (NIFTY short strangle) -----"
-"$PY" options_sim.py
-echo "----- options (NIFTY iron condor, defined-risk) -----"
-"$PY" condor_sim.py
+if is_on strangle; then
+  echo "----- options (NIFTY short strangle) -----"; "$PY" options_sim.py
+else
+  echo "----- options (NIFTY short strangle) — DISABLED in dashboard, skipped -----"
+fi
+if is_on condor; then
+  echo "----- options (NIFTY iron condor, defined-risk) -----"; "$PY" condor_sim.py
+else
+  echo "----- options (NIFTY iron condor, defined-risk) — DISABLED in dashboard, skipped -----"
+fi
 echo "----- research automation pipeline (validate → features → factors → backtests → walk-forward · Monte Carlo → reports → summary → archive) -----"
 "$PY" research_pipeline.py --no-fetch   # data already fetched above; runs the full 10-stage chain + writes results/pipeline_run.json, research_summary.md, results/archive/<date>/
 echo "----- daily digest -----"
