@@ -20,6 +20,9 @@ alerts.db
 alerts.db.*
 orders.db
 orders.db.*
+controls.db
+controls.db.*
+jobs/
 _backup_pre_redesign/
 archive/
 

@@ -14,6 +14,7 @@ import json
 
 from flask import abort, render_template
 
+import controls
 from digest import build_digest
 from web_common import (BASE_DIR, RESULTS_DIR, INTRADAY_DB, STARTING_CAPITAL,
                         login_required, paper_db, live_price, warm_prices,
@@ -689,12 +690,32 @@ def command_trades():
                            banner=_banner_ctx())
 
 
+def _strategy_key(item):
+    """Map a tearsheet-comparison row to its control allow-list key (or None)."""
+    label = (item.get("label") or "").lower()
+    if "low-vol" in label or "lowvol" in label:
+        return "lowvol"
+    if "momentum" in label:
+        return "momentum"
+    if "strangle" in label:
+        return "strangle"
+    if "condor" in label:
+        return "condor"
+    return None
+
+
 def command_strategies():
     ov = _overview_data()
     rb = _risk_bundle()
+    comparison = ov.get("comparison") or []
+    for c in comparison:
+        k = _strategy_key(c)
+        c["ctl_key"] = k
+        c["enabled"] = controls.is_enabled(k) if k else False
+        c["runnable"] = bool(k and controls.STRATEGIES.get(k, {}).get("script"))
     return render_template("command_strategies.html", active="command_strategies",
-                           comparison=ov.get("comparison") or [],
-                           regime=_regime_label(ov.get("regime")),
+                           comparison=comparison, tasks=controls.TASKS,
+                           jobs=controls.jobs(), regime=_regime_label(ov.get("regime")),
                            n_watch=rb["n_watch"], banner=_banner_ctx())
 
 
@@ -755,3 +776,5 @@ def register(app):
     ]
     for path, endpoint, fn in rules:
         app.add_url_rule(path, endpoint, login_required(fn))
+    # Paper-only strategy/data controls (POST actions + jobs poll), auth-gated.
+    controls.register_controls(app, login_required)
