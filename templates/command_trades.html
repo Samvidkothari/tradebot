@@ -1,0 +1,69 @@
+{% extends "command_base.html" %}
+{% block title %}Trades{% endblock %}
+{% block content %}
+<div class="vhead"><div><h1>Trades</h1><div class="sub">Open structures and held equity — with the rule behind each, not just a side</div></div></div>
+
+<div class="panel">
+  <h3>Books <span class="badge">{{ hero.n_books }} · {{ hero.n_active }} active</span></h3>
+  <table class="dt"><thead><tr><th>Book</th><th>Realised</th><th>Unrealised</th><th>Total</th><th>Status</th></tr></thead>
+    <tbody>
+      {% for r in hero.rows %}
+      <tr><td><div class="nm">{{ r.book }}<small>{{ r.note }}</small></div></td>
+        <td class="{{ 'pos' if r.realised>0 else ('neg' if r.realised<0 else 'neu') }}">{{ '−' if r.realised<0 }}₹{{ "{:,.0f}".format(r.realised|abs) }}</td>
+        <td class="{{ 'pos' if r.unrealised>0 else 'neu' }}">{% if r.unrealised %}+₹{{ "{:,.0f}".format(r.unrealised) }}{% else %}—{% endif %}</td>
+        <td class="{{ 'pos' if r.total>0 else ('neg' if r.total<0 else 'neu') }}">{{ '−' if r.total<0 }}₹{{ "{:,.0f}".format(r.total|abs) }}</td>
+        <td><span class="pill {{ 'open' if r.status=='active' and 'Options' in r.book else ('live' if r.status=='active' else 'ret') }}" style="float:right">{{ r.status|title }}</span></td></tr>
+      {% endfor %}
+    </tbody></table>
+</div>
+
+<div class="eyebrow">Open option structures<span class="ln"></span>why these exist</div>
+<div class="grid2">
+  {% if options %}
+  <div class="panel">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px">
+      <div><div style="font-size:14px;font-weight:600">NIFTY Short Strangle</div><div class="sub" style="margin-top:2px">Sell {{ options.put_strike|int }}P + {{ options.call_strike|int }}C · undefined risk</div></div>
+      <span class="pill open">Open · Watch</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line-soft);border:1px solid var(--line);border-radius:9px;overflow:hidden">
+      <div style="background:var(--panel);padding:10px 12px"><div class="muted" style="font-size:9.5px;text-transform:uppercase;letter-spacing:.05em">Premium collected</div><div class="mono" style="font-size:14px;font-weight:600;margin-top:3px">₹{{ "{:,.0f}".format(options.premium_net) }}</div></div>
+      <div style="background:var(--panel);padding:10px 12px"><div class="muted" style="font-size:9.5px;text-transform:uppercase;letter-spacing:.05em">Open P&amp;L</div><div class="mono pos" style="font-size:14px;font-weight:600;margin-top:3px">+₹{{ "{:,.0f}".format(options.open_pnl) }}</div></div>
+      <div style="background:var(--panel);padding:10px 12px"><div class="muted" style="font-size:9.5px;text-transform:uppercase;letter-spacing:.05em">Days to expiry</div><div class="mono" style="font-size:14px;font-weight:600;margin-top:3px">{{ options.dte }}d</div></div>
+      <div style="background:var(--panel);padding:10px 12px"><div class="muted" style="font-size:9.5px;text-transform:uppercase;letter-spacing:.05em">Expiry</div><div class="mono" style="font-size:14px;font-weight:600;margin-top:3px">{{ options.expiry }}</div></div>
+    </div>
+    <div style="display:flex;gap:10px;padding:11px 13px;border-radius:9px;background:var(--panel-2);border:1px solid var(--line);margin-top:11px">
+      <div style="font-size:11.5px;color:var(--ink-2);line-height:1.55"><b style="color:var(--ink)">Why:</b> implied vol trades above realised; collect premium on both wings while NIFTY stays range-bound. <b style="color:var(--ink)">Exit:</b> hold to expiry, or close on a ≥4% NIFTY day.</div>
+    </div>
+  </div>
+  {% endif %}
+  {% if condor %}
+  <div class="panel">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px">
+      <div><div style="font-size:14px;font-weight:600">NIFTY Iron Condor</div><div class="sub" style="margin-top:2px">{{ condor.sp_strike|int }}P/{{ condor.sc_strike|int }}C bodies · {{ condor.lp_strike|int }}P/{{ condor.lc_strike|int }}C wings</div></div>
+      <span class="pill open">Open · Watch</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line-soft);border:1px solid var(--line);border-radius:9px;overflow:hidden">
+      <div style="background:var(--panel);padding:10px 12px"><div class="muted" style="font-size:9.5px;text-transform:uppercase;letter-spacing:.05em">Net credit</div><div class="mono" style="font-size:14px;font-weight:600;margin-top:3px">₹{{ "{:,.0f}".format(condor.premium_net) }}</div></div>
+      <div style="background:var(--panel);padding:10px 12px"><div class="muted" style="font-size:9.5px;text-transform:uppercase;letter-spacing:.05em">Open P&amp;L</div><div class="mono pos" style="font-size:14px;font-weight:600;margin-top:3px">+₹{{ "{:,.0f}".format(condor.open_pnl) }}</div></div>
+      <div style="background:var(--panel);padding:10px 12px"><div class="muted" style="font-size:9.5px;text-transform:uppercase;letter-spacing:.05em">Max loss · capped</div><div class="mono neg" style="font-size:14px;font-weight:600;margin-top:3px">₹{{ "{:,.0f}".format(condor.max_loss) }}</div></div>
+      <div style="background:var(--panel);padding:10px 12px"><div class="muted" style="font-size:9.5px;text-transform:uppercase;letter-spacing:.05em">Expiry</div><div class="mono" style="font-size:14px;font-weight:600;margin-top:3px">{{ condor.expiry }}</div></div>
+    </div>
+    <div style="display:flex;gap:10px;padding:11px 13px;border-radius:9px;background:var(--panel-2);border:1px solid var(--line);margin-top:11px">
+      <div style="font-size:11.5px;color:var(--ink-2);line-height:1.55"><b style="color:var(--ink)">Why:</b> same premium edge as the strangle, but the wings cap the tail at a known maximum loss. <b style="color:var(--ink)">Defined risk</b> by construction.</div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<div class="panel">
+  <h3>Held Equity <span class="badge">low-vol · entered on rebalance</span></h3>
+  {% if holdings %}
+  <table class="dt"><thead><tr><th>Symbol</th><th>Qty</th><th>Avg Price</th><th>Rule</th></tr></thead>
+    <tbody>
+      {% for h in holdings %}
+      <tr><td>{{ h.symbol }}</td><td>{{ h.qty }}</td><td>{{ "%.2f"|format(h.avg_price) if h.avg_price else '—' }}</td><td style="color:var(--ink-3)">held to next rebalance</td></tr>
+      {% endfor %}
+    </tbody></table>
+  {% else %}<p class="sub" style="color:var(--ink-3)">No equity positions recorded.</p>{% endif %}
+</div>
+{% endblock %}

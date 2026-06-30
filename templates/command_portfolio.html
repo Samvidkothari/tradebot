@@ -1,0 +1,60 @@
+{% extends "command_base.html" %}
+{% block title %}Portfolio{% endblock %}
+{% block content %}
+<div class="vhead"><div><h1>Portfolio</h1><div class="sub">Consolidated paper book · marks as of {{ banner.as_of }}</div></div>
+  <div><a class="mini" href="/command/trades">Open trades →</a></div></div>
+
+<div class="kpis">
+  <div class="kpi"><div class="top"><span class="lab">Net Equity</span></div><div class="val neu">₹{{ "%.2f"|format(net/100000) }}<span style="font-size:14px;color:var(--ink-3)">L</span></div><div class="meta">capital ₹{{ "%.0f"|format(cap/100000) }}L</div></div>
+  <div class="kpi"><div class="top"><span class="lab">Combined P&amp;L</span></div><div class="val sm {{ 'pos' if hero.total>=0 else 'neg' }}">{{ '−' if hero.total<0 }}₹{{ "{:,.0f}".format(hero.total|abs) }}</div><div class="meta">realised + unrealised</div></div>
+  <div class="kpi"><div class="top"><span class="lab">Realised</span></div><div class="val sm {{ 'pos' if hero.realised>=0 else 'neg' }}">{{ '−' if hero.realised<0 }}₹{{ "{:,.0f}".format(hero.realised|abs) }}</div><div class="meta">closed cycles</div></div>
+  <div class="kpi"><div class="top"><span class="lab">Unrealised</span></div><div class="val sm {{ 'pos' if hero.unrealised>=0 else 'neg' }}">{{ '+' if hero.unrealised>0 }}₹{{ "{:,.0f}".format(hero.unrealised|abs) }}</div><div class="meta">open options</div></div>
+  <div class="kpi"><div class="top"><span class="lab">Positions</span></div><div class="val neu">{{ (lv.n_positions or 0) + 2 }}</div><div class="meta">{{ lv.n_positions or 0 }} equity · 2 options</div></div>
+</div>
+
+<div class="cols">
+  <div class="panel"><h3>Sector Allocation <span class="badge">low-vol book</span></h3>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      {% for name, frac in sectors[:8] %}
+      <div style="display:grid;grid-template-columns:110px 1fr 44px;align-items:center;gap:10px;font-size:11.5px">
+        <span style="color:var(--ink-2)">{{ name }}</span>
+        <div style="height:7px;border-radius:4px;background:var(--elev);overflow:hidden"><i style="display:block;height:100%;border-radius:4px;width:{{ (frac/sec_max*100) if sec_max else 0 }}%;background:{{ 'var(--warn)' if frac>=0.34 else 'var(--info)' if loop.first else 'var(--ink-3)' }}"></i></div>
+        <span class="mono" style="text-align:right;color:var(--ink)">{{ "%.0f"|format(frac*100) }}%</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% set topsec = sectors[0] if sectors else None %}
+    {% if topsec %}<p class="sub" style="margin-top:11px;font-size:11px;color:var(--ink-3)">Largest sector {{ topsec[0] }} at {{ "%.0f"|format(topsec[1]*100) }}% — {{ 'near the 35% cap.' if topsec[1]>=0.30 else 'comfortably within the 35% cap.' }}</p>{% endif %}
+  </div>
+
+  <div class="panel"><h3>Risk &amp; Diversification</h3>
+    <div class="risk">
+      {% for r in risk_mini %}
+      <div class="rrow"><div class="rhead"><span class="rname">{{ r.name }}</span><span class="rval" style="color:{{ {'normal':'var(--pos)','watch':'var(--warn)','act':'var(--high)','crit':'var(--crit)','info':'var(--ink)'}[r.verdict] }}">{{ r.val }}</span></div>
+        <div class="track {{ r.klass }}"><span class="band" style="width:{{ r.band_w }}%"></span><span class="lim"></span><span class="mark" style="left:{{ r.mark }}%"></span></div>
+        <div class="trackcap"><span>0</span><span>{{ r.note }}</span><span>limit</span></div></div>
+      {% endfor %}
+    </div>
+    <a class="mini" href="/command/risk" style="margin-top:13px">Full Risk Center →</a>
+  </div>
+
+  <div class="panel"><h3>Books</h3>
+    {% for r in hero.rows %}
+    <div class="strat"><div class="nm">{{ r.book }}<small>{{ r.note }}</small></div>
+      <span class="pill {{ 'open' if r.status=='active' and 'Options' in r.book else ('live' if r.status=='active' else 'ret') }}">{{ '−' if r.total<0 }}₹{{ "{:,.0f}".format(r.total|abs) }}</span></div>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="panel">
+  <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="14" height="14"><path d="M4 5h16v14H4z"/><path d="M4 10h16M10 5v14"/></svg>Equity Holdings <span class="badge">low-vol · {{ lv.n_positions or 0 }} names</span></h3>
+  {% if holdings %}
+  <table class="dt"><thead><tr><th>Symbol</th><th>Qty</th><th>Avg Price</th><th>Weight</th></tr></thead>
+    <tbody>
+      {% for h in holdings %}
+      <tr><td>{{ h.symbol }}</td><td>{{ h.qty }}</td><td>{{ "%.2f"|format(h.avg) if h.avg else '—' }}</td><td>{{ "%.1f%%"|format(h.weight) if h.weight is not none else '—' }}</td></tr>
+      {% endfor %}
+    </tbody></table>
+  {% else %}<p class="sub" style="color:var(--ink-3)">No holdings recorded yet — run the low-vol rebalance.</p>{% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,52 @@
+{% extends "command_base.html" %}
+{% block title %}Research{% endblock %}
+{% block content %}
+<div class="vhead"><div><h1>Research</h1><div class="sub">The after-close pipeline that decides what's worth trading{% if run %} · last run {{ run.finished[:16] if run.finished else run.generated }}{% endif %}</div></div></div>
+
+{% if run and run.stages %}
+<div class="panel"><h3>Pipeline <span class="badge">{{ run.n_ok }} ok · {{ run.n_failed }} failed · {{ "%.1f"|format(run.duration_s) }}s</span></h3>
+  <div style="display:flex;gap:0;flex-wrap:wrap">
+    {% for st in run.stages %}
+    <div style="flex:1;min-width:120px;padding:11px 13px;background:var(--panel-2);border:1px solid var(--line);{% if not loop.first %}border-left:0;{% endif %}{% if loop.first %}border-radius:9px 0 0 9px;{% elif loop.last %}border-radius:0 9px 9px 0;{% endif %}">
+      <div class="mono" style="font-size:10px;color:var(--ink-4);font-weight:600">{{ "%02d"|format(loop.index) }}</div>
+      <div style="font-size:12px;font-weight:600;margin-top:3px">{{ st.name }}</div>
+      <div style="font-size:10.5px;margin-top:4px;display:flex;align-items:center;gap:5px;color:var(--ink-3)">
+        <span style="width:6px;height:6px;border-radius:50%;background:{{ 'var(--pos)' if st.status=='ok' else 'var(--warn)' if st.status=='skipped' else 'var(--crit)' }}"></span>{{ st.status }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{% if ra %}
+<div class="grid2">
+  <div class="panel"><h3>Research Assistant <span class="badge">rule-based · read-only</span></h3>
+    <p style="font-size:12.5px;color:var(--ink);font-weight:500;margin-bottom:11px">{{ ra.headline }}</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <span class="verdict watch">{{ ra.summary.warn }} warn</span>
+      <span class="verdict" style="color:var(--warn);background:var(--warn-bg)">{{ ra.summary.watch }} watch</span>
+      <span class="verdict info">{{ ra.summary.info }} info</span>
+      <span class="verdict normal">{{ ra.summary.good }} good</span>
+    </div>
+  </div>
+  <div class="panel"><h3>Notes</h3>
+    <p class="regline" style="margin:0">{{ ra.disclaimer or 'Findings below are heuristic flags on paper strategies — no automatic action is ever taken.' }}</p>
+  </div>
+</div>
+
+<div class="panel"><h3>Findings</h3>
+  <div class="alerts">
+    {% for f in ra.findings[:6] %}
+    {% set cls = 'warn' if f.severity=='warn' else ('warn' if f.severity=='watch' else 'info') %}
+    <div class="alert {{ cls }}"><div class="ic">
+      {% if f.severity in ('warn','watch') %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5M12 16h.01"/></svg>
+      {% else %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg>{% endif %}</div>
+      <div><div class="ttl"><b>{{ f.title }}</b><span class="sev">{{ f.severity }}</span><span style="font-size:10px;color:var(--ink-4)">· {{ f.area }}</span></div>
+        <div class="imp">{{ f.detail }}{% if f.recommendation %} <b>Action:</b> {{ f.recommendation }}{% endif %}</div></div></div>
+    {% endfor %}
+  </div>
+</div>
+{% else %}
+<div class="panel"><p class="sub" style="color:var(--ink-3)">No research-assistant output yet — run the pipeline.</p></div>
+{% endif %}
+{% endblock %}

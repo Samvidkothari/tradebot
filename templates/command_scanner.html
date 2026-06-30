@@ -1,0 +1,41 @@
+{% extends "command_base.html" %}
+{% block title %}Market Scanner{% endblock %}
+{% block content %}
+<div class="vhead"><div><h1>Market Scanner</h1><div class="sub">NIFTY-50 market structure{% if mi %} · {{ mi.n_symbols }} symbols · {{ mi.sessions }} sessions{% endif %} · as of {{ banner.as_of }}</div></div></div>
+
+{% if mi %}
+<div class="grid3">
+  <div class="panel"><h3>Expiries</h3>
+    <div class="statlist">
+      <div class="statrow"><span class="k">Next weekly</span><span class="v">{{ mi.expiries.next_weekly }} · {{ mi.expiries.days_to_weekly }}d</span></div>
+      <div class="statrow"><span class="k">Next monthly</span><span class="v">{{ mi.expiries.next_monthly }} · {{ mi.expiries.days_to_monthly }}d</span></div>
+      <div class="statrow"><span class="k">Sessions loaded</span><span class="v">{{ mi.sessions }}</span></div>
+    </div>
+  </div>
+  <div class="panel"><h3>Surveillance &amp; Circuits</h3>
+    <div class="statlist">
+      <div class="statrow"><span class="k">ASM flagged</span><span class="v {{ 'neg' if (mi.surveillance.asm|length) else 'pos' }}">{{ mi.surveillance.asm|length }}</span></div>
+      <div class="statrow"><span class="k">GSM flagged</span><span class="v {{ 'neg' if (mi.surveillance.gsm|length) else 'pos' }}">{{ mi.surveillance.gsm|length }}</span></div>
+      {% if mi.circuits %}<div class="statrow"><span class="k">Circuit hits ({{ "%.0f%%"|format(mi.circuits.band*100) }} band)</span><span class="v {{ 'neg' if mi.circuits.events else 'pos' }}">{{ mi.circuits.events }}</span></div>{% endif %}
+    </div>
+  </div>
+  <div class="panel"><h3>Corporate Actions <span class="badge">{{ mi.corporate_actions.n if mi.corporate_actions and mi.corporate_actions.n is defined else 0 }} total</span></h3>
+    {% if mi.corporate_actions and mi.corporate_actions.recent %}
+    <div class="statlist">{% for c in mi.corporate_actions.recent[:5] %}<div class="statrow"><span class="k">{{ c.symbol }} · {{ c.type }}</span><span class="v">{{ c.date }}</span></div>{% endfor %}</div>
+    {% else %}<p class="sub" style="color:var(--ink-3)">None in the window.</p>{% endif %}
+  </div>
+</div>
+
+<div class="panel"><h3>Sector Composition <span class="badge">names per sector</span></h3>
+  <table class="dt"><thead><tr><th>Sector</th><th>Names</th><th>Share</th></tr></thead>
+    <tbody>
+      {% set total = sectors|map(attribute=1)|sum %}
+      {% for name, n in sectors %}
+      <tr><td>{{ name }}</td><td>{{ n }}</td><td>{{ "%.0f%%"|format(n/total*100) if total else '—' }}</td></tr>
+      {% endfor %}
+    </tbody></table>
+</div>
+{% else %}
+<div class="panel"><p class="sub" style="color:var(--ink-3)">No market-intel snapshot yet — run market_intel.py.</p></div>
+{% endif %}
+{% endblock %}

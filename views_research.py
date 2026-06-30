@@ -612,39 +612,114 @@ def _banner_ctx():
             "risk_text": "Normal" if risk_ok else (re or {}).get("status", "—")}
 
 
+def _risk_bundle():
+    """Shared risk context: the explainable rows + the headline status/counts."""
+    re, _ = _research_json("risk_engine.json", "risk_engine.py")
+    rk, _ = _research_json("risk.json", "risk_report.py")
+    rows = _command_risk_rows(rk, re)
+    n_watch = sum(1 for r in rows if r["verdict"] in ("watch", "act", "crit"))
+    return {"rows": rows, "n_watch": n_watch, "re": re, "rk": rk,
+            "status": (re or {}).get("status", "—"),
+            "emergency": bool((re or {}).get("emergency")),
+            "reason": (re or {}).get("reason", "")}
+
+
 def command():
     hero = overview_hero()
     ov = _overview_data()
-    re, _ = _research_json("risk_engine.json", "risk_engine.py")
-    rk, _ = _research_json("risk.json", "risk_report.py")
+    rb = _risk_bundle()
     cap = STARTING_CAPITAL * max(1, hero["n_books"])
     net = cap + hero["total"]
-    risk_rows = _command_risk_rows(rk, re)
-    # dashboard shows the 4 headline risk rows
-    risk_mini = [r for r in risk_rows if r["name"] in
+    risk_mini = [r for r in rb["rows"] if r["name"] in
                  ("Current Drawdown", "Portfolio Heat", "Avg Correlation", "VaR · 1d 95%")]
     opt_active = sum(1 for r in hero["rows"]
                      if r["status"] == "active" and "Options" in r["book"])
     ret_count = sum(1 for r in hero["rows"] if r["status"] == "retired")
     return render_template("command_dashboard.html", active="command",
-                           hero=hero, cap=cap, net=net,
+                           hero=hero, cap=cap, net=net, n_watch=rb["n_watch"],
                            pnl_pct=(hero["total"] / cap * 100 if cap else 0),
                            regime=_regime_label(ov.get("regime")),
-                           risk_mini=risk_mini, risk_status=(re or {}).get("status", "—"),
+                           risk_mini=risk_mini, risk_status=rb["status"],
                            opt_active=opt_active, ret_count=ret_count,
                            banner=_banner_ctx())
 
 
 def command_risk():
-    re, _ = _research_json("risk_engine.json", "risk_engine.py")
-    rk, _ = _research_json("risk.json", "risk_report.py")
-    rows = _command_risk_rows(rk, re)
-    emergency = bool((re or {}).get("emergency"))
-    n_watch = sum(1 for r in rows if r["verdict"] in ("watch", "act", "crit"))
+    rb = _risk_bundle()
     return render_template("command_risk.html", active="command_risk",
-                           rows=rows, status=(re or {}).get("status", "—"),
-                           emergency=emergency, reason=(re or {}).get("reason", ""),
-                           n_watch=n_watch, banner=_banner_ctx())
+                           rows=rb["rows"], status=rb["status"],
+                           emergency=rb["emergency"], reason=rb["reason"],
+                           n_watch=rb["n_watch"], banner=_banner_ctx())
+
+
+def command_portfolio():
+    hero = overview_hero()
+    ov = _overview_data()
+    rb = _risk_bundle()
+    cap = STARTING_CAPITAL * max(1, hero["n_books"])
+    net = cap + hero["total"]
+    sectors = ov.get("sectors") or []
+    sec_max = max((v for _, v in sectors), default=0)
+    risk_mini = [r for r in rb["rows"] if r["name"] in
+                 ("Current Drawdown", "Portfolio Heat", "Avg Correlation", "CVaR · 95%")]
+    lv = build_digest().get("lowvol") or {}
+    at, _ = _research_json("attribution.json", "attribution_report.py")
+    weights = (((at or {}).get("strategies") or {}).get("lowvol") or {}).get("holdings", {}).get("by_symbol", {})
+    holdings = []
+    for h in (lv.get("holdings") or [])[:12]:
+        w = weights.get(h["symbol"])
+        holdings.append({"symbol": h["symbol"], "qty": h.get("qty"),
+                         "avg": h.get("avg_price"), "weight": (w * 100 if w else None)})
+    return render_template("command_portfolio.html", active="command_portfolio",
+                           hero=hero, cap=cap, net=net, n_watch=rb["n_watch"],
+                           sectors=sectors, sec_max=sec_max, risk_mini=risk_mini,
+                           holdings=holdings, lv=lv, banner=_banner_ctx())
+
+
+def command_trades():
+    hero = overview_hero()
+    rb = _risk_bundle()
+    d = build_digest()
+    lv = d.get("lowvol") or {}
+    return render_template("command_trades.html", active="command_trades",
+                           hero=hero, n_watch=rb["n_watch"],
+                           options=(d.get("options") or {}).get("open"),
+                           condor=(d.get("condor") or {}).get("open"),
+                           holdings=(lv.get("holdings") or [])[:12],
+                           banner=_banner_ctx())
+
+
+def command_strategies():
+    ov = _overview_data()
+    rb = _risk_bundle()
+    return render_template("command_strategies.html", active="command_strategies",
+                           comparison=ov.get("comparison") or [],
+                           regime=_regime_label(ov.get("regime")),
+                           n_watch=rb["n_watch"], banner=_banner_ctx())
+
+
+def command_research():
+    rb = _risk_bundle()
+    run, _ = _research_json("pipeline_run.json", "research_pipeline.py")
+    ra, _ = _research_json("research_assistant.json", "research_assistant.py")
+    return render_template("command_research.html", active="command_research",
+                           run=run, ra=ra, n_watch=rb["n_watch"], banner=_banner_ctx())
+
+
+def command_scanner():
+    rb = _risk_bundle()
+    mi, _ = _research_json("market_intel.json", "market_intel.py")
+    sectors = sorted(((mi or {}).get("sectors") or {}).items(),
+                     key=lambda kv: kv[1], reverse=True)
+    return render_template("command_scanner.html", active="command_scanner",
+                           mi=mi, sectors=sectors, n_watch=rb["n_watch"],
+                           banner=_banner_ctx())
+
+
+def command_settings():
+    rb = _risk_bundle()
+    return render_template("command_settings.html", active="command_settings",
+                           limits=_limits(), n_watch=rb["n_watch"], banner=_banner_ctx())
 
 
 def register(app):
@@ -653,6 +728,12 @@ def register(app):
     rules = [
         ("/command", "command", command),
         ("/command/risk", "command_risk", command_risk),
+        ("/command/portfolio", "command_portfolio", command_portfolio),
+        ("/command/trades", "command_trades", command_trades),
+        ("/command/strategies", "command_strategies", command_strategies),
+        ("/command/research", "command_research", command_research),
+        ("/command/scanner", "command_scanner", command_scanner),
+        ("/command/settings", "command_settings", command_settings),
         ("/monitor", "monitor", monitor),
         ("/home", "home", home),
         ("/pnl", "pnl", pnl),

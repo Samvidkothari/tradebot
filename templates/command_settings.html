@@ -1,0 +1,31 @@
+{% extends "command_base.html" %}
+{% block title %}Settings{% endblock %}
+{% block content %}
+<div class="vhead"><div><h1>Settings</h1><div class="sub">Risk limits and connections · paper mode is locked on by design</div></div></div>
+
+<div class="flagstrip calm">
+  <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg></div>
+  <div class="tx"><b>Order routing is disabled</b><span>This is a research and paper-trading system. No live orders can be placed — there is no execution layer.</span></div>
+</div>
+
+<div class="grid2">
+  <div class="panel"><h3>Risk Limits <span class="badge">risk_limits.json</span></h3>
+    {% set L = limits %}
+    <div style="display:flex;flex-direction:column;gap:0">
+      <div class="field" style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--line-soft)"><div><div style="font-size:12.5px;font-weight:500">Max drawdown stop</div><div style="font-size:11px;color:var(--ink-3)">halt new entries past this</div></div><div class="mono" style="font-weight:600">{{ "%.0f%%"|format(L.max_drawdown_limit*100) if L.max_drawdown_limit is defined else '—' }}</div></div>
+      <div class="field" style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--line-soft)"><div><div style="font-size:12.5px;font-weight:500">Daily loss limit</div><div style="font-size:11px;color:var(--ink-3)">hard cap per day</div></div><div class="mono" style="font-weight:600">{{ "%.0f%%"|format(L.daily_loss_limit*100) if L.daily_loss_limit is defined else '—' }}</div></div>
+      <div class="field" style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--line-soft)"><div><div style="font-size:12.5px;font-weight:500">Sector cap</div><div style="font-size:11px;color:var(--ink-3)">max share per sector</div></div><div class="mono" style="font-weight:600">{{ "%.0f%%"|format(L.sector_limit*100) if L.sector_limit is defined else '—' }}</div></div>
+      <div class="field" style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--line-soft)"><div><div style="font-size:12.5px;font-weight:500">Correlation limit</div><div style="font-size:11px;color:var(--ink-3)">avg pairwise cap</div></div><div class="mono" style="font-weight:600">{{ "%.2f"|format(L.correlation_limit) if L.correlation_limit is defined else '—' }}</div></div>
+      <div class="field" style="display:flex;justify-content:space-between;padding:11px 0"><div><div style="font-size:12.5px;font-weight:500">ATR risk per trade</div><div style="font-size:11px;color:var(--ink-3)">position-sizing input</div></div><div class="mono" style="font-weight:600">{{ "%.0f%%"|format(L.atr_risk_pct*100) if L.atr_risk_pct is defined else '—' }} · {{ L.atr_multiplier if L.atr_multiplier is defined else '—' }}×</div></div>
+    </div>
+  </div>
+  <div class="panel"><h3>Connections</h3>
+    <div style="display:flex;flex-direction:column;gap:0">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--line-soft)"><div><div style="font-size:12.5px;font-weight:500">Market data</div><div style="font-size:11px;color:var(--ink-3)">yfinance · daily + intraday</div></div><span class="chip warn"><span class="d"></span>{{ banner.as_of }}</span></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--line-soft)"><div><div style="font-size:12.5px;font-weight:500">Broker · Zerodha Kite</div><div style="font-size:11px;color:var(--ink-3)">holdings &amp; auth only</div></div><span class="chip info"><span class="d"></span>Read-only</span></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--line-soft)"><div><div style="font-size:12.5px;font-weight:500">Research pipeline</div><div style="font-size:11px;color:var(--ink-3)">auto-run after close</div></div><span class="chip ok"><span class="d"></span>On</span></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 0"><div><div style="font-size:12.5px;font-weight:500">Order routing</div><div style="font-size:11px;color:var(--ink-3)">execution layer</div></div><span class="chip"><span class="d" style="background:var(--ink-4)"></span>Disabled</span></div>
+    </div>
+  </div>
+</div>
+{% endblock %}

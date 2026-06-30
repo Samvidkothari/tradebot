@@ -72,7 +72,7 @@ def login():
         elif hmac.compare_digest(request.form.get("password", ""),
                                  os.getenv("DASHBOARD_PASSWORD", "")):
             session["authed"] = True
-            return redirect(url_for("home"))
+            return redirect(url_for("command"))   # Quiet Terminal is the landing page
         else:
             error = "Wrong password."
     return render_template("login.html", error=error, configured=configured)
