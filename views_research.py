@@ -469,10 +469,190 @@ def backtest_view(name):
                            content=fp.read_text())
 
 
+# ── Command surface (Quiet Terminal redesign) ─────────────────────────────────
+# Two redesigned, data-wired pages served alongside the existing dashboard. They
+# READ the same research JSONs and book P&L the other pages do — no new analytics,
+# no order path. Mounted at /command and /command/risk; nothing existing changes.
+
+_RISK_LIMITS = BASE_DIR / "risk_limits.json"
+
+
+def _isnan(x):
+    try:
+        return x != x
+    except Exception:
+        return False
+
+
+def _limits():
+    try:
+        return json.loads(_RISK_LIMITS.read_text())
+    except Exception:
+        return {}
+
+
+def _verdict(pct):
+    """Map a 0..100 position-in-band to a verdict class."""
+    if pct >= 90:
+        return "crit", "is-crit"
+    if pct >= 70:
+        return "act", "is-act"
+    if pct >= 45:
+        return "watch", "is-watch"
+    return "normal", "is-normal"
+
+
+def _track(value, limit, *, normal_frac=0.5):
+    """Marker % of |value| against |limit| (a budget-used reading), clamped."""
+    lim = abs(limit) or 1.0
+    pct = max(0.0, min(100.0, abs(value) / lim * 100.0))
+    verdict, klass = _verdict(pct)
+    return {"mark": round(pct, 1), "band_w": round(normal_frac * 100, 1),
+            "verdict": verdict, "klass": klass}
+
+
+def _regime_label(reg):
+    if not reg:
+        return {"label": "Unknown", "reason": "Regime engine hasn't run yet."}
+    trend = (reg.get("trend") or "").replace("_", " ").title()
+    vol = (reg.get("volatility") or "").replace("_", " ").replace("Volatility", "Vol").title()
+    char = (reg.get("character") or "").replace("_", "-")
+    parts = [p for p in (trend, vol, char) if p]
+    return {"label": " · ".join(parts) or "Unknown", "reason": reg.get("reason", "")}
+
+
+def _command_risk_rows(rk, re):
+    """Build explainable risk rows (value · range · verdict · action) from the
+    live risk_report (rk) and risk_engine (re) JSON, plus configured limits."""
+    lim = _limits()
+    rows = []
+    lv = ((rk or {}).get("strategies") or {}).get("lowvol") or {}
+    dd = lv.get("drawdown") or {}
+    var = lv.get("var") or {}
+    tail = lv.get("tail") or {}
+    checks = (re or {}).get("checks") or {}
+
+    def row(name, val_str, t, action, note=""):
+        rows.append({"name": name, "val": val_str, **t, "action": action, "note": note})
+
+    # Drawdown vs the -20% stop
+    cur = dd.get("current_drawdown")
+    if cur is not None:
+        t = _track(cur, lim.get("max_drawdown_limit", -0.20))
+        row("Current Drawdown", f"{cur*100:.1f}%", t,
+            ("Inside the stop — no action." if t["verdict"] == "normal"
+             else "Past half the drawdown budget — size down new entries."),
+            f"stop {lim.get('max_drawdown_limit',-0.2)*100:.0f}%")
+    mdd = dd.get("max_drawdown")
+    if mdd is not None:
+        t = _track(mdd, lim.get("max_drawdown_limit", -0.20)); t["klass"] = "is-normal"; t["verdict"] = "info"
+        row("Max Drawdown · hist", f"{mdd*100:.1f}%", t, "Worst peak-to-trough on record — context for the stop.", "since inception")
+
+    # Daily loss (engine check)
+    dl = checks.get("daily_loss") or {}
+    if "value" in dl:
+        t = _track(dl["value"], dl.get("limit", -0.03));
+        row("Daily Loss", f"{dl['value']*100:.1f}%", t,
+            "Within the daily limit." if dl.get("status") == "OK" else "Daily loss limit breached — halt new entries.",
+            f"limit {dl.get('limit',-0.03)*100:.0f}%")
+
+    # Portfolio heat (annualised vol) vs 12% target
+    av = tail.get("ann_vol")
+    if av is not None:
+        pct = min(100.0, av / 0.18 * 100.0)
+        verdict, klass = _verdict(pct)
+        if av <= 0.12:
+            verdict, klass = "normal", "is-normal"
+        elif av <= 0.135:
+            verdict, klass = "watch", "is-watch"
+        row("Portfolio Heat", f"{av*100:.1f}%", {"mark": round(pct, 1), "band_w": 67, "verdict": verdict, "klass": klass},
+            "Cool — room to add risk." if verdict == "normal" else "Above the 12% target — trim or hedge before adding.",
+            "target 12%")
+
+    # VaR / CVaR
+    v95 = var.get("hist_95")
+    if v95 is not None:
+        pct = min(100.0, v95 / 0.02 * 100.0); verdict, klass = _verdict(pct)
+        row("VaR · 1d 95%", f"−{v95*100:.2f}%", {"mark": round(pct, 1), "band_w": 60, "verdict": verdict, "klass": klass},
+            "95% of days should lose less than this.", "alert 2%")
+    cv = var.get("cvar_95")
+    if cv is not None:
+        pct = min(100.0, cv / 0.025 * 100.0); verdict, klass = _verdict(pct)
+        row("CVaR · 95%", f"−{cv*100:.2f}%", {"mark": round(pct, 1), "band_w": 60, "verdict": verdict, "klass": klass},
+            "Average loss on the worst 5% of days.", "tail risk")
+
+    # Correlation (engine check)
+    co = checks.get("correlation") or {}
+    if "value" in co and not _isnan(co["value"]):
+        t = _track(co["value"], co.get("limit", 0.50))
+        row("Avg Correlation", f"{co['value']:.2f}", t,
+            "Names move independently enough." if co.get("status") == "OK" else "Crowded — diversify across factors.",
+            f"limit {co.get('limit',0.5):.2f}")
+
+    # Sector exposure (may be NaN when no equity marks)
+    se = checks.get("sector_exposure") or {}
+    if "value" in se:
+        if _isnan(se["value"]):
+            row("Sector Exposure", "n/a", {"mark": 0, "band_w": 88, "verdict": "info", "klass": "is-normal"},
+                "No sector marks in this run — refresh equity prices.", f"limit {se.get('limit',0.35)*100:.0f}%")
+        else:
+            t = _track(se["value"], se.get("limit", 0.35))
+            row("Sector Exposure · max", f"{se['value']*100:.0f}%", t,
+                "Within the sector cap." if se.get("status") == "OK" else "Concentrated — trim the heaviest sector.",
+                f"limit {se.get('limit',0.35)*100:.0f}%")
+    return rows
+
+
+def _banner_ctx():
+    """Shared status-banner context (read-only flags)."""
+    re, _ = _research_json("risk_engine.json", "risk_engine.py")
+    as_of = (re or {}).get("as_of", "—")
+    risk_ok = (re or {}).get("status") == "OK"
+    return {"as_of": as_of, "risk_ok": risk_ok,
+            "risk_text": "Normal" if risk_ok else (re or {}).get("status", "—")}
+
+
+def command():
+    hero = overview_hero()
+    ov = _overview_data()
+    re, _ = _research_json("risk_engine.json", "risk_engine.py")
+    rk, _ = _research_json("risk.json", "risk_report.py")
+    cap = STARTING_CAPITAL * max(1, hero["n_books"])
+    net = cap + hero["total"]
+    risk_rows = _command_risk_rows(rk, re)
+    # dashboard shows the 4 headline risk rows
+    risk_mini = [r for r in risk_rows if r["name"] in
+                 ("Current Drawdown", "Portfolio Heat", "Avg Correlation", "VaR · 1d 95%")]
+    opt_active = sum(1 for r in hero["rows"]
+                     if r["status"] == "active" and "Options" in r["book"])
+    ret_count = sum(1 for r in hero["rows"] if r["status"] == "retired")
+    return render_template("command_dashboard.html", active="command",
+                           hero=hero, cap=cap, net=net,
+                           pnl_pct=(hero["total"] / cap * 100 if cap else 0),
+                           regime=_regime_label(ov.get("regime")),
+                           risk_mini=risk_mini, risk_status=(re or {}).get("status", "—"),
+                           opt_active=opt_active, ret_count=ret_count,
+                           banner=_banner_ctx())
+
+
+def command_risk():
+    re, _ = _research_json("risk_engine.json", "risk_engine.py")
+    rk, _ = _research_json("risk.json", "risk_report.py")
+    rows = _command_risk_rows(rk, re)
+    emergency = bool((re or {}).get("emergency"))
+    n_watch = sum(1 for r in rows if r["verdict"] in ("watch", "act", "crit"))
+    return render_template("command_risk.html", active="command_risk",
+                           rows=rows, status=(re or {}).get("status", "—"),
+                           emergency=emergency, reason=(re or {}).get("reason", ""),
+                           n_watch=n_watch, banner=_banner_ctx())
+
+
 def register(app):
     """Attach research routes with their ORIGINAL endpoint names (so url_for in
     templates is unchanged). Each view is login-gated."""
     rules = [
+        ("/command", "command", command),
+        ("/command/risk", "command_risk", command_risk),
         ("/monitor", "monitor", monitor),
         ("/home", "home", home),
         ("/pnl", "pnl", pnl),

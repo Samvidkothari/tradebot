@@ -1,0 +1,115 @@
+{% extends "command_base.html" %}
+{% block title %}Command{% endblock %}
+{% block content %}
+{% set ap = pnl_pct if pnl_pct >= 0 else -pnl_pct %}
+{% set ok = risk_status == 'OK' %}
+
+<div class="flagstrip {{ 'calm' if ok else 'crit' }}">
+  <div class="ic">
+    {% if ok %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
+    {% else %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>{% endif %}
+  </div>
+  <div class="tx">
+    {% if ok %}<b>No critical red flags</b><span>All hard risk limits within bounds. Watch items, if any, are shown in the Risk Center.</span>
+    {% else %}<b>Risk status: {{ risk_status }}</b><span>One or more limits flagged — open the Risk Center for the breach and the recommended action.</span>{% endif %}
+  </div>
+  <div class="act"><a class="mini go" href="/command/risk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 2"/><circle cx="12" cy="12" r="9"/></svg>Open Risk Center</a></div>
+</div>
+
+<div class="eyebrow">Standing<span class="ln"></span>as of {{ banner.as_of }} · paper</div>
+<div class="kpis">
+  <div class="kpi"><div class="top"><span class="lab">Net Equity <span class="info" tabindex="0">i<span class="tip"><b>Net Equity (paper)</b><p>Seeded capital across books plus combined P&amp;L.</p></span></span></span></div>
+    <div class="val neu">₹{{ "%.2f"|format(net/100000) }}<span style="font-size:14px;color:var(--ink-3)">L</span></div>
+    <div class="meta">Capital <span class="mono">₹{{ "%.0f"|format(cap/100000) }}L</span> · {{ hero.n_books }} books</div></div>
+
+  <div class="kpi"><div class="top"><span class="lab">Combined P&amp;L</span>
+    <span class="verdict {{ 'normal' if ap < 5 else 'watch' }}">{% if ap < 5 %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg>Normal{% else %}Watch{% endif %}</span></div>
+    <div class="val {{ 'pos' if hero.total >= 0 else 'neg' }}">{{ '−' if hero.total < 0 }}₹{{ "{:,.0f}".format(hero.total|abs) }}</div>
+    <div class="meta">{{ "%.2f"|format(pnl_pct) }}% of capital · −5% stop</div>
+    <div class="track {{ 'is-normal' if ap < 5 else 'is-watch' }}"><span class="band" style="width:60%"></span><span class="lim"></span><span class="mark" style="left:{{ [ap/5*100, 100]|min }}%"></span></div>
+    <div class="trackcap"><span>−5% stop</span><span>flat</span><span>+</span></div></div>
+
+  <div class="kpi"><div class="top"><span class="lab">Open P&amp;L <span class="info" tabindex="0">i<span class="tip"><b>Unrealised P&amp;L</b><p>Mark-to-model on open positions (the options books).</p></span></span></span></div>
+    <div class="val {{ 'pos' if hero.unrealised >= 0 else 'neg' }}">{{ '+' if hero.unrealised > 0 }}₹{{ "{:,.0f}".format(hero.unrealised|abs) }}</div>
+    <div class="meta">open structures · mark {{ banner.as_of }}</div></div>
+
+  <div class="kpi"><div class="top"><span class="lab">Realised P&amp;L <span class="info" tabindex="0">i<span class="tip"><b>Realised P&amp;L</b><p>Locked-in P&amp;L from closed positions.</p></span></span></span></div>
+    <div class="val {{ 'pos' if hero.realised >= 0 else 'neg' }}">{{ '−' if hero.realised < 0 }}₹{{ "{:,.0f}".format(hero.realised|abs) }}</div>
+    <div class="meta">closed cycles</div></div>
+
+  <div class="kpi"><div class="top"><span class="lab">Books</span></div>
+    <div class="val neu">{{ hero.n_books }}</div><div class="meta">{{ hero.n_active }} active · {{ hero.n_books - hero.n_active }} retired</div></div>
+</div>
+
+<div class="cols">
+  <div class="panel">
+    <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="14" height="14"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg>Risk
+      <span class="verdict {{ 'normal' if ok else 'crit' }} badge">{% if ok %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg>Normal{% else %}{{ risk_status }}{% endif %}</span></h3>
+    <div class="risk">
+      {% for r in risk_mini %}
+      <div class="rrow"><div class="rhead"><span class="rname">{{ r.name }}</span><span class="rval {{ 'pos' if r.verdict=='normal' else ('neu' if r.verdict=='info' else '') }}" {% if r.verdict=='watch' %}style="color:var(--warn)"{% endif %}>{{ r.val }}</span></div>
+        <div class="track {{ r.klass }}"><span class="band" style="width:{{ r.band_w }}%"></span><span class="lim"></span><span class="mark" style="left:{{ r.mark }}%"></span></div>
+        <div class="trackcap"><span>0</span><span>{{ r.note }}</span><span>limit</span></div></div>
+      {% endfor %}
+    </div>
+    <a class="mini" href="/command/risk" style="margin-top:13px">Full Risk Center →</a>
+  </div>
+
+  <div class="panel">
+    <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="14" height="14"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg>Market &amp; Engine</h3>
+    <div class="regbig"><div class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12h6l2-4 2 8 2-4h6"/></svg></div><div><div class="lab">Market Regime</div><div class="nm">{{ regime.label }}</div></div></div>
+    <p class="regline">{{ regime.reason }}</p>
+    <h3 style="margin-top:6px">Books</h3>
+    {% for r in hero.rows %}
+    <div class="strat"><div class="nm">{{ r.book }}<small>{{ r.note }}</small></div>
+      <span class="pill {{ 'open' if r.status=='active' and 'Options' in r.book else ('live' if r.status=='active' else 'ret') }}">{{ r.status|title }}</span></div>
+    {% endfor %}
+  </div>
+
+  <div class="panel">
+    <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="14" height="14"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9z"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>Alerts</h3>
+    <div class="alerts">
+      {% if opt_active %}
+      <div class="alert high"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg></div>
+        <div><div class="ttl"><b>Options awaiting vol event</b><span class="sev">High</span></div><div class="imp">{{ opt_active }} open options book(s) inconclusive; theta accruing. <b>Action:</b> hold to expiry or close on a sharp NIFTY move.</div></div></div>
+      {% endif %}
+      <div class="alert warn"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l2-3 3 9 2-12 2 6h5"/></svg></div>
+        <div><div class="ttl"><b>Market data as of {{ banner.as_of }}</b><span class="sev">Warning</span></div><div class="imp">Latest bar may be stale. <b>Action:</b> run the data refresh before relying on live marks.</div></div></div>
+      {% if ret_count %}
+      <div class="alert info"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg></div>
+        <div><div class="ttl"><b>{{ ret_count }} book(s) retired</b><span class="sev">Info</span></div><div class="imp">Frozen as evidence — edge didn't survive costs. <b>Action:</b> none, archived.</div></div></div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="grid2">
+  <div class="panel">
+    <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="14" height="14"><path d="M4 5h16v14H4z"/><path d="M4 10h16M10 5v14"/></svg>Paper Books</h3>
+    <table class="dt"><thead><tr><th>Book</th><th>Realised</th><th>Unrealised</th><th>Total</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for r in hero.rows %}
+        <tr><td><div class="nm">{{ r.book }}<small>{{ r.note }}</small></div></td>
+          <td class="{{ 'pos' if r.realised>0 else ('neg' if r.realised<0 else 'neu') }}">{{ '−' if r.realised<0 }}₹{{ "{:,.0f}".format(r.realised|abs) }}</td>
+          <td class="{{ 'pos' if r.unrealised>0 else 'neu' }}">{% if r.unrealised %}+₹{{ "{:,.0f}".format(r.unrealised) }}{% else %}—{% endif %}</td>
+          <td class="{{ 'pos' if r.total>0 else ('neg' if r.total<0 else 'neu') }}">{{ '−' if r.total<0 }}₹{{ "{:,.0f}".format(r.total|abs) }}</td>
+          <td><span class="pill {{ 'open' if r.status=='active' and 'Options' in r.book else ('live' if r.status=='active' else 'ret') }}" style="float:right">{{ r.status|title }}</span></td></tr>
+        {% endfor %}
+      </tbody>
+      <tfoot><tr><td>Combined</td>
+        <td class="{{ 'pos' if hero.realised>=0 else 'neg' }}">{{ '−' if hero.realised<0 }}₹{{ "{:,.0f}".format(hero.realised|abs) }}</td>
+        <td class="pos">+₹{{ "{:,.0f}".format(hero.unrealised) }}</td>
+        <td class="{{ 'pos' if hero.total>=0 else 'neg' }}">{{ '−' if hero.total<0 }}₹{{ "{:,.0f}".format(hero.total|abs) }}</td><td></td></tr></tfoot></table>
+  </div>
+  <div class="panel">
+    <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="14" height="14"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>System Health</h3>
+    <div class="health">
+      <div class="hrow"><span class="d ok"></span><span class="k">Engine</span><span class="v"><b>Operational</b></span></div>
+      <div class="hrow"><span class="d warn"></span><span class="k">Market data</span><span class="v">as of <b>{{ banner.as_of }}</b></span></div>
+      <div class="hrow"><span class="d info"></span><span class="k">Broker · Kite</span><span class="v"><b>Read-only</b></span></div>
+      <div class="hrow"><span class="d {{ 'ok' if banner.risk_ok else 'warn' }}"></span><span class="k">Risk engine</span><span class="v"><b>{{ banner.risk_text }}</b></span></div>
+      <div class="hrow"><span class="d ok"></span><span class="k">Order routing</span><span class="v"><b>Disabled</b> · paper</span></div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,34 @@
+{% extends "command_base.html" %}
+{% block title %}Risk Center{% endblock %}
+{% block content %}
+{% set ok = status == 'OK' and not emergency %}
+
+<div class="vhead"><div><h1>Risk Center</h1><div class="sub">Every metric shows its live value, its limit, a verdict, and the action it implies · as of {{ banner.as_of }}</div></div>
+  <div><span class="verdict {{ 'normal' if ok else 'crit' }}">{% if ok %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg>{% endif %}{{ 'Normal' if ok else status }}</span></div></div>
+
+<div class="flagstrip {{ 'calm' if ok else 'crit' }}">
+  <div class="ic">{% if ok %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>{% else %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>{% endif %}</div>
+  <div class="tx"><b>{{ 'No red flags active' if ok else 'Risk limit flagged' }}</b><span>{{ reason or 'All hard limits within bounds.' }}{% if n_watch %} · {{ n_watch }} item(s) to watch.{% endif %}</span></div>
+  <div class="act"><a class="mini" href="/command">← Dashboard</a></div>
+</div>
+
+<div class="panel">
+  <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="14" height="14"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg>Live Risk Metrics <span class="badge">{{ rows|length }} checks · read-only</span></h3>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px 26px">
+    {% for r in rows %}
+    <div class="rrow">
+      <div class="rhead"><span class="rname">{{ r.name }}</span>
+        <span class="rval" style="color:{{ {'normal':'var(--pos)','watch':'var(--warn)','act':'var(--high)','crit':'var(--crit)','info':'var(--ink)'}[r.verdict] }}">{{ r.val }}</span></div>
+      <div class="track {{ r.klass }}"><span class="band" style="width:{{ r.band_w }}%"></span><span class="lim"></span><span class="mark" style="left:{{ r.mark }}%"></span></div>
+      <div class="trackcap"><span>0</span><span>{{ r.note }}</span><span>limit</span></div>
+      <div class="raction" {% if r.verdict in ('watch','act','crit') %}style="color:var(--warn)"{% endif %}><b>{{ r.verdict|title }}.</b> {{ r.action }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="panel">
+  <h3>How to read this</h3>
+  <p class="regline" style="margin:0">The marker on each track shows how much of that metric's budget is used — left is safe, the red tick on the right is the configured limit from <span class="mono">risk_limits.json</span>. Green means inside the normal band, amber means approaching a limit, red means breached. This page is monitoring only: the engine flags and explains, it never places or halts an order.</p>
+</div>
+{% endblock %}
