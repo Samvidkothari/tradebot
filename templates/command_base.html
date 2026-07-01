@@ -151,7 +151,7 @@ table.dt tfoot td{border-top:1px solid var(--line);border-bottom:0;font-weight:7
   <div class="navlabel">Control</div>
   <nav>
     <a href="/command/risk" class="{{ 'on' if active=='command_risk' }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg>Risk Center{% if n_watch %}<span class="ct">{{ n_watch }}</span>{% endif %}</a>
-    <a href="/backtests"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>Reports</a>
+    <a href="/command/reports" class="{{ 'on' if active=='command_reports' }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>Reports</a>
     <a href="/journal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 3h11l3 3v15H5z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>Journal</a>
     <a href="/command/settings" class="{{ 'on' if active=='command_settings' }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 13a7 7 0 000-2l2-1.6-2-3.4-2.3 1a7 7 0 00-1.7-1L14.5 2h-4l-.4 2.4a7 7 0 00-1.7 1l-2.3-1-2 3.4L4.6 11a7 7 0 000 2l-2 1.6 2 3.4 2.3-1a7 7 0 001.7 1l.4 2.4h4l.4-2.4a7 7 0 001.7-1l2.3 1 2-3.4z"/></svg>Settings</a>
   </nav>

@@ -625,8 +625,21 @@ def _risk_bundle():
             "reason": (re or {}).get("reason", "")}
 
 
+def _active_hero():
+    """overview_hero() with retired books dropped, so the command surface shows
+    only live paper books (the retired intraday evidence stays in its DB but is
+    hidden from the dashboard, and its P&L no longer rolls into the totals)."""
+    h = overview_hero()
+    rows = [r for r in h["rows"] if r.get("status") != "retired"]
+    realised = sum(r["realised"] for r in rows)
+    unrealised = sum(r["unrealised"] for r in rows)
+    return {**h, "rows": rows, "realised": realised, "unrealised": unrealised,
+            "total": realised + unrealised, "n_books": len(rows),
+            "n_active": sum(1 for r in rows if r["status"] == "active")}
+
+
 def command():
-    hero = overview_hero()
+    hero = _active_hero()
     ov = _overview_data()
     rb = _risk_bundle()
     cap = STARTING_CAPITAL * max(1, hero["n_books"])
@@ -654,7 +667,7 @@ def command_risk():
 
 
 def command_portfolio():
-    hero = overview_hero()
+    hero = _active_hero()
     ov = _overview_data()
     rb = _risk_bundle()
     cap = STARTING_CAPITAL * max(1, hero["n_books"])
@@ -678,7 +691,7 @@ def command_portfolio():
 
 
 def command_trades():
-    hero = overview_hero()
+    hero = _active_hero()
     rb = _risk_bundle()
     d = build_digest()
     lv = d.get("lowvol") or {}
@@ -743,6 +756,27 @@ def command_settings():
                            limits=_limits(), n_watch=rb["n_watch"], banner=_banner_ctx())
 
 
+def command_reports(name=None):
+    rb = _risk_bundle()
+    reports = sorted(fp.name for fp in RESULTS_DIR.glob("*.md")) \
+        if RESULTS_DIR.exists() else []
+    content, current = None, None
+    if name:
+        # Only allow simple .md filenames that actually exist in results/.
+        if "/" in name or "\\" in name or not name.endswith(".md"):
+            abort(404)
+        fp = RESULTS_DIR / name
+        if not fp.exists():
+            abort(404)
+        current, content = name, fp.read_text()
+    elif reports:
+        current = reports[0]
+        content = (RESULTS_DIR / current).read_text()
+    return render_template("command_reports.html", active="command_reports",
+                           reports=reports, current=current, content=content,
+                           n_watch=rb["n_watch"], banner=_banner_ctx())
+
+
 def register(app):
     """Attach research routes with their ORIGINAL endpoint names (so url_for in
     templates is unchanged). Each view is login-gated."""
@@ -755,6 +789,8 @@ def register(app):
         ("/command/research", "command_research", command_research),
         ("/command/scanner", "command_scanner", command_scanner),
         ("/command/settings", "command_settings", command_settings),
+        ("/command/reports", "command_reports", command_reports),
+        ("/command/reports/<name>", "command_report_view", command_reports),
         ("/monitor", "monitor", monitor),
         ("/home", "home", home),
         ("/pnl", "pnl", pnl),
