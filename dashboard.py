@@ -557,7 +557,13 @@ if __name__ == "__main__":
         finally:
             c.close()
 
-    start_price_refresher(_watched_symbols, interval=180)
+    # Auto-reload on any .py change so route edits pick up without a manual
+    # restart (templates already hot-reload). The reloader runs two processes: a
+    # supervisor that watches files and a worker that serves — start the price
+    # warmer only in the worker (WERKZEUG_RUN_MAIN) so it isn't launched twice.
+    # Debugger stays OFF (no Werkzeug console); the server is bound to localhost.
+    if os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+        start_price_refresher(_watched_symbols, interval=180)
 
     print("\n  tradebot dashboard →  http://127.0.0.1:5050\n")
-    app.run(host="127.0.0.1", port=5050, debug=False)
+    app.run(host="127.0.0.1", port=5050, debug=False, use_reloader=True)
