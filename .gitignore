@@ -22,6 +22,10 @@ orders.db
 orders.db.*
 controls.db*
 jobs/
+# scratch / mount debris (safe to delete from Finder)
+__wt_*
+*.junk.*
+.fuse_hidden*
 _backup_pre_redesign/
 archive/
 
