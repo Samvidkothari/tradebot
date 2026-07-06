@@ -1,7 +1,16 @@
 {% extends "command_base.html" %}
 {% block title %}Trades{% endblock %}
 {% block content %}
-<div class="vhead"><div><h1>Trades</h1><div class="sub">Open structures and held equity — with the rule behind each, not just a side</div></div></div>
+<style>
+  .settle-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;border:1px solid var(--high-line);
+    background:var(--high-bg);color:var(--high);font-size:11.5px;font-weight:600;cursor:pointer;font-family:var(--sans)}
+  .settle-btn:hover{filter:brightness(1.08)} .settle-btn:disabled{opacity:.5;cursor:not-allowed}
+  .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--elev);border:1px solid var(--line);border-radius:9px;padding:9px 14px;font-size:12px;box-shadow:0 8px 28px rgba(0,0,0,.5);opacity:0;transition:.2s;z-index:80}
+  .toast.show{opacity:1}
+</style>
+<div class="vhead"><div><h1>Trades</h1><div class="sub">Open structures and held equity — with the rule behind each, not just a side</div></div>
+  {% if options or condor %}<div class="tools"><button class="settle-btn" type="button" data-settle="both"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>Settle open books</button></div>{% endif %}
+</div>
 
 <div class="panel">
   <h3>Books <span class="badge">{{ hero.n_books }} · {{ hero.n_active }} active</span></h3>
@@ -66,4 +75,24 @@
     </tbody></table>
   {% else %}<p class="sub" style="color:var(--ink-3)">No equity positions recorded.</p>{% endif %}
 </div>
+
+<div class="toast" id="toast"></div>
+<script>
+(function(){
+  var has={strangle:{{ 'true' if options else 'false' }},condor:{{ 'true' if condor else 'false' }}};
+  function toast(m){var t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(function(){t.classList.remove('show')},2600);}
+  function post(u){return fetch(u,{method:'POST',headers:{'X-Requested-With':'fetch'}}).then(function(r){return r.json().catch(function(){return{ok:r.ok}})});}
+  document.addEventListener('click',function(e){
+    var b=e.target.closest('[data-settle]'); if(!b) return;
+    if(!confirm('Settle (close) the open options book(s) now at the current mark? This realises the open P&L and cannot be undone.')) return;
+    b.disabled=true; b.textContent='Settling…';
+    var jobs=[]; if(has.strangle) jobs.push(post('/command/control/settle/strangle')); if(has.condor) jobs.push(post('/command/control/settle/condor'));
+    Promise.all(jobs).then(function(rs){
+      var ok=rs.every(function(r){return r.ok});
+      toast(ok?'Settling in the background — refresh in a moment to see realised P&L':'Could not settle (see console)');
+      setTimeout(function(){location.reload()},3500);
+    });
+  });
+})();
+</script>
 {% endblock %}

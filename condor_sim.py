@@ -28,6 +28,7 @@ Usage:
 from config import PAPER_CAPITAL
 import calendar
 import sqlite3
+import sys
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -132,7 +133,28 @@ def db_connect():
             cycle_id INTEGER, mark_date TEXT, spot REAL, daily_move REAL,
             sc_val REAL, sp_val REAL, lc_val REAL, lp_val REAL, open_pnl REAL,
             PRIMARY KEY (cycle_id, mark_date));
+        CREATE TABLE IF NOT EXISTS precommit (
+            key TEXT PRIMARY KEY, value TEXT NOT NULL, committed TEXT NOT NULL);
     """)
+    # Pre-committed stress-test criteria — INSERT OR IGNORE: written ONCE,
+    # never updated by code, so the judgment rules cannot drift after the fact.
+    for k, v in (
+        ("vol_event_threshold", f"{VOL_EVENT}"),
+        ("event_definition", "|NIFTY daily move| >= 4% while a cycle is open"),
+        ("stop_rule", "none — the bought wings ARE the risk management; "
+                      "worst case is the structural max_loss stored per cycle"),
+        ("win_criteria", "WIN if, through a cycle containing a vol event, the "
+                         "realised loss stays within max_loss AND the avoided "
+                         "tail (vs the naked strangle run head-to-head on the "
+                         "same days) exceeds the premium foregone to the wings"),
+        ("loss_criteria", "LOSS if the event cycle realises at/near max_loss "
+                          "while the strangle fares no worse — the insurance "
+                          "cost was not worth it"),
+        ("verdict_gate", "INCONCLUSIVE until >= 1 vol event occurs while "
+                         "open; judged only head-to-head vs the strangle"),
+    ):
+        conn.execute("INSERT OR IGNORE INTO precommit (key, value, committed) "
+                     "VALUES (?,?,date('now'))", (k, v))
     if conn.execute("SELECT 1 FROM account WHERE id = 1").fetchone() is None:
         conn.execute("INSERT INTO account (id, cash) VALUES (1, ?)", (CAPITAL,))
         conn.commit()
@@ -265,6 +287,36 @@ def _close(conn, cyc, today, reason, pnl):
     conn.execute("UPDATE account SET cash = cash + ? WHERE id = 1", (pnl,))
 
 
+def settle_now(conn):
+    """Manually close the open condor NOW at its current mark, paying the exit
+    spread on all four legs. Realises the open P&L into the book — used by the
+    dashboard 'settle books' action. No-op if nothing is open."""
+    cyc = open_cycle(conn)
+    if cyc is None:
+        print("  No open condor to settle.")
+        return None
+    closes = nifty_daily()
+    if closes is None or len(closes) < 2:
+        print("  No NIFTY data — cannot settle.")
+        return None
+    today = closes.index[-1].date()
+    spot = float(closes.iloc[-1])
+    vol = realized_vol(closes)
+    expiry = date.fromisoformat(cyc["expiry"])
+    T = t_years(today, expiry)
+    sc_v = bs_price(spot, cyc["sc_strike"], T, vol, RISK_FREE, "call")
+    sp_v = bs_price(spot, cyc["sp_strike"], T, vol, RISK_FREE, "put")
+    lc_v = bs_price(spot, cyc["lc_strike"], T, vol, RISK_FREE, "call")
+    lp_v = bs_price(spot, cyc["lp_strike"], T, vol, RISK_FREE, "put")
+    open_pnl = cyc["premium_net"] - _unwind_cost_pts(sc_v, sp_v, lc_v, lp_v) * LOT_SIZE
+    exit_spread = SPREAD_PCT * (sc_v + sp_v + lc_v + lp_v) * LOT_SIZE
+    pnl = open_pnl - exit_spread
+    _close(conn, cyc, today, "SETTLE", pnl)
+    conn.commit()
+    print(f"  Settled condor at mark ({today}) → realised {rupees(pnl)}")
+    return pnl
+
+
 # ── Reporting ─────────────────────────────────────────────────────────────────
 
 def rupees(x):
@@ -326,6 +378,12 @@ def report(conn):
 
 def main():
     conn = db_connect()
+    if "--settle" in sys.argv:
+        print("NIFTY iron-condor — SETTLE open position")
+        settle_now(conn)
+        report(conn)
+        conn.close()
+        return
     print("NIFTY iron-condor forward paper simulator")
     print("Fetching NIFTY daily (yfinance ^NSEI)...", end=" ", flush=True)
     closes = nifty_daily()

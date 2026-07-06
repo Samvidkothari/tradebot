@@ -28,7 +28,8 @@ from flask import jsonify
 from web_common import BASE_DIR, rw_db, ro_db
 
 JOBS_DIR = BASE_DIR / "jobs"
-DB_PATH = BASE_DIR / "controls.db"
+# Overridable via CONTROLS_DB (used by tests / alternate schedulers).
+DB_PATH = Path(os.environ.get("CONTROLS_DB") or (BASE_DIR / "controls.db"))
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS flags (
@@ -54,6 +55,11 @@ STRATEGIES = {
 TASKS = {
     "prices":   {"label": "Refresh prices",    "script": "fetch_data.py"},
     "pipeline": {"label": "Run full pipeline", "script": "research_pipeline.py"},
+}
+# Settle = close the open options position now at its current mark (--settle).
+SETTLE = {
+    "strangle": {"label": "Settle strangle", "script": "options_sim.py", "args": ["--settle"]},
+    "condor":   {"label": "Settle condor",   "script": "condor_sim.py",  "args": ["--settle"]},
 }
 
 
@@ -109,7 +115,8 @@ def flags() -> dict:
 # ── Background jobs (allow-listed scripts only) ───────────────────────────────
 
 def _resolve(kind: str, key: str):
-    table = STRATEGIES if kind == "strategy" else TASKS if kind == "task" else None
+    table = (STRATEGIES if kind == "strategy" else TASKS if kind == "task"
+             else SETTLE if kind == "settle" else None)
     if table is None or key not in table:
         raise KeyError(f"unknown {kind}: {key}")
     script = table[key].get("script")
@@ -119,18 +126,18 @@ def _resolve(kind: str, key: str):
     # Hard guard: the resolved script must live in BASE_DIR and be allow-listed.
     if path.parent != BASE_DIR.resolve() or not path.exists():
         raise ValueError(f"refusing to run {script}")
-    return table[key]["label"], path
+    return table[key]["label"], path, list(table[key].get("args", []))
 
 
 def start(kind: str, key: str) -> dict:
     """Launch an allow-listed paper sim / data script as a detached background
     job. Returns the job record. Raises KeyError/ValueError for anything not on
     the allow-list."""
-    label, path = _resolve(kind, key)
+    label, path, extra = _resolve(kind, key)
     jid = uuid.uuid4().hex[:12]
     log = JOBS_DIR / f"{jid}.log"
     rc = JOBS_DIR / f"{jid}.rc"
-    argv = [sys.executable, str(path)]
+    argv = [sys.executable, str(path), *extra]
     # Wrapper writes the return code on completion so status survives restarts.
     wrapped = (f"{_q(argv)} > {_q([str(log)])} 2>&1; "
                f"printf %s $? > {_q([str(rc)])}")
@@ -257,6 +264,14 @@ def register_controls(app, guard):
         except Exception as e:
             return jsonify(ok=False, error=f"could not start: {e}"), 500
 
+    def settle_book(key):
+        try:
+            return jsonify(ok=True, job=start("settle", key))
+        except (KeyError, ValueError) as e:
+            return jsonify(ok=False, error=str(e)), 400
+        except Exception as e:
+            return jsonify(ok=False, error=f"could not settle: {e}"), 500
+
     def toggle_strategy(key):
         try:
             return jsonify(ok=True, enabled=toggle(key))
@@ -277,6 +292,7 @@ def register_controls(app, guard):
     rules = [
         ("/command/control/run/<key>", "ctl_run", run_strategy, ["POST"]),
         ("/command/control/task/<key>", "ctl_task", run_task, ["POST"]),
+        ("/command/control/settle/<key>", "ctl_settle", settle_book, ["POST"]),
         ("/command/control/toggle/<key>", "ctl_toggle", toggle_strategy, ["POST"]),
         ("/command/control/stop/<jid>", "ctl_stop", stop_job, ["POST"]),
         ("/command/control/jobs.json", "ctl_jobs", jobs_json, ["GET"]),

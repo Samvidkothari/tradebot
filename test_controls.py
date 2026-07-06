@@ -68,7 +68,7 @@ def test_start_spawns_records_and_completes(iso, monkeypatch):
     # reconcile path without launching a paper simulator.
     script = iso / "noop.py"
     script.write_text("print('hello from job')\n")
-    monkeypatch.setattr(controls, "_resolve", lambda kind, key: ("Noop", script))
+    monkeypatch.setattr(controls, "_resolve", lambda kind, key: ("Noop", script, []))
 
     job = controls.start("task", "prices")
     assert job["status"] == "running" and job["pid"]
@@ -87,11 +87,44 @@ def test_stop_unknown_job_is_falsey(iso):
     assert controls.stop("nope") is False
 
 
-def test_cli_is_enabled_exit_codes():
+def test_settle_resolves_with_args(iso):
+    # The settle allow-list runs the sims with --settle; resolver returns the arg.
+    label, path, args = controls._resolve("settle", "strangle")
+    assert args == ["--settle"] and path.name == "options_sim.py"
+    label, path, args = controls._resolve("settle", "condor")
+    assert args == ["--settle"] and path.name == "condor_sim.py"
+    with pytest.raises(KeyError):
+        controls._resolve("settle", "lowvol")   # not a settleable book
+
+
+def test_settle_now_closes_and_realises(tmp_path, monkeypatch):
+    # options_sim.settle_now closes the open cycle at mark and books the P&L.
+    import options_sim as opt
+    monkeypatch.setattr(opt, "DB_PATH", tmp_path / "options.db")
+    conn = opt.db_connect()
+    import pandas as pd, numpy as np
+    idx = pd.bdate_range("2026-01-01", periods=60)
+    rng = np.random.default_rng(0)
+    closes = pd.Series(24000 * np.cumprod(1 + rng.normal(0, 0.008, 60)), index=idx)
+    monkeypatch.setattr(opt, "nifty_daily", lambda: closes)
+    opt.step(conn, closes)                                 # opens a strangle
+    assert opt.open_cycle(conn) is not None
+    pnl = opt.settle_now(conn)
+    assert pnl is not None
+    assert opt.open_cycle(conn) is None                    # now closed
+    row = conn.execute("SELECT close_reason FROM cycles WHERE status='closed'").fetchone()
+    assert row["close_reason"] == "SETTLE"
+    conn.close()
+
+
+def test_cli_is_enabled_exit_codes(tmp_path):
     # The scheduled bot calls `python controls.py is-enabled <key>` to skip a
     # book switched off in the dashboard. Defaults: strategies on, momentum off.
-    import sys
+    # Point at a clean tmp DB so the test doesn't read the real controls.db.
+    import sys, os
+    env = {**os.environ, "CONTROLS_DB": str(tmp_path / "controls.db")}
     base = [sys.executable, "controls.py"]
-    assert subprocess.run(base + ["is-enabled", "strangle"]).returncode == 0
-    assert subprocess.run(base + ["is-enabled", "momentum"]).returncode == 1
-    assert subprocess.run(base + ["bogus-cmd"]).returncode == 2   # usage
+    run = lambda a: subprocess.run(base + a, env=env).returncode
+    assert run(["is-enabled", "strangle"]) == 0
+    assert run(["is-enabled", "momentum"]) == 1
+    assert run(["bogus-cmd"]) == 2   # usage
