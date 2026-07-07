@@ -33,6 +33,7 @@ import yfinance as yf
 
 from lowvol import target_portfolio, vol_scores, VOL_LOOKBACK, WARMUP, TOP_N
 from config import COST_ENTRY, COST_EXIT   # reuse the exact cost model
+from regime_overlay import exposure_factor  # pre-registered defensive overlay
 
 # ── Config ────────────────────────────────────────────────────────────────────
 DATA_DIR         = Path(__file__).parent / "data"
@@ -214,9 +215,13 @@ def simulate_buy(conn, symbol, price, run_date, buy_qty):
 
 # ── Rebalance (the monthly decision) ──────────────────────────────────────────
 
-def rebalance(conn, panel, latest_close, run_date):
+def rebalance(conn, panel, latest_close, run_date, nifty_closes=None):
     """Move the book to the 15 lowest-vol names, equal-weight. SELLs run first
-    (raising cash) so BUYs are funded, mirroring the backtest's turnover model."""
+    (raising cash) so BUYs are funded, mirroring the backtest's turnover model.
+
+    Regime overlay (SPEC_lowvol_regime_overlay.md): under pre-registered
+    extreme stress (bear + extreme NIFTY vol) each name is sized at 0.5x and
+    the rest stays in cash. Fail-safe 1.0x if NIFTY data is unavailable."""
     pos_now = len(panel.index) - 1
     scores  = vol_scores(panel, pos_now)            # ascending vol, rankable only
     if scores.empty:
@@ -238,7 +243,22 @@ def rebalance(conn, panel, latest_close, run_date):
     holdings_value = sum(p["qty"] * latest_close.get(s, p["avg_price"])
                          for s, p in positions.items())
     total_equity   = get_cash(conn) + holdings_value
-    target_each    = total_equity / TOP_N
+
+    # Pre-registered defensive sizing overlay (never > 1.0, fail-safe 1.0).
+    if nifty_closes is not None and len(nifty_closes) > 0:
+        overlay = exposure_factor(nifty_closes)
+    else:
+        overlay = {"factor": 1.0, "stress": False,
+                   "reason": "overlay inactive (no NIFTY closes this run)",
+                   "regime": None}
+    import json as _json
+    meta_set(conn, "last_regime_overlay", _json.dumps(
+        {"run_date": run_date, "factor": overlay["factor"],
+         "stress": overlay["stress"], "reason": overlay["reason"],
+         "tags": (overlay["regime"] or {}).get("tags", [])}))
+    print(f"  Regime overlay: {overlay['reason']}")
+
+    target_each    = (total_equity * overlay["factor"]) / TOP_N
 
     desired = {}                                    # symbol -> desired share count
     for s in target:
@@ -309,7 +329,8 @@ def main():
         if panel.empty or len(panel) < WARMUP:
             print("  Insufficient data to rank — aborting rebalance.\n")
         else:
-            rebalance(conn, panel, latest_close, run_date)
+            nifty = fetch_live("^NSEI")   # for the regime overlay (fail-safe None)
+            rebalance(conn, panel, latest_close, run_date, nifty_closes=nifty)
     else:
         # Non-rebalance day: only need prices for held names to mark the book.
         held = [r["symbol"] for r in conn.execute("SELECT symbol FROM positions")]
