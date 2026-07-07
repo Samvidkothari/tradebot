@@ -1,0 +1,54 @@
+{% extends "command_base.html" %}
+{% block title %}Charts{% endblock %}
+{% block content %}
+<style>
+  .chart-sel{background:var(--elev);border:1px solid var(--line);border-radius:8px;color:var(--ink);
+    font-family:var(--sans);font-size:12.5px;font-weight:600;padding:7px 11px;cursor:pointer}
+  .chart-sel:focus{outline:none;border-color:var(--ink-3)}
+  #tvchart{height:calc(100vh - 176px);min-height:520px;border-radius:11px;overflow:hidden}
+  .tvfoot{font-size:10.5px;color:var(--ink-4);margin-top:8px}
+  .tvfoot a{color:var(--ink-3)}
+</style>
+
+<div class="vhead">
+  <div><h1>Charts</h1><div class="sub">Live interactive charts · NSE · powered by TradingView</div></div>
+  <div class="tools">
+    <select id="sym" class="chart-sel">
+      {% for o in options %}<option value="{{ o.tv }}">{{ o.sym }}</option>{% endfor %}
+    </select>
+  </div>
+</div>
+
+<div class="panel" style="padding:6px">
+  <div id="tvchart"></div>
+</div>
+<div class="tvfoot">Charts by <a href="https://www.tradingview.com/" target="_blank" rel="noopener">TradingView</a>. Data shown is TradingView's, independent of the app's yfinance ledgers — this view is for reference only and places no orders.</div>
+
+<script src="https://s3.tradingview.com/tv.js"></script>
+<script>
+(function(){
+  var host = document.getElementById('tvchart');
+  var sel = document.getElementById('sym');
+  function render(symbol){
+    host.innerHTML = '';
+    if (typeof TradingView === 'undefined') {
+      host.innerHTML = '<div style="padding:40px;color:var(--ink-3);text-align:center">'
+        + 'Couldn\'t load TradingView (needs internet). '
+        + '<a href="https://www.tradingview.com/chart/?symbol=' + encodeURIComponent(symbol)
+        + '" target="_blank" rel="noopener" style="color:var(--info)">Open on tradingview.com →</a></div>';
+      return;
+    }
+    new TradingView.widget({
+      container_id: 'tvchart', symbol: symbol, autosize: true,
+      interval: 'D', timezone: 'Asia/Kolkata', theme: 'dark', style: '1',
+      locale: 'in', hide_side_toolbar: false, allow_symbol_change: true,
+      withdateranges: true, details: true,
+      studies: ['MASimple@tv-basicstudies'],
+      backgroundColor: 'rgba(16,18,24,1)', gridColor: 'rgba(34,39,50,0.6)'
+    });
+  }
+  sel.addEventListener('change', function(){ render(this.value); });
+  render(sel.value);
+})();
+</script>
+{% endblock %}

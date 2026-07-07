@@ -863,6 +863,23 @@ def command_reports(name=None):
                            n_watch=rb["n_watch"], banner=_banner_ctx())
 
 
+def command_charts():
+    """Live TradingView charts for the NSE universe (official embed widget)."""
+    import re
+    import data_io
+    try:
+        syms = sorted(data_io.close_panel().columns)
+    except Exception:
+        syms = []
+    def tv(s):
+        return "NSE:" + re.sub(r"[^A-Z0-9]", "_", str(s).upper())
+    options = [{"sym": "NIFTY 50 (index)", "tv": "NSE:NIFTY"}] + \
+              [{"sym": s, "tv": tv(s)} for s in syms]
+    rb = _risk_bundle()
+    return render_template("command_charts.html", active="command_charts",
+                           options=options, n_watch=rb["n_watch"], banner=_banner_ctx())
+
+
 def register(app):
     """Attach research routes with their ORIGINAL endpoint names (so url_for in
     templates is unchanged). Each view is login-gated."""
@@ -877,6 +894,7 @@ def register(app):
         ("/command/settings", "command_settings", command_settings),
         ("/command/reports", "command_reports", command_reports),
         ("/command/reports/<name>", "command_report_view", command_reports),
+        ("/command/charts", "command_charts", command_charts),
         ("/monitor", "monitor", monitor),
         ("/home", "home", home),
         ("/pnl", "pnl", pnl),
