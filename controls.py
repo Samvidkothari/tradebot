@@ -47,10 +47,11 @@ CREATE TABLE IF NOT EXISTS jobs (
 # Each value is a paper simulator or a data/research script. `script: None` means
 # the strategy is research-only and cannot be run on demand.
 STRATEGIES = {
-    "lowvol":   {"label": "Low-Volatility",   "script": "paper_trader.py", "default": True},
-    "strangle": {"label": "Options strangle", "script": "options_sim.py",  "default": True},
-    "condor":   {"label": "Options condor",   "script": "condor_sim.py",   "default": True},
-    "momentum": {"label": "Momentum 12-1",    "script": None,              "default": False},
+    "lowvol":   {"label": "Low-Volatility",    "script": "paper_trader.py",     "default": True},
+    "strangle": {"label": "Options strangle",  "script": "options_sim.py",      "default": True},
+    "condor":   {"label": "Options condor",    "script": "condor_sim.py",       "default": True},
+    "intraday": {"label": "Intraday ORB+VWAP", "script": "intraday_sim.py",     "default": True},
+    "momentum": {"label": "Momentum 12-1",     "script": "backtest_momentum.py", "default": True},
 }
 TASKS = {
     "prices":   {"label": "Refresh prices",    "script": "fetch_data.py"},

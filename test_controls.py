@@ -24,20 +24,20 @@ def iso(tmp_path, monkeypatch):
 
 
 def test_flags_default_and_persist(iso):
-    assert controls.is_enabled("lowvol") is True          # default on
-    assert controls.is_enabled("momentum") is False       # research-only default off
+    assert controls.is_enabled("lowvol") is True          # all books default on
+    assert controls.is_enabled("momentum") is True
     controls.set_enabled("lowvol", False)
     assert controls.is_enabled("lowvol") is False
     assert controls.toggle("lowvol") is True               # flips back
 
 
-def test_allowlist_rejects_unknown_and_research_only(iso):
+def test_allowlist_rejects_unknown(iso):
     with pytest.raises(KeyError):
         controls.start("strategy", "rm -rf /")             # not on the list
     with pytest.raises(KeyError):
         controls.set_enabled("bogus", True)
-    with pytest.raises(ValueError):
-        controls.start("strategy", "momentum")             # script is None → refused
+    with pytest.raises(KeyError):
+        controls.start("settle", "lowvol")                 # not a settleable book
 
 
 def test_job_status_reconciles_to_stopped_when_pid_dead(iso):
@@ -117,14 +117,17 @@ def test_settle_now_closes_and_realises(tmp_path, monkeypatch):
     conn.close()
 
 
-def test_cli_is_enabled_exit_codes(tmp_path):
+def test_cli_is_enabled_exit_codes(tmp_path, monkeypatch):
     # The scheduled bot calls `python controls.py is-enabled <key>` to skip a
-    # book switched off in the dashboard. Defaults: strategies on, momentum off.
-    # Point at a clean tmp DB so the test doesn't read the real controls.db.
+    # book switched off in the dashboard. All books default enabled now, so we
+    # explicitly disable one and check the CLI reports it. Clean tmp DB.
     import sys, os
-    env = {**os.environ, "CONTROLS_DB": str(tmp_path / "controls.db")}
+    dbp = tmp_path / "controls.db"
+    monkeypatch.setattr(controls, "DB_PATH", dbp)
+    controls.set_enabled("condor", False)
+    env = {**os.environ, "CONTROLS_DB": str(dbp)}
     base = [sys.executable, "controls.py"]
     run = lambda a: subprocess.run(base + a, env=env).returncode
-    assert run(["is-enabled", "strangle"]) == 0
-    assert run(["is-enabled", "momentum"]) == 1
-    assert run(["bogus-cmd"]) == 2   # usage
+    assert run(["is-enabled", "strangle"]) == 0   # default on
+    assert run(["is-enabled", "condor"]) == 1      # explicitly disabled
+    assert run(["bogus-cmd"]) == 2                  # usage
