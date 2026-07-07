@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>tradebot — simple mode</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/htm/3.1.1/htm.min.js"></script>
+<style>
+:root{
+  --bg:#08090c;--card:#111319;--card-2:#161a22;--edge:#20242e;
+  --ink:#f0f2f7;--ink-2:#9aa3b5;--ink-3:#5f6879;
+  --mint:#3ddc97;--mint-bg:rgba(61,220,151,.12);
+  --amber:#e3b341;--amber-bg:rgba(227,179,65,.13);
+  --crimson:#e5484d;--crimson-bg:rgba(229,72,77,.14);
+  --info:#5b9df0;--info-bg:rgba(91,157,240,.12);
+  --sans:"IBM Plex Sans",-apple-system,sans-serif;--mono:"IBM Plex Mono",ui-monospace,monospace;
+  --r:22px;--r-sm:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{-webkit-font-smoothing:antialiased}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5;
+  background-image:radial-gradient(1000px 500px at 80% -10%,rgba(91,157,240,.07),transparent 60%),
+                   radial-gradient(800px 480px at 0% -6%,rgba(61,220,151,.05),transparent 55%)}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+#root{max-width:860px;margin:0 auto;padding:20px 18px 110px}
+.fadein{animation:fin .45s cubic-bezier(.2,.8,.3,1) both}
+@keyframes fin{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+.top{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+.top .logo{width:38px;height:38px;border-radius:12px;background:var(--card-2);border:1px solid var(--edge);
+  display:grid;place-items:center;font-family:var(--mono);font-weight:700;font-size:18px}
+.top .nm{font-weight:700;font-size:17px;letter-spacing:-.02em}
+.top .nm small{display:block;font-size:10px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3)}
+.top .right{margin-left:auto;display:flex;gap:8px;align-items:center}
+.badge{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  padding:4px 10px;border-radius:20px;background:var(--info-bg);color:var(--info)}
+.prolink{font-size:12px;color:var(--ink-3);text-decoration:none;border:1px solid var(--edge);
+  padding:5px 11px;border-radius:20px}
+.prolink:active{background:var(--card-2)}
+
+.hero{position:relative;overflow:hidden;border-radius:var(--r);padding:26px 24px 22px;margin-bottom:14px;
+  background:linear-gradient(150deg,#141826 0%,#10131b 55%,#0d1a16 100%);border:1px solid var(--edge)}
+.hero .lab{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+.hero .worth{font-family:var(--mono);font-size:44px;font-weight:700;letter-spacing:-.03em;margin:6px 0 2px;line-height:1}
+.hero .sub{color:var(--ink-2);font-size:13px}
+.hero .chips{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:6px 12px;
+  border-radius:20px;background:rgba(255,255,255,.05);border:1px solid var(--edge);color:var(--ink-2)}
+.chip .d{width:7px;height:7px;border-radius:50%}
+.chip.up{color:var(--mint);background:var(--mint-bg);border-color:transparent}
+.chip.down{color:var(--crimson);background:var(--crimson-bg);border-color:transparent}
+.chip.warn{color:var(--amber);background:var(--amber-bg);border-color:transparent}
+
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:640px){.grid{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--edge);border-radius:var(--r);padding:18px;
+  transition:transform .18s ease}
+.card:active{transform:scale(.985)}
+.card h3{font-size:11px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-3);
+  display:flex;align-items:center;gap:7px;margin-bottom:12px}
+.card h3 .spacer{margin-left:auto}
+.big{font-family:var(--mono);font-size:26px;font-weight:700;letter-spacing:-.02em}
+.mut{color:var(--ink-2);font-size:12.5px}
+.up{color:var(--mint)}.down{color:var(--crimson)}.warm{color:var(--amber)}
+
+.bookcard{display:flex;flex-direction:column;gap:10px;cursor:pointer}
+.bookrow{display:flex;align-items:center;gap:12px}
+.bookrow .ic{width:40px;height:40px;border-radius:13px;display:grid;place-items:center;font-size:19px;flex:none;
+  background:var(--card-2);border:1px solid var(--edge)}
+.bookrow .t b{font-size:14.5px;font-weight:600;display:block}
+.bookrow .t small{color:var(--ink-3);font-size:11.5px}
+.bookrow .amt{margin-left:auto;text-align:right}
+.bookrow .amt b{font-family:var(--mono);font-size:15.5px;display:block}
+.bookrow .amt small{font-size:11px;color:var(--ink-3)}
+.pill{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:2px 9px;border-radius:20px}
+.pill.live{color:var(--mint);background:var(--mint-bg)}
+.pill.open{color:var(--amber);background:var(--amber-bg)}
+.pill.ret{color:var(--ink-3);background:rgba(255,255,255,.06)}
+.spark{width:100%;height:38px}
+
+.thermo-wrap{display:flex;gap:18px;align-items:stretch}
+.thermo{position:relative;width:54px;flex:none;border-radius:16px;overflow:hidden;background:var(--card-2);
+  border:1px solid var(--edge);min-height:150px}
+.thermo .zone{position:absolute;left:0;right:0}
+.thermo .marker{position:absolute;left:-2px;right:-2px;height:4px;border-radius:2px;background:#fff;
+  box-shadow:0 0 10px rgba(255,255,255,.7);transition:bottom 1s cubic-bezier(.2,.8,.3,1)}
+.tstory b{font-size:19px;font-weight:700;display:block;margin-bottom:5px}
+.tstory p{color:var(--ink-2);font-size:13px}
+.tmeta{display:flex;gap:14px;margin-top:12px}
+.tmeta .m small{display:block;font-size:10.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.07em;font-weight:700}
+.tmeta .m b{font-family:var(--mono);font-size:16px}
+
+.tip{position:relative;display:inline-flex;align-items:center;gap:5px;cursor:pointer;border-bottom:1px dashed var(--ink-3)}
+.tip .bubble{position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%);width:230px;z-index:50;
+  background:var(--card-2);border:1px solid var(--edge);border-radius:14px;padding:11px 13px;font-size:12.5px;
+  color:var(--ink-2);box-shadow:0 14px 40px rgba(0,0,0,.6);animation:fin .2s ease both}
+.tip .bubble b{color:var(--ink);display:block;margin-bottom:3px;font-size:12.5px}
+
+.sheet-scrim{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(3px);z-index:90;animation:sfade .25s both}
+@keyframes sfade{from{opacity:0}to{opacity:1}}
+.sheet{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:min(860px,100%);max-height:82vh;z-index:100;
+  background:var(--card);border:1px solid var(--edge);border-bottom:none;border-radius:26px 26px 0 0;
+  padding:14px 20px 30px;overflow-y:auto;animation:sup .35s cubic-bezier(.2,.8,.3,1) both}
+@keyframes sup{from{transform:translate(-50%,60px);opacity:0}to{transform:translate(-50%,0);opacity:1}}
+.sheet .grab{width:44px;height:5px;border-radius:3px;background:var(--edge);margin:0 auto 16px}
+.lrow{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.lrow:last-child{border-bottom:none}
+.lrow .ic2{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;font-size:15px;flex:none;
+  font-family:var(--mono);font-weight:700}
+.lrow .ic2.buy{background:var(--mint-bg);color:var(--mint)}
+.lrow .ic2.sell{background:var(--crimson-bg);color:var(--crimson)}
+.lrow .ic2.n{background:var(--info-bg);color:var(--info)}
+.lrow .t b{font-size:13.5px;display:block}.lrow .t small{color:var(--ink-3);font-size:11px}
+.lrow .amt{margin-left:auto;text-align:right}
+.lrow .amt b{font-family:var(--mono);font-size:13.5px;display:block}
+.lrow .amt small{font-size:10.5px;color:var(--ink-3)}
+
+.tabbar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:min(860px,100%);z-index:80;
+  display:flex;background:rgba(13,15,20,.85);backdrop-filter:blur(16px);border-top:1px solid var(--edge);
+  padding:8px 10px calc(10px + env(safe-area-inset-bottom))}
+.tabbar button{flex:1;background:none;border:none;color:var(--ink-3);font-family:var(--sans);font-size:10.5px;
+  font-weight:600;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 0;cursor:pointer;
+  border-radius:14px;transition:color .15s}
+.tabbar button svg{width:21px;height:21px}
+.tabbar button.on{color:var(--ink)}
+.tabbar button.on .dot{width:4px;height:4px;border-radius:50%;background:var(--mint)}
+.tabbar .dot{width:4px;height:4px;border-radius:50%;background:transparent}
+
+.skel{border-radius:var(--r);background:linear-gradient(100deg,var(--card) 40%,var(--card-2) 50%,var(--card) 60%);
+  background-size:200% 100%;animation:sh 1.2s infinite linear}
+@keyframes sh{to{background-position:-200% 0}}
+.learncard{margin-bottom:12px}
+.dict{display:flex;flex-direction:column;gap:2px}
+.dict .drow{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.dict .drow:last-child{border-bottom:none}
+.dict .drow b{font-size:13.5px}
+.dict .drow span{color:var(--ink-3);font-size:12px;text-align:right}
+.footnote{text-align:center;color:var(--ink-3);font-size:11.5px;margin-top:22px;line-height:1.6}
+.barrow{display:flex;align-items:center;gap:10px;margin-top:8px;font-size:12px}
+.barrow .lbl{width:86px;color:var(--ink-2);flex:none}
+.barrow .bar{flex:1;height:10px;border-radius:6px;background:var(--card-2);overflow:hidden}
+.barrow .bar i{display:block;height:100%;border-radius:6px;transition:width .9s cubic-bezier(.2,.8,.3,1)}
+.barrow .v{font-family:var(--mono);font-size:12px;width:86px;text-align:right;flex:none}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const {useState, useEffect, useRef, createElement} = React;
+/* htm passes style="..." strings through, but React DOM requires style objects
+   (minified error #62) — this shim converts them once, centrally. */
+const ce = (type, props, ...kids) => {
+  if (props && typeof props.style === "string") {
+    const o = {};
+    props.style.split(";").forEach(s => {
+      const i = s.indexOf(":");
+      if (i > 0) o[s.slice(0, i).trim().replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = s.slice(i + 1).trim();
+    });
+    props = Object.assign({}, props, {style: o});
+  }
+  return createElement(type, props, ...kids);
+};
+const html = htm.bind(ce);
+
+/* ── helpers ─────────────────────────────────────────────────────────────── */
+const rup = (x, sign) => {
+  if (x === null || x === undefined) return "—";
+  const n = Math.abs(x);
+  const s = "₹" + n.toLocaleString("en-IN", {maximumFractionDigits: 0});
+  return (x < 0 ? "−" : (sign && x > 0 ? "+" : "")) + s;
+};
+const pct = x => (x === null || x === undefined) ? "—" : (x * 100).toFixed(1) + "%";
+
+function useApi(path) {
+  const [data, setData] = useState(null);
+  useEffect(() => {
+    let ok = true;
+    fetch("/api/v1" + path).then(r => r.json()).then(d => ok && setData(d)).catch(() => {});
+    return () => { ok = false; };
+  }, [path]);
+  return data;
+}
+
+/* count-up (CRED-style odometer feel) */
+function CountUp({value, format}) {
+  const [v, setV] = useState(0);
+  const raf = useRef();
+  useEffect(() => {
+    const dur = 900, t0 = performance.now(), from = v, to = value || 0;
+    const step = t => {
+      const p = Math.min((t - t0) / dur, 1), e = 1 - Math.pow(1 - p, 3);
+      setV(from + (to - from) * e);
+      if (p < 1) raf.current = requestAnimationFrame(step);
+    };
+    raf.current = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf.current);
+  }, [value]);
+  return (format || rup)(v);
+}
+
+/* tap tooltip — the jargon translator */
+function Tip({plain, term, children}) {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    setTimeout(() => document.addEventListener("click", close), 0);
+    return () => document.removeEventListener("click", close);
+  }, [open]);
+  return html`<span class="tip" onClick=${e => { e.stopPropagation(); setOpen(!open); }}>
+    ${plain}${open && html`<span class="bubble"><b>${term}</b>${children}</span>`}
+  </span>`;
+}
+
+function Spark({data, color}) {
+  if (!data || data.length < 2) return html`<svg class="spark"></svg>`;
+  const w = 300, h = 38, mn = Math.min(...data), mx = Math.max(...data), span = (mx - mn) || 1;
+  const pts = data.map((v, i) =>
+    `${(i / (data.length - 1)) * w},${h - 3 - ((v - mn) / span) * (h - 8)}`).join(" ");
+  const c = color || (data[data.length - 1] >= data[0] ? "var(--mint)" : "var(--crimson)");
+  return html`<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+    <polyline points=${pts} fill="none" stroke=${c} stroke-width="2.2"
+      stroke-linejoin="round" stroke-linecap="round"/>
+  </svg>`;
+}
+
+/* ── Drawdown Thermometer ────────────────────────────────────────────────── */
+function Thermometer({t}) {
+  if (!t) return null;
+  const used = Math.min(t.used_pct || 0, 100);
+  return html`<div class="card fadein" style="margin-bottom:12px">
+    <h3>Drawdown Thermometer
+      <span class="spacer"></span>
+      <span class="pill" style="color:${t.color};background:${t.color}22">${t.label}</span></h3>
+    <div class="thermo-wrap">
+      <div class="thermo">
+        <div class="zone" style="bottom:0;height:40%;background:var(--mint-bg)"></div>
+        <div class="zone" style="bottom:40%;height:35%;background:var(--amber-bg)"></div>
+        <div class="zone" style="bottom:75%;height:25%;background:var(--crimson-bg)"></div>
+        <div class="marker" style="bottom:${used}%"></div>
+      </div>
+      <div class="tstory">
+        <b style="color:${t.color}">${t.label}</b>
+        <p>${t.story}</p>
+        <div class="tmeta">
+          <div class="m"><small>${'Current dip'}</small><b>${t.drawdown_pct === null ? "—" : Math.abs(t.drawdown_pct).toFixed(1) + "%"}</b></div>
+          <div class="m"><small>Safety line</small><b>${t.limit_pct === null ? "—" : Math.abs(t.limit_pct).toFixed(0) + "%"}</b></div>
+          <div class="m"><small>Used</small><b>${used.toFixed(0)}%</b></div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ── Book bits ───────────────────────────────────────────────────────────── */
+const BOOK_META = {
+  "Low-vol equity":    {icon: "🛡️", key: "lowvol",   teen: "The Calm Collector",
+                        blurb: "Buys the 15 steadiest big stocks, rebalances monthly."},
+  "Options strangle":  {icon: "🌩️", key: "strangle", teen: "The Storm Seller",
+                        blurb: "Collects rent betting the market stays calm. Risky tails!"},
+  "Options condor":    {icon: "🪁", key: "condor",   teen: "The Careful Storm Seller",
+                        blurb: "Same bet, but pays for insurance wings. Capped risk."},
+  "Intraday ORB":      {icon: "⚰️", key: "orb",      teen: "Retired: The Sprinter",
+                        blurb: "Day-trading breakouts. Fees ate the edge. Retired."},
+  "Intraday VWAP":     {icon: "⚰️", key: "vwap",     teen: "Retired: The Bouncer",
+                        blurb: "Day-trading bounces. Fees ate this one too."},
+};
+
+function BookCard({b, onOpen}) {
+  const meta = BOOK_META[b.book] || {icon: "📒", key: null, teen: b.book, blurb: b.note};
+  const pillCls = b.status === "retired" ? "ret" : (b.book.includes("Options") ? "open" : "live");
+  return html`<div class="card bookcard fadein" onClick=${() => meta.key && onOpen(meta.key, b, meta)}>
+    <div class="bookrow">
+      <div class="ic">${meta.icon}</div>
+      <div class="t"><b>${meta.teen}</b><small>${meta.blurb}</small></div>
+      <div class="amt">
+        <b class=${b.total >= 0 ? "up" : "down"}>${rup(b.total, true)}</b>
+        <small>${rup(b.realised)} locked · ${rup(b.unrealised)} paper</small>
+      </div>
+    </div>
+    <${Spark} data=${b.spark} />
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <span class="pill ${pillCls}">${b.status}</span>
+      <span class="mut" style="font-size:11px">tap for the ledger →</span>
+    </div>
+  </div>`;
+}
+
+function LedgerSheet({bookKey, book, meta, onClose}) {
+  const data = useApi(`/books/${bookKey}/ledger`);
+  const rows = [];
+  if (data) {
+    (data.fills || []).forEach(f => rows.push({
+      ic: f.side === "BUY" ? "buy" : "sell", icTx: f.side === "BUY" ? "B" : "S",
+      t: `${f.side === "BUY" ? "Bought" : "Sold"} ${f.qty} × ${f.symbol}`,
+      s: `${f.run_date} · @ ${rup(f.price)} · fees ${rup(f.cost)}`,
+      amt: f.realised_pnl, amtLbl: f.side === "SELL" ? "locked in" : "invested"}));
+    (data.marks || []).forEach(m => rows.push({
+      ic: "n", icTx: "M", t: `Marked to model`,
+      s: `${m.mark_date} · NIFTY ${Math.round(m.spot).toLocaleString("en-IN")} · day move ${(m.daily_move * 100).toFixed(1)}%`,
+      amt: m.open_pnl, amtLbl: "paper P&L"}));
+    (data.trades || []).forEach(t => rows.push({
+      ic: t.net_pnl >= 0 ? "buy" : "sell", icTx: t.side === "LONG" ? "L" : "S",
+      t: `${t.symbol} ${t.side}`,
+      s: `${t.trade_date} · fees ${rup(t.costs)} · ${t.exit_reason || ""}`,
+      amt: t.net_pnl, amtLbl: "after fees"}));
+  }
+  return html`<div>
+    <div class="sheet-scrim" onClick=${onClose}></div>
+    <div class="sheet">
+      <div class="grab"></div>
+      <div class="bookrow" style="margin-bottom:12px">
+        <div class="ic">${meta.icon}</div>
+        <div class="t"><b>${meta.teen}</b><small>${meta.blurb}</small></div>
+        <div class="amt"><b class=${book.total >= 0 ? "up" : "down"}>${rup(book.total, true)}</b>
+          <small>all simulated</small></div>
+      </div>
+      ${!data && html`<div class="skel" style="height:200px"></div>`}
+      ${data && rows.length === 0 && html`<p class="mut" style="padding:20px;text-align:center">No entries yet.</p>`}
+      ${rows.slice(0, 60).map((r, i) => html`<div class="lrow" key=${i}>
+        <div class="ic2 ${r.ic}">${r.icTx}</div>
+        <div class="t"><b>${r.t}</b><small>${r.s}</small></div>
+        <div class="amt">
+          <b class=${r.amt > 0 ? "up" : (r.amt < 0 ? "down" : "")}>${r.amt === null || r.amt === undefined ? "—" : rup(r.amt, true)}</b>
+          <small>${r.amtLbl}</small>
+        </div>
+      </div>`)}
+    </div>
+  </div>`;
+}
+
+/* ── Screens ─────────────────────────────────────────────────────────────── */
+function Home({ov, risk, onOpen}) {
+  if (!ov) return html`<div class="skel" style="height:190px;margin-bottom:12px"></div>
+    <div class="skel" style="height:150px"></div>`;
+  const a = ov.active, worth = a.capital + a.total;
+  const vol = ov.vol_event || {};
+  const reg = ov.regime || {};
+  const regNice = reg.trend === "bear" ? "Market's in a grumpy patch" :
+                  reg.trend === "bull" ? "Market's in a good mood" : "Market's wandering sideways";
+  return html`<div>
+    <div class="hero fadein">
+      <div class="lab">Pretend-money pot</div>
+      <div class="worth"><${CountUp} value=${worth} /></div>
+      <div class="sub">started with ${rup(a.capital)} across ${a.n} active books · data ${ov.as_of}</div>
+      <div class="chips">
+        <span class="chip ${a.total >= 0 ? "up" : "down"}">${a.total >= 0 ? "▲" : "▼"} ${rup(a.total, true)} overall</span>
+        <span class="chip">${regNice}</span>
+        <span class="chip ${vol.state === "quiet" ? "" : "warn"}">⛈️ Storm day: ${vol.state === "event" ? "HAPPENED — big test!" : vol.state === "watch" ? "clouds forming" : "not yet"}</span>
+      </div>
+    </div>
+    <${Thermometer} t=${risk && risk.thermometer} />
+    <div class="grid">
+      <div class="card fadein">
+        <h3><${Tip} plain="Locked in" term="Realised P&L">Money from positions already closed. It can't un-happen.<//></h3>
+        <div class="big ${a.realised >= 0 ? "up" : "down"}"><${CountUp} value=${a.realised} format=${v => rup(v, true)} /></div>
+        <div class="mut">from closed positions</div>
+      </div>
+      <div class="card fadein">
+        <h3><${Tip} plain="Paper gains" term="Unrealised P&L">Profit that exists on screen but isn't locked in yet — it can still change.<//></h3>
+        <div class="big ${a.unrealised >= 0 ? "up" : "down"}"><${CountUp} value=${a.unrealised} format=${v => rup(v, true)} /></div>
+        <div class="mut">still open, still moving</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function Books({ov, onOpen}) {
+  if (!ov) return html`<div class="skel" style="height:400px"></div>`;
+  const active = ov.books.filter(b => b.status !== "retired");
+  const retired = ov.books.filter(b => b.status === "retired");
+  return html`<div>
+    ${active.map(b => html`<div style="margin-bottom:12px" key=${b.book}><${BookCard} b=${b} onOpen=${onOpen} /></div>`)}
+    ${retired.length > 0 && html`<h3 style="font-size:11px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-3);margin:18px 0 10px">The graveyard (kept as receipts)</h3>`}
+    ${retired.map(b => html`<div style="margin-bottom:12px;opacity:.75" key=${b.book}><${BookCard} b=${b} onOpen=${onOpen} /></div>`)}
+  </div>`;
+}
+
+function Risk({risk, regime}) {
+  if (!risk) return html`<div class="skel" style="height:400px"></div>`;
+  const ch = risk.checks || {};
+  const items = [
+    {k: "daily_loss", lbl: "Today's slide", tip: "How much the pot fell today vs the daily stop."},
+    {k: "max_drawdown", lbl: "Biggest dip", tip: "Worst fall from a peak vs the hard limit."},
+    {k: "sector_exposure", lbl: "Eggs, one basket", tip: "Largest share parked in a single sector."},
+    {k: "correlation", lbl: "Herd factor", tip: "How much the holdings move together. Lower = safer."},
+  ];
+  const ovl = regime && regime.overlay;
+  return html`<div>
+    <${Thermometer} t=${risk.thermometer} />
+    <div class="card fadein" style="margin-bottom:12px">
+      <h3>Safety checks <span class="spacer"></span>
+        <span class="pill ${risk.status === "OK" ? "live" : "open"}">${risk.status === "OK" ? "all good" : risk.status}</span></h3>
+      ${items.map(({k, lbl, tip}) => {
+        const c = ch[k] || {}; const used = c.limit ? Math.min(Math.abs(c.value || 0) / Math.abs(c.limit), 1) : 0;
+        const col = used < .4 ? "var(--mint)" : used < .75 ? "var(--amber)" : "var(--crimson)";
+        return html`<div class="barrow" key=${k}>
+          <span class="lbl"><${Tip} plain=${lbl} term=${k.replace("_", " ")}>${tip}<//></span>
+          <div class="bar"><i style="width:${used * 100}%;background:${col}"></i></div>
+          <span class="v">${pct(c.value)} / ${pct(c.limit)}</span>
+        </div>`;
+      })}
+    </div>
+    <div class="card fadein">
+      <h3>Auto-brake (regime overlay)</h3>
+      <p class="mut" style="font-size:13px">When the market turns grumpy <i>and</i> extra-shaky at the same time,
+        the Calm Collector automatically buys half-size and keeps the rest as cash. Locked rule — it never re-tunes itself.</p>
+      ${ovl && html`<p style="margin-top:10px;font-size:13px">Last check (${ovl.run_date}):
+        <b class=${ovl.stress ? "warm" : "up"}> ${ovl.stress ? "BRAKING — half size" : "full size, no stress"}</b>
+        <span class="mut"> — ${ovl.reason}</span></p>`}
+      ${!ovl && html`<p class="mut" style="margin-top:10px;font-size:12px">First decision appears at the next monthly rebalance.</p>`}
+    </div>
+  </div>`;
+}
+
+function Learn({research, costs, precommit}) {
+  if (!research) return html`<div class="skel" style="height:400px"></div>`;
+  const dic = research.dictionary || {};
+  const lv = (research.strategies || []).find(s => s.name === "lowvol");
+  return html`<div>
+    ${lv && html`<div class="card learncard fadein">
+      <h3>Report card — The Calm Collector</h3>
+      <div class="dict">
+        <div class="drow"><b><${Tip} plain=${dic.cagr.plain} term="CAGR">${dic.cagr.tip}<//></b>
+          <span class="mono up">${pct(lv.full.cagr)} / yr</span></div>
+        <div class="drow"><b><${Tip} plain=${dic.total_return.plain} term="Total return">${dic.total_return.tip}<//></b>
+          <span class="mono up">${pct(lv.full.total_return)}</span></div>
+        <div class="drow"><b><${Tip} plain=${dic.max_drawdown.plain} term="Max drawdown">${dic.max_drawdown.tip}<//></b>
+          <span class="mono warm">${pct(lv.full.max_drawdown)}</span></div>
+        <div class="drow"><b><${Tip} plain=${dic.sharpe.plain} term="Sharpe ratio">${dic.sharpe.tip}<//></b>
+          <span class="mono">${lv.full.sharpe ? lv.full.sharpe.toFixed(2) : "—"}</span></div>
+      </div>
+      <p class="mut" style="margin-top:10px;font-size:12px">It beat just-buying-the-index <i>and</i> had a smaller
+        biggest-dip. That combo is why it's the only strategy that graduated to live paper trading.</p>
+    </div>`}
+    ${costs && costs.available && html`<div class="card learncard fadein">
+      <h3>Why day-trading died here 💸</h3>
+      <div class="barrow"><span class="lbl">Edge found</span>
+        <div class="bar"><i style="width:${Math.min(costs.gross / costs.costs, 1) * 100}%;background:var(--mint)"></i></div>
+        <span class="v up">${rup(costs.gross, true)}</span></div>
+      <div class="barrow"><span class="lbl">Fees paid</span>
+        <div class="bar"><i style="width:100%;background:var(--crimson)"></i></div>
+        <span class="v down">−${rup(costs.costs).slice(1)}</span></div>
+      <div class="barrow"><span class="lbl">Left over</span>
+        <div class="bar"><i style="width:${Math.min(Math.abs(costs.net) / costs.costs, 1) * 100}%;background:var(--amber)"></i></div>
+        <span class="v down">${rup(costs.net, true)}</span></div>
+      <p class="mut" style="margin-top:10px;font-size:12.5px">${costs.story}</p>
+    </div>`}
+    ${precommit && html`<div class="card learncard fadein">
+      <h3>The storm test ⛈️ (rules locked in advance)</h3>
+      <p class="mut" style="font-size:13px">Two option bots collect "rent" while the market is calm. They only get judged
+        after a real storm — a ≥4% NIFTY day. The pass/fail rules are frozen in the database <i>before</i> the storm,
+        so nobody can move the goalposts afterwards.</p>
+      <p style="margin-top:8px;font-size:13px">Status: <b class=${precommit.vol_event.state === "quiet" ? "up" : "warm"}>
+        ${precommit.vol_event.state === "event" ? "Storm happened — judging time" :
+          precommit.vol_event.state === "watch" ? "Clouds forming…" : "Still sunny — no verdict yet"}</b></p>
+    </div>`}
+    <div class="card learncard fadein">
+      <h3>Jargon translator</h3>
+      <div class="dict">
+        ${Object.entries(dic).map(([k, v]) => html`<div class="drow" key=${k}>
+          <b>${v.plain}</b><span>${v.tip}</span></div>`)}
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ── App shell ───────────────────────────────────────────────────────────── */
+const TABS = [
+  {id: "home",  lbl: "Home",  icon: "M3 12l9-9 9 9M5 10v10h14V10"},
+  {id: "books", lbl: "Books", icon: "M4 19V5a2 2 0 012-2h13v18H6a2 2 0 01-2-2zm0 0a2 2 0 012-2h13"},
+  {id: "risk",  lbl: "Risk",  icon: "M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"},
+  {id: "learn", lbl: "Learn", icon: "M12 3L2 8l10 5 10-5-10-5zm-6 7v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"},
+];
+
+function App() {
+  const [tab, setTab] = useState("home");
+  const [sheet, setSheet] = useState(null);
+  const ov = useApi("/overview");
+  const risk = useApi("/risk");
+  const research = useApi("/research");
+  const costs = useApi("/costs");
+  const precommit = useApi("/precommit");
+  const regime = useApi("/regime");
+  const open = (key, b, meta) => setSheet({key, b, meta});
+  return html`<div>
+    <div class="top">
+      <div class="logo">t</div>
+      <div class="nm">tradebot<small>Simple mode · paper</small></div>
+      <div class="right">
+        <span class="badge">No real money</span>
+        <a class="prolink" href="/command">Pro mode →</a>
+      </div>
+    </div>
+    ${tab === "home" && html`<${Home} ov=${ov} risk=${risk} onOpen=${open} />`}
+    ${tab === "books" && html`<${Books} ov=${ov} onOpen=${open} />`}
+    ${tab === "risk" && html`<${Risk} risk=${risk} regime=${regime} />`}
+    ${tab === "learn" && html`<${Learn} research=${research} costs=${costs} precommit=${precommit} />`}
+    <p class="footnote">Everything here is simulated with pretend money. No orders ever reach a broker.<br/>
+      Built for learning — tap any dotted word to translate the jargon.</p>
+    ${sheet && html`<${LedgerSheet} bookKey=${sheet.key} book=${sheet.b} meta=${sheet.meta} onClose=${() => setSheet(null)} />`}
+    <div class="tabbar">
+      ${TABS.map(t => html`<button key=${t.id} class=${tab === t.id ? "on" : ""} onClick=${() => setTab(t.id)}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d=${t.icon}/></svg>
+        ${t.lbl}<span class="dot"></span>
+      </button>`)}
+    </div>
+  </div>`;
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(html`<${App} />`);
+</script>
+</body>
+</html>

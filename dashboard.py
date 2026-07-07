@@ -59,6 +59,20 @@ app.register_blueprint(features_bp)
 import views_research  # noqa: E402
 views_research.register(app)
 
+# JSON API (v1) — read-only data layer for the /app frontend (and anything
+# else). HTML rendering and data assembly are now decoupled: /api/v1/* serves
+# JSON only, templates consume it. No order-placement code.
+import api  # noqa: E402
+api.register(app)
+
+
+@app.route("/app")
+@login_required
+def spa():
+    """The simple-mode frontend (React, no build step) — plain-English,
+    CRED-style cards, Drawdown Thermometer. Reads only /api/v1/*."""
+    return render_template("app.html")
+
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
 
