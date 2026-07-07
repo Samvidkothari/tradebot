@@ -1,429 +1,99 @@
-<!DOCTYPE html>
-<html lang="en" data-theme="dark">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>tradebot — {% block title %}Dashboard{% endblock %}</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <style>
-    /* ─────────────────────────────────────────────────────────────
-       tradebot design system  ·  v2
-       Dark by default; light theme via [data-theme="light"].
-       Class contract preserved: card / cards / label / value / sub /
-       empty / banner / readonly / green / red / num / section / h1 / h2.
-       ───────────────────────────────────────────────────────────── */
-    :root, [data-theme="dark"] {
-      --bg: #0a0c12; --bg-2: #0e1118;
-      --panel: #12151e; --elev: #171b27; --elev-2: #1c2130;
-      --border: #232a38; --border-soft: #1a2029;
-      --text: #eef1f7; --muted: #8b94a6; --faint: #5b6373;
-      --accent: #d2a95e; --accent-ink: #e7c98a; --accent-2: #d2a95e;
-      --green: #41cd8b; --green-dim: rgba(65,205,139,.14);
-      --red: #f0655b; --red-dim: rgba(240,101,91,.14);
-      --warn: #e7b75f;
-      --grid: rgba(255,255,255,.05);
-      --shadow: 0 1px 2px rgba(0,0,0,.45), 0 10px 30px rgba(0,0,0,.30);
-      --shadow-sm: 0 1px 2px rgba(0,0,0,.35);
-      --radius: 16px; --radius-sm: 11px;
-      --glow: radial-gradient(900px 480px at 10% -10%, rgba(210,169,94,.10), transparent 60%),
-              radial-gradient(820px 520px at 102% -4%, rgba(65,205,139,.05), transparent 55%);
-    }
-    [data-theme="light"] {
-      --bg: #f4f6fb; --bg-2: #eef1f7;
-      --panel: #ffffff; --elev: #ffffff; --elev-2: #f7f9fd;
-      --border: #e2e7f0; --border-soft: #eaeef5;
-      --text: #131722; --muted: #5d6679; --faint: #8b94a6;
-      --accent: #b07d2a; --accent-ink: #936b27; --accent-2: #b07d2a;
-      --green: #12a86a; --green-dim: rgba(18,168,106,.12);
-      --red: #e0483f; --red-dim: rgba(224,72,63,.10);
-      --warn: #b8801f;
-      --grid: rgba(0,0,0,.06);
-      --shadow: 0 1px 2px rgba(20,30,60,.06), 0 12px 32px rgba(20,30,60,.10);
-      --shadow-sm: 0 1px 2px rgba(20,30,60,.06);
-      --glow: radial-gradient(900px 480px at 10% -10%, rgba(176,125,42,.10), transparent 60%),
-              radial-gradient(820px 520px at 102% -4%, rgba(18,168,106,.06), transparent 55%);
-    }
+{#
+  base.html — LEGACY-PAGE ADAPTER (old shell removed 2026-07-06).
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
-    body {
-      background: var(--bg); color: var(--text);
-      font-family: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      font-size: 15px; line-height: 1.55; letter-spacing: -0.006em;
-      display: flex; min-height: 100vh;
-      background-image: var(--glow); background-attachment: fixed;
-      transition: background-color .3s ease, color .3s ease;
-    }
-    .num, .mono, .card .value { font-family: "JetBrains Mono", ui-monospace, monospace;
-      font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
-    table tbody td { font-family: "JetBrains Mono", ui-monospace, monospace; }
-    table tbody td:first-child { font-family: "Space Grotesk", sans-serif; }
-    a { color: var(--accent-ink); }
+  The pre-redesign standalone layout (own sidebar, topbar, theme toggle) is gone.
+  Every template that `extends "base.html"` now renders inside the Quiet Terminal
+  shell (command_base.html). This file only:
+    1. passes the child blocks through (title / head / content / scripts), and
+    2. restyles the legacy content-class contract (card / cards / label / value /
+       sub / empty / banner / readonly / green / red / num / section / h1 / h2 /
+       btn / pill / panel / tables / forms / seg / tags) onto the shell tokens.
+  No page markup had to change.
+#}
+{% extends "command_base.html" %}
 
-    /* ── Sidebar ─────────────────────────────────────────────── */
-    aside {
-      width: 244px; position: fixed; top: 0; bottom: 0; padding: 24px 0 18px; z-index: 30;
-      background: linear-gradient(180deg, rgba(255,255,255,.03), transparent 38%), var(--panel);
-      border-right: 1px solid var(--border);
-      display: flex; flex-direction: column;
-      transition: transform .26s cubic-bezier(.4,0,.2,1), background-color .3s ease;
-    }
-    .brand {
-      display: flex; align-items: center; gap: 11px;
-      padding: 0 24px 20px; margin: 0 0 10px; border-bottom: 1px solid var(--border);
-    }
-    .brand .mark {
-      width: 34px; height: 34px; border-radius: 10px; flex: none;
-      background: linear-gradient(145deg, var(--accent), #b07d2a);
-      display: grid; place-items: center; color: #1a1305;
-      box-shadow: 0 4px 14px rgba(210,169,94,.4); font-weight: 700;
-      font-family: "Fraunces", Georgia, serif;
-    }
-    .brand .wm { font-family: "Fraunces", Georgia, serif; font-size: 21px; font-weight: 600;
-                 letter-spacing: -0.02em; line-height: 1; }
-    .brand .wm span { color: var(--accent-2); }
-    .brand .wm small {
-      display: block; font-family: "Space Grotesk", sans-serif; color: var(--faint);
-      font-size: 9.5px; font-weight: 600; letter-spacing: .15em;
-      text-transform: uppercase; margin-top: 5px;
-    }
-    .nav-group-label {
-      padding: 14px 24px 6px; font-size: 10px; font-weight: 700; letter-spacing: .12em;
-      text-transform: uppercase; color: var(--faint);
-    }
-    nav { display: flex; flex-direction: column; gap: 1px; padding: 0 12px; overflow-y: auto; }
-    nav a {
-      position: relative; display: flex; align-items: center; gap: 11px;
-      padding: 9px 14px; color: var(--muted); text-decoration: none;
-      font-size: 13.5px; font-weight: 500; border-radius: 9px;
-      transition: color .16s ease, background .16s ease;
-    }
-    nav a svg { width: 17px; height: 17px; flex: none; opacity: .8; }
-    nav a::before {
-      content: ""; position: absolute; left: -12px; top: 50%; transform: translateY(-50%);
-      width: 3px; height: 0; border-radius: 0 3px 3px 0;
-      background: var(--accent); transition: height .2s ease;
-    }
-    nav a:hover { color: var(--text); background: rgba(210,169,94,.07); }
-    nav a.active { color: var(--text); background: rgba(210,169,94,.13); }
-    nav a.active svg { opacity: 1; color: var(--accent-ink); }
-    nav a.active::before { height: 22px; }
-    .side-foot { margin-top: auto; padding: 14px 22px 0; border-top: 1px solid var(--border-soft);
-                 display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-    .side-foot a { color: var(--faint); font-size: 12.5px; text-decoration: none; transition: color .16s; }
-    .side-foot a:hover { color: var(--text); }
+{% block shell_head %}
+<style>
+/* ── Legacy content classes, mapped onto the Quiet Terminal tokens ────────── */
+:root{
+  --border:var(--line); --border-soft:var(--line-soft);
+  --text:var(--ink); --muted:var(--ink-2); --faint:var(--ink-3);
+  --accent:var(--ink-2); --accent-ink:var(--ink); --accent-2:var(--ink-2);
+  --green:var(--pos); --green-dim:var(--pos-bg);
+  --red:var(--crit); --red-dim:var(--crit-bg);
+  --bg-2:#0e1014; --elev-2:#1d222d; --grid:rgba(255,255,255,.05);
+  --radius:11px; --radius-sm:8px; --shadow:none; --shadow-sm:none;
+}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+table tbody td{font-family:var(--mono)}
+table tbody td:first-child{font-family:var(--sans)}
+a{color:var(--ink)}
+h1{font-size:21px;font-weight:600;letter-spacing:-.02em;margin-bottom:6px;display:flex;align-items:center;flex-wrap:wrap}
+h2{font-size:11.5px;color:var(--faint);text-transform:uppercase;letter-spacing:.1em;font-weight:700;margin-bottom:14px}
+.sub{color:var(--muted);font-size:12.5px;margin-bottom:18px}
+.page-head{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:18px}
+.page-head .sub{margin-bottom:0}
+section{margin-bottom:26px}
+/* buttons */
+.btn{display:inline-flex;align-items:center;gap:7px;padding:7px 13px;border-radius:8px;font-size:12.5px;font-weight:600;border:1px solid var(--line);background:var(--elev);color:var(--ink);cursor:pointer;text-decoration:none;transition:border-color .15s;white-space:nowrap}
+.btn svg{width:15px;height:15px}
+.btn:hover{border-color:var(--ink-3)}
+.btn.primary{background:var(--elev-2);border-color:transparent}
+.btn.ghost{background:transparent}
+.btn.danger{color:var(--crit);border-color:var(--crit)}
+.btn-row{display:flex;gap:10px;flex-wrap:wrap}
+/* stat cards */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(206px,1fr));gap:12px;margin-bottom:20px}
+.card{position:relative;overflow:hidden;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:15px 17px}
+.card .label{color:var(--ink-3);font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;display:flex;align-items:center;gap:6px}
+.card .value{font-family:var(--mono);font-size:24px;font-weight:600;margin-top:8px;letter-spacing:-.01em;font-variant-numeric:tabular-nums;line-height:1.15}
+.card .value small,.card .delta{font-size:12.5px;font-weight:500;color:var(--ink-2)}
+.card .delta{display:inline-block;margin-top:4px}
+.card .spark{position:absolute;right:0;bottom:0;opacity:.5;pointer-events:none}
+/* pills / tags (reset shell's .pill margin-left:auto for legacy layouts) */
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:600;padding:2px 9px;border-radius:20px;letter-spacing:.02em;margin-left:0;background:rgba(255,255,255,.06);color:var(--ink-2)}
+.pill.up{background:var(--pos-bg);color:var(--pos)}
+.pill.down{background:var(--crit-bg);color:var(--crit)}
+.pill.flat{background:rgba(255,255,255,.06);color:var(--ink-2)}
+.pill.warnpill{background:var(--warn-bg);color:var(--warn)}
+.spark-cell{width:100px}.spark-cell svg{width:92px;height:24px}
+.more{float:right;font-size:12px;font-weight:500;color:var(--ink-2);text-decoration:none}
+.more:hover{color:var(--ink)}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
+.tag{display:inline-block;font-size:11px;font-weight:600;padding:2px 9px;border-radius:6px;background:rgba(170,178,192,.14);color:var(--ink)}
+/* panels (reset shell paddings for legacy usage) */
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:17px 19px;margin-bottom:14px}
+.panel-head{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:14px}
+/* tables (legacy pages use plain <table>) */
+.table-wrap{overflow-x:auto;border-radius:11px;border:1px solid var(--line)}
+table{width:100%;border-collapse:separate;border-spacing:0;background:var(--panel);border-radius:11px;overflow:hidden;font-variant-numeric:tabular-nums}
+.table-wrap>table{border:none}
+th,td{padding:10px 14px;text-align:right;font-size:12.5px}
+th:first-child,td:first-child{text-align:left}
+th{position:sticky;top:0;background:var(--elev-2);color:var(--ink-3);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;border-bottom:1px solid var(--line)}
+td{border-top:1px solid var(--grid)}
+tbody tr:first-child td,tr:first-child td{border-top:none}
+table tbody tr:hover td,table tr:hover td{background:rgba(170,178,192,.06)}
+.green{color:var(--pos)}.red{color:var(--crit)}
+/* forms */
+label.field{display:block;font-size:11.5px;font-weight:600;color:var(--ink-2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+input,select,textarea{width:100%;padding:9px 12px;font:inherit;font-size:13px;background:var(--bg-2);color:var(--ink);border:1px solid var(--line);border-radius:9px;transition:border-color .15s}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--ink-3);box-shadow:0 0 0 3px rgba(170,178,192,.14)}
+textarea{resize:vertical;min-height:84px}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px}
+/* misc (— .banner reset: the shell uses .banner for its top strip) */
+.canvas .banner{display:block;height:auto;background:var(--crit-bg);border:1px solid var(--crit-line);border-bottom:1px solid var(--crit-line);color:var(--crit);padding:13px 17px;border-radius:11px;margin-bottom:14px;white-space:pre-line;font-size:12.5px}
+.canvas .banner code{background:rgba(255,255,255,.09);padding:1px 6px;border-radius:5px}
+.notice{background:var(--warn-bg);border:1px solid var(--warn-line);color:var(--warn);padding:12px 15px;border-radius:11px;margin-bottom:14px;font-size:12.5px}
+.empty{color:var(--ink-2);padding:30px;text-align:center;background:var(--panel);border:1px dashed var(--line);border-radius:11px}
+.readonly{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;letter-spacing:.07em;color:var(--ink-2);border:1px solid var(--line);border-radius:20px;padding:2px 10px;margin-left:12px;vertical-align:middle;text-transform:uppercase}
+.seg{display:inline-flex;background:var(--elev);border:1px solid var(--line);border-radius:9px;padding:3px;gap:3px}
+.seg a{padding:5px 12px;border-radius:6px;font-size:12.5px;font-weight:500;color:var(--ink-2);text-decoration:none;transition:all .14s}
+.seg a.active{background:rgba(170,178,192,.16);color:var(--ink)}
+.seg a:hover:not(.active){color:var(--ink)}
+::selection{background:rgba(170,178,192,.3)}
+</style>
+{% block head %}{% endblock %}
+{% endblock %}
 
-    /* theme toggle */
-    .theme-toggle {
-      display: inline-grid; place-items: center; width: 32px; height: 32px;
-      border: 1px solid var(--border); border-radius: 9px; background: var(--elev);
-      color: var(--muted); cursor: pointer; transition: all .16s ease;
-    }
-    .theme-toggle:hover { color: var(--text); border-color: var(--accent); }
-    .theme-toggle svg { width: 16px; height: 16px; }
-
-    /* ── Main + topbar ───────────────────────────────────────── */
-    main {
-      margin-left: 244px; flex: 1; padding: 0 0 64px; min-width: 0;
-      animation: fade .4s ease both;
-    }
-    @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-    .topbar {
-      position: sticky; top: 0; z-index: 20;
-      display: flex; align-items: center; gap: 14px;
-      padding: 14px 52px; border-bottom: 1px solid var(--border);
-      background: color-mix(in srgb, var(--bg) 82%, transparent);
-      backdrop-filter: saturate(140%) blur(10px);
-    }
-    .topbar .menu-btn { display: none; }
-    .crumb { font-size: 12.5px; color: var(--muted); font-weight: 500; }
-    .crumb b { color: var(--text); font-weight: 600; }
-    .topbar-spacer { flex: 1; }
-    .live-dot { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; color: var(--muted); }
-    .live-dot i { width: 7px; height: 7px; border-radius: 50%; background: var(--green);
-                  box-shadow: 0 0 0 0 var(--green); animation: pulse 2s infinite; }
-    @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(65,205,139,.5);} 70%{box-shadow:0 0 0 6px rgba(65,205,139,0);} 100%{box-shadow:0 0 0 0 rgba(65,205,139,0);} }
-    .page { padding: 34px 52px 0; max-width: 1280px; }
-
-    /* buttons */
-    .btn {
-      display: inline-flex; align-items: center; gap: 7px;
-      padding: 8px 14px; border-radius: 10px; font-size: 13px; font-weight: 600;
-      border: 1px solid var(--border); background: var(--elev); color: var(--text);
-      cursor: pointer; text-decoration: none; transition: all .15s ease; white-space: nowrap;
-    }
-    .btn svg { width: 15px; height: 15px; }
-    .btn:hover { border-color: var(--accent); transform: translateY(-1px); }
-    .btn.primary { background: linear-gradient(145deg, var(--accent), #b07d2a); border-color: transparent;
-                   color: #1a1305; box-shadow: 0 4px 14px rgba(210,169,94,.32); }
-    .btn.primary:hover { filter: brightness(1.06); }
-    .btn.ghost { background: transparent; }
-    .btn.danger { color: var(--red); border-color: var(--red); }
-    .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
-
-    h1 {
-      font-family: "Fraunces", Georgia, serif; font-size: 31px; font-weight: 500;
-      letter-spacing: -0.02em; margin-bottom: 6px; display: flex; align-items: center; flex-wrap: wrap;
-    }
-    .sub { color: var(--muted); font-size: 13.5px; margin-bottom: 30px; }
-    .page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px;
-                 flex-wrap: wrap; margin-bottom: 30px; }
-    .page-head .sub { margin-bottom: 0; }
-
-    /* ── Stat cards ──────────────────────────────────────────── */
-    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(206px,1fr));
-             gap: 16px; margin-bottom: 32px; }
-    .card {
-      position: relative; overflow: hidden;
-      background: linear-gradient(180deg, var(--elev), var(--panel));
-      border: 1px solid var(--border); border-radius: var(--radius);
-      padding: 18px 20px; box-shadow: var(--shadow);
-      transition: transform .2s ease, border-color .2s ease;
-    }
-    .cards .card:hover { transform: translateY(-2px); border-color: rgba(210,169,94,.4); }
-    .card .label {
-      color: var(--muted); font-size: 11px; font-weight: 600;
-      text-transform: uppercase; letter-spacing: .09em; display: flex; align-items: center; gap: 6px;
-    }
-    .card .value {
-      font-size: 26px; font-weight: 600; margin-top: 8px; letter-spacing: -0.01em;
-      font-variant-numeric: tabular-nums; line-height: 1.15;
-    }
-    .card .value small, .card .delta { font-size: 13px; font-weight: 500; color: var(--muted); }
-    .card .delta { display: inline-block; margin-top: 4px; }
-    .card .spark { position: absolute; right: 0; bottom: 0; opacity: .5; pointer-events: none; }
-
-    /* pill / badge */
-    .pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600;
-            padding: 2px 9px; border-radius: 20px; letter-spacing: .02em; }
-    .pill.up { background: var(--green-dim); color: var(--green); }
-    .pill.down { background: var(--red-dim); color: var(--red); }
-    .pill.flat { background: rgba(255,255,255,.06); color: var(--muted); }
-    .pill.warnpill { background: rgba(231,183,95,.14); color: var(--warn); }
-    .spark-cell { width: 100px; }
-    .spark-cell svg { width: 92px; height: 24px; }
-    .pill { background: rgba(255,255,255,.06); color: var(--muted); }
-    .more { float: right; font-size: 12px; font-weight: 500; color: var(--muted); text-decoration: none; }
-    .more:hover { color: var(--accent); }
-    .tags { display: flex; flex-wrap: wrap; gap: 6px; }
-    .tag { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 9px;
-           border-radius: 6px; background: rgba(210,169,94,.14); color: var(--accent-ink); }
-
-    /* ── Panels ──────────────────────────────────────────────── */
-    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
-             box-shadow: var(--shadow); padding: 22px; margin-bottom: 26px; }
-    .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 16px; }
-
-    /* ── Tables ──────────────────────────────────────────────── */
-    .table-wrap { overflow-x: auto; border-radius: var(--radius); box-shadow: var(--shadow);
-                  border: 1px solid var(--border); }
-    table {
-      width: 100%; border-collapse: separate; border-spacing: 0;
-      background: var(--panel); border-radius: var(--radius); overflow: hidden;
-      font-variant-numeric: tabular-nums;
-    }
-    .table-wrap > table { border: none; box-shadow: none; }
-    th, td { padding: 11px 16px; text-align: right; font-size: 13.5px; }
-    th:first-child, td:first-child { text-align: left; }
-    th {
-      position: sticky; top: 0; background: var(--elev-2); color: var(--faint);
-      font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em;
-      border-bottom: 1px solid var(--border);
-    }
-    td { border-top: 1px solid var(--grid); }
-    tbody tr:first-child td, tr:first-child td { border-top: none; }
-    table tr { transition: background .12s ease; }
-    table tbody tr:hover td, table tr:hover td { background: rgba(210,169,94,.06); }
-    .green { color: var(--green); } .red { color: var(--red); }
-
-    /* ── Forms ───────────────────────────────────────────────── */
-    label.field { display: block; font-size: 12px; font-weight: 600; color: var(--muted);
-                  text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
-    input, select, textarea {
-      width: 100%; padding: 10px 12px; font: inherit; font-size: 14px;
-      background: var(--bg-2); color: var(--text);
-      border: 1px solid var(--border); border-radius: 10px; transition: border-color .15s, box-shadow .15s;
-    }
-    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent);
-      box-shadow: 0 0 0 3px rgba(210,169,94,.18); }
-    textarea { resize: vertical; min-height: 84px; }
-    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px,1fr)); gap: 16px; }
-
-    /* ── Misc ────────────────────────────────────────────────── */
-    .banner {
-      background: linear-gradient(180deg, var(--red-dim), transparent);
-      border: 1px solid rgba(240,113,106,.4); color: var(--red);
-      padding: 14px 18px; border-radius: var(--radius);
-      margin-bottom: 24px; white-space: pre-line; box-shadow: var(--shadow-sm); font-size: 13.5px;
-    }
-    .banner code { background: rgba(255,255,255,.09); padding: 1px 6px; border-radius: 5px; }
-    .notice { background: linear-gradient(180deg, rgba(231,183,95,.12), transparent);
-      border: 1px solid rgba(231,183,95,.4); color: var(--warn);
-      padding: 13px 16px; border-radius: var(--radius); margin-bottom: 22px; font-size: 13px; }
-    .empty {
-      color: var(--muted); padding: 34px; text-align: center;
-      background: var(--panel); border: 1px dashed var(--border); border-radius: var(--radius);
-    }
-    section { margin-bottom: 38px; }
-    h2 {
-      font-size: 11.5px; color: var(--faint); text-transform: uppercase;
-      letter-spacing: .1em; font-weight: 700; margin-bottom: 14px;
-    }
-    .readonly {
-      display: inline-flex; align-items: center; gap: 5px; font-family: "Space Grotesk", sans-serif;
-      font-size: 10.5px; font-weight: 700; letter-spacing: .07em; color: var(--accent-2);
-      border: 1px solid rgba(212,175,106,.45); border-radius: 20px;
-      padding: 2px 10px; margin-left: 12px; vertical-align: middle; text-transform: uppercase;
-    }
-    .seg { display: inline-flex; background: var(--elev); border: 1px solid var(--border);
-           border-radius: 10px; padding: 3px; gap: 3px; }
-    .seg a { padding: 6px 13px; border-radius: 7px; font-size: 13px; font-weight: 500;
-             color: var(--muted); text-decoration: none; transition: all .14s; }
-    .seg a.active { background: rgba(210,169,94,.16); color: var(--text); }
-    .seg a:hover:not(.active) { color: var(--text); }
-    ::selection { background: rgba(210,169,94,.3); }
-    ::-webkit-scrollbar { width: 11px; height: 11px; }
-    ::-webkit-scrollbar-thumb { background: var(--elev-2); border: 3px solid var(--bg); border-radius: 10px; }
-    ::-webkit-scrollbar-thumb:hover { background: #2b333f; }
-
-    .scrim { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 25; }
-
-    /* ── Responsive ──────────────────────────────────────────── */
-    @media (max-width: 900px) {
-      aside { transform: translateX(-100%); box-shadow: var(--shadow); }
-      body.nav-open aside { transform: none; }
-      body.nav-open .scrim { display: block; }
-      main { margin-left: 0; }
-      .topbar { padding: 12px 18px; }
-      .topbar .menu-btn { display: inline-grid; }
-      .page { padding: 22px 18px 0; }
-    }
-  </style>
-  {% block head %}{% endblock %}
-</head>
-<body>
-  <div class="scrim" onclick="document.body.classList.remove('nav-open')"></div>
-  <aside>
-    <div class="brand">
-      <div class="mark">t</div>
-      <div class="wm">tradebot<span>.</span><small>Trading Console</small></div>
-    </div>
-
-    <div class="nav-group-label">Monitor</div>
-    <nav>
-      <a href="{{ url_for('monitor') }}" class="{{ 'active' if active == 'monitor' }}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>Monitor</a>
-      <a href="{{ url_for('home') }}" class="{{ 'active' if active == 'home' }}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l9-9 9 9M5 10v10h14V10"/></svg>Home</a>
-      <a href="{{ url_for('pnl') }}" class="{{ 'active' if active == 'pnl' }}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>P&amp;L</a>
-      <a href="{{ url_for('overview') }}" class="{{ 'active' if active == 'overview' }}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18M7 14l4-4 3 3 5-6"/></svg>Live Portfolio</a>
-      <a href="{{ url_for('paper') }}" class="{{ 'active' if active == 'paper' }}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>Paper Trader</a>
-      <a href="{{ url_for('intraday') }}" class="{{ 'active' if active == 'intraday' }}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l5-5 4 3 8-9"/><path d="M21 7v5h-5"/></svg>Intraday</a>
-      <a href="{{ url_for('options') }}" class="{{ 'active' if active == 'options' }}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18M3 12h18" opacity=".4"/><path d="M4 16c4 0 4-8 8-8s4 8 8 8"/></svg>Options</a>
-      <a href="{{ url_for('charts') }}" class="{{ 'active' if active == 'charts' }}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4v16h16"/><rect x="7" y="10" width="3" height="7"/><rect x="13" y="6" width="3" height="11"/></svg>Charts</a>
-    </nav>
-
-    <div class="nav-group-label">Analyze</div>
-    <nav>
-      <a href="{{ url_for('features.analytics') }}" class="{{ 'active' if active == 'analytics' }}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 12l5-3M12 12v-6"/></svg>Analytics</a>
-      <a href="{{ url_for('tearsheet') }}" class="{{ 'active' if active == 'tearsheet' }}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3h14v18l-7-4-7 4z"/><path d="M9 8h6M9 12h6" opacity=".5"/></svg>Tear Sheets</a>
-      <a href="{{ url_for('factors_view') }}" class="{{ 'active' if active == 'factors' }}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5M10 19v-8M16 19v-5M20 19V9" stroke-linecap="round"/></svg>Factors</a>
-      <a href="{{ url_for('feature_store_view') }}" class="{{ 'active' if active == 'feature_store' }}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3z"/><path d="M4 7v5c0 1.7 3.6 3 8 3s8-1.3 8-3V7M4 12v5c0 1.7 3.6 3 8 3s8-1.3 8-3v-5" opacity=".5"/></svg>Feature Store</a>
-      <a href="{{ url_for('multifactor_view') }}" class="{{ 'active' if active == 'multifactor' }}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h13M3 12h9M3 18h5" stroke-linecap="round"/><path d="M19 7v12M16 16l3 3 3-3" stroke-linecap="round" stroke-linejoin="round"/></svg>Multi-Factor</a>
-      <a href="{{ url_for('optimizer_view') }}" class="{{ 'active' if active == 'optimizer' }}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 12l4-2M12 12l-3 3" stroke-linecap="round"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/></svg>Optimizer</a>
-      <a href="{{ url_for('portfolio_analysis') }}" class="{{ 'active' if active == 'portfolio_analysis' }}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3v9l6 3" opacity=".6"/></svg>Portfolio Analysis</a>
-      <a href="{{ url_for('risk_view') }}" class="{{ 'active' if active == 'risk' }}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17v.5" stroke-linecap="round"/></svg>Risk Analytics</a>
-      <a href="{{ url_for('risk_engine_view') }}" class="{{ 'active' if active == 'risk_engine' }}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path d="M9 12l2 2 4-4" stroke-linecap="round" stroke-linejoin="round"/></svg>Risk Engine</a>
-      <a href="{{ url_for('attribution_view') }}" class="{{ 'active' if active == 'attribution' }}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-9-9v9z"/><path d="M12 3a9 9 0 0 1 9 9h-9z" opacity=".5"/></svg>Attribution</a>
-      <a href="{{ url_for('data_quality_view') }}" class="{{ 'active' if active == 'data_quality' }}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3z"/><path d="M4 7v10c0 1.7 3.6 3 8 3s8-1.3 8-3V7" opacity=".5"/></svg>Data Quality</a>
-      <a href="{{ url_for('market_intel_view') }}" class="{{ 'active' if active == 'market_intel' }}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" opacity=".6"/></svg>Market Intel</a>
-      <a href="{{ url_for('automation_view') }}" class="{{ 'active' if active == 'automation' }}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.6-6.3"/><path d="M21 4v5h-5"/></svg>Automation</a>
-      <a href="{{ url_for('research_assistant_view') }}" class="{{ 'active' if active == 'research_assistant' }}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a4 4 0 0 1 4 4c0 1.5-.8 2.5-1.5 3.2M12 3a4 4 0 0 0-4 4c0 1.5.8 2.5 1.5 3.2M9.5 10.2c-.7.7-1.5 1.7-1.5 3.3a4 4 0 0 0 8 0c0-1.6-.8-2.6-1.5-3.3M9 21h6M10 18h4"/></svg>AI Assistant</a>
-      <a href="{{ url_for('backtests') }}" class="{{ 'active' if active == 'backtests' }}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9l3 3v15H6z"/><path d="M9 9h6M9 13h6M9 17h4"/></svg>Backtests</a>
-      <a href="{{ url_for('features.journal') }}" class="{{ 'active' if active == 'journal' }}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h13l3 3v13H4z"/><path d="M8 4v16M12 9h5M12 13h5"/></svg>Journal</a>
-    </nav>
-
-    <div class="nav-group-label">Act</div>
-    <nav>
-      <a href="{{ url_for('features.alerts') }}" class="{{ 'active' if active == 'alerts' }}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M10 21a2 2 0 0 0 4 0"/></svg>Alerts</a>
-      <a href="{{ url_for('features.ticket') }}" class="{{ 'active' if active == 'ticket' }}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>Order Ticket</a>
-    </nav>
-
-    <div class="side-foot">
-      <a href="{{ url_for('logout') }}">Sign out</a>
-      <button class="theme-toggle" id="themeToggle" title="Toggle theme" aria-label="Toggle theme">
-        <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
-      </button>
-    </div>
-  </aside>
-
-  <main>
-    <div class="topbar">
-      <button class="theme-toggle menu-btn" onclick="document.body.classList.toggle('nav-open')" aria-label="Menu">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
-      </button>
-      <div class="crumb">tradebot&nbsp; / &nbsp;<b>{% block crumb %}{{ active|capitalize if active else 'Dashboard' }}{% endblock %}</b></div>
-      <div class="topbar-spacer"></div>
-      <div class="live-dot"><i></i> NSE&nbsp;·&nbsp;open</div>
-      <span class="readonly" style="margin-left:6px;">paper · read-only</span>
-    </div>
-    <div class="page">
-      {% block content %}{% endblock %}
-    </div>
-  </main>
-
-  <script>
-    // Theme persistence (memory + restored on load).
-    (function () {
-      var root = document.documentElement;
-      var saved = null;
-      try { saved = window.localStorage.getItem('tb-theme'); } catch (e) {}
-      if (saved) root.setAttribute('data-theme', saved);
-      function paintIcon() {
-        var dark = root.getAttribute('data-theme') !== 'light';
-        var i = document.getElementById('themeIcon');
-        if (!i) return;
-        i.innerHTML = dark
-          ? '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>'
-          : '<circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/>';
-      }
-      paintIcon();
-      var btn = document.getElementById('themeToggle');
-      if (btn) btn.addEventListener('click', function () {
-        var next = root.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
-        root.setAttribute('data-theme', next);
-        try { window.localStorage.setItem('tb-theme', next); } catch (e) {}
-        paintIcon();
-        window.dispatchEvent(new CustomEvent('tb-theme', { detail: next }));
-      });
-    })();
-  </script>
-  {% block scripts %}{% endblock %}
-</body>
-</html>
+{% block shell_scripts %}{% block scripts %}{% endblock %}{% endblock %}

@@ -132,30 +132,31 @@ table.dt tfoot td{border-top:1px solid var(--line);border-bottom:0;font-weight:7
 @media (max-width:760px){aside{display:none}.kpis{grid-template-columns:1fr}.banner .chips{display:none}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
+{% block shell_head %}{% endblock %}
 </head>
 <body>
 <aside>
   <div class="brand"><div class="mark">t</div><div class="nm">tradebot<small>Paper / Research</small></div></div>
   <div class="navlabel">Trading</div>
   <nav>
-    <a href="/command" class="{{ 'on' if active=='command' }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>Dashboard</a>
-    <a href="/command/portfolio" class="{{ 'on' if active=='command_portfolio' }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>Portfolio</a>
-    <a href="/command/trades" class="{{ 'on' if active=='command_trades' }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12h6l2-7 3 14 2-7h5"/></svg>Trades</a>
+    <a href="/command" class="{{ 'on' if active in ('command','monitor','home','pnl','overview') }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>Dashboard</a>
+    <a href="/command/portfolio" class="{{ 'on' if active in ('command_portfolio','paper') }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>Portfolio</a>
+    <a href="/command/trades" class="{{ 'on' if active in ('command_trades','intraday','options','charts','ticket') }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12h6l2-7 3 14 2-7h5"/></svg>Trades</a>
   </nav>
   <div class="navlabel">Research</div>
   <nav>
-    <a href="/command/strategies" class="{{ 'on' if active=='command_strategies' }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V5l8 4 8-4v14l-8 4-8-4z"/><path d="M12 9v14"/></svg>Strategies</a>
-    <a href="/command/research" class="{{ 'on' if active=='command_research' }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>Research</a>
+    <a href="/command/strategies" class="{{ 'on' if active in ('command_strategies','backtests') }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V5l8 4 8-4v14l-8 4-8-4z"/><path d="M12 9v14"/></svg>Strategies</a>
+    <a href="/command/research" class="{{ 'on' if active in ('command_research','analytics','tearsheet','factors','feature_store','multifactor','optimizer','portfolio_analysis','attribution','data_quality','market_intel','automation','research_assistant') }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>Research</a>
     <a href="/command/scanner" class="{{ 'on' if active=='command_scanner' }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 17l5-5 4 3 8-9"/><path d="M16 6h5v5"/></svg>Market Scanner</a>
   </nav>
   <div class="navlabel">Control</div>
   <nav>
-    <a href="/command/risk" class="{{ 'on' if active=='command_risk' }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg>Risk Center{% if n_watch %}<span class="ct">{{ n_watch }}</span>{% endif %}</a>
+    <a href="/command/risk" class="{{ 'on' if active in ('command_risk','risk','risk_engine','alerts') }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg>Risk Center{% if n_watch %}<span class="ct">{{ n_watch }}</span>{% endif %}</a>
     <a href="/command/reports" class="{{ 'on' if active=='command_reports' }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>Reports</a>
-    <a href="/journal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 3h11l3 3v15H5z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>Journal</a>
+    <a href="/journal" class="{{ 'on' if active=='journal' }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 3h11l3 3v15H5z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>Journal</a>
     <a href="/command/settings" class="{{ 'on' if active=='command_settings' }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 13a7 7 0 000-2l2-1.6-2-3.4-2.3 1a7 7 0 00-1.7-1L14.5 2h-4l-.4 2.4a7 7 0 00-1.7 1l-2.3-1-2 3.4L4.6 11a7 7 0 000 2l-2 1.6 2 3.4 2.3-1a7 7 0 001.7 1l.4 2.4h4l.4-2.4a7 7 0 001.7-1l2.3 1 2-3.4z"/></svg>Settings</a>
   </nav>
-  <div class="side-foot"><span>Capital <b>₹{{ '%.0f'|format((cap or 5000000)/100000) }}L</b></span><span>paper</span></div>
+  <div class="side-foot"><span>{% if cap %}Capital <b>₹{{ '%.0f'|format(cap/100000) }}L</b>{% else %}paper{% endif %}</span><a href="/logout" style="color:var(--ink-4);text-decoration:none">sign out</a></div>
 </aside>
 <main>
   <div class="banner">
@@ -165,6 +166,7 @@ table.dt tfoot td{border-top:1px solid var(--line);border-bottom:0;font-weight:7
       <span class="chip warn"><span class="d"></span>Data · {{ banner.as_of if banner else '—' }}</span>
       <span class="chip ok"><span class="d"></span>Research · OK</span>
       <span class="chip {{ 'ok' if banner and banner.risk_ok else 'warn' }}"><span class="d"></span>Risk · {{ banner.risk_text if banner else '—' }}</span>
+      {% if banner and banner.vol %}<span class="chip {{ 'ok' if banner.vol.state == 'quiet' else 'warn' }}"><span class="d"></span>Vol event · {{ banner.vol.text }}</span>{% endif %}
     </div>
     <div class="right"><span>Paper · no live orders</span><span class="clock" id="clk">—</span></div>
   </div>
@@ -177,5 +179,6 @@ table.dt tfoot td{border-top:1px solid var(--line);border-bottom:0;font-weight:7
     var c=document.getElementById('clk'); if(c) c.textContent=p(t.getHours())+':'+p(t.getMinutes())+':'+p(t.getSeconds());}
   tick(); setInterval(tick,1000);
 </script>
+{% block shell_scripts %}{% endblock %}
 </body>
 </html>

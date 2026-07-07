@@ -69,6 +69,13 @@
   <div class="panel">
     <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="14" height="14"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9z"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>Alerts</h3>
     <div class="alerts">
+      {% if banner.vol and banner.vol.state == 'event' %}
+      <div class="alert high"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2 3 14h7l-1 8 10-12h-7z"/></svg></div>
+        <div><div class="ttl"><b>VOL EVENT — verdict gate open</b><span class="sev">High</span></div><div class="imp">A ≥4% NIFTY day occurred while short. The options results are now meaningful — judge them against the pre-committed criteria frozen in each book's <code>precommit</code> table. <b>Action:</b> read, judge, close the audition.</div></div></div>
+      {% elif banner.vol and banner.vol.state == 'watch' %}
+      <div class="alert warn"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2 3 14h7l-1 8 10-12h-7z"/></svg></div>
+        <div><div class="ttl"><b>Volatility approaching event threshold</b><span class="sev">Warning</span></div><div class="imp">Latest NIFTY move {{ "%.1f"|format(banner.vol.latest_move*100) }}% — within 75% of the pre-committed 4% event threshold. <b>Action:</b> none; the criteria are already locked.</div></div></div>
+      {% endif %}
       {% if opt_active %}
       <div class="alert high"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg></div>
         <div><div class="ttl"><b>Options awaiting vol event</b><span class="sev">High</span></div><div class="imp">{{ opt_active }} open options book(s) inconclusive; theta accruing. <b>Action:</b> hold to expiry or close on a sharp NIFTY move.</div></div></div>
@@ -112,4 +119,40 @@
     </div>
   </div>
 </div>
+
+{% if cost_lesson %}
+<div class="grid2">
+  <div class="panel">
+    <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="14" height="14"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>Slippage &amp; Cost — the intraday lesson</h3>
+    <table class="dt"><thead><tr><th>Retired book</th><th>Trades</th><th>Gross edge</th><th>Costs</th><th>Net</th></tr></thead>
+      <tbody>
+        {% for r in cost_lesson.rows %}
+        <tr><td><div class="nm">{{ r.strategy }}<small>frozen evidence</small></div></td>
+          <td class="neu">{{ r.n }}</td>
+          <td class="{{ 'pos' if r.gross>=0 else 'neg' }}">{{ '−' if r.gross<0 }}₹{{ "{:,.0f}".format(r.gross|abs) }}</td>
+          <td class="neg">−₹{{ "{:,.0f}".format(r.costs|abs) }}</td>
+          <td class="{{ 'pos' if r.net>=0 else 'neg' }}">{{ '−' if r.net<0 }}₹{{ "{:,.0f}".format(r.net|abs) }}</td></tr>
+        {% endfor %}
+      </tbody>
+      <tfoot><tr><td>Combined</td><td></td>
+        <td class="{{ 'pos' if cost_lesson.gross>=0 else 'neg' }}">{{ '−' if cost_lesson.gross<0 }}₹{{ "{:,.0f}".format(cost_lesson.gross|abs) }}</td>
+        <td class="neg">−₹{{ "{:,.0f}".format(cost_lesson.costs|abs) }}</td>
+        <td class="{{ 'pos' if cost_lesson.net>=0 else 'neg' }}">{{ '−' if cost_lesson.net<0 }}₹{{ "{:,.0f}".format(cost_lesson.net|abs) }}</td></tr></tfoot></table>
+    <p class="regline" style="margin-top:10px">
+      {% if cost_lesson.cost_pct_of_gross %}Transaction costs consumed <b>{{ "%.0f"|format(cost_lesson.cost_pct_of_gross) }}%</b> of the gross edge.{% endif %}
+      A thin intraday edge does not survive ~0.08% per round trip × 5 trades/day. These books are retired and frozen as evidence — this widget exists so the lesson isn't re-learned with real money.</p>
+  </div>
+  <div class="panel">
+    <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="14" height="14"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>Options — pre-committed judgment
+      <span class="verdict {{ 'normal' if banner.vol.state == 'quiet' else 'watch' }} badge">{{ banner.vol.text }}</span></h3>
+    <div class="health">
+      <div class="hrow"><span class="d info"></span><span class="k">Event definition</span><span class="v">|NIFTY day| ≥ <b>4%</b> while short</span></div>
+      <div class="hrow"><span class="d info"></span><span class="k">Strangle wins if</span><span class="v">stop unbroken <b>and</b> event cycle nets positive</span></div>
+      <div class="hrow"><span class="d info"></span><span class="k">Condor wins if</span><span class="v">avoided tail <b>&gt;</b> premium foregone to wings</span></div>
+      <div class="hrow"><span class="d ok"></span><span class="k">Criteria frozen</span><span class="v"><b>precommit</b> table · written once, never updated</span></div>
+    </div>
+    <p class="regline" style="margin-top:10px">Criteria were locked in <code>options.db</code> / <code>condor.db</code> before any event, so the verdict can't be argued after the fact. Until the gate opens: <b>quiet months prove nothing</b>.</p>
+  </div>
+</div>
+{% endif %}
 {% endblock %}
