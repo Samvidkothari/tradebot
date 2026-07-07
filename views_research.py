@@ -87,6 +87,24 @@ def _pnl_llm():
         conn.close()
 
 
+def _pnl_tv():
+    """TradingView signals paper book (from webhook alerts). Total P&L reported
+    as unrealised (mark-to-model open book)."""
+    p = BASE_DIR / "tv.db"
+    if not p.exists():
+        return None
+    conn = sqlite3.connect(f"file:{p}?mode=ro", uri=True)
+    conn.row_factory = sqlite3.Row
+    try:
+        m = conn.execute("SELECT pnl FROM marks ORDER BY cycle_date DESC LIMIT 1").fetchone()
+        if m is None:
+            return None
+        return {"book": "TradingView signals", "realised": 0.0, "unrealised": float(m["pnl"]),
+                "status": "active", "note": "TradingView alerts · paper · no live orders"}
+    finally:
+        conn.close()
+
+
 def _pnl_intraday():
     """Retired ORB + VWAP books — realised, frozen as evidence."""
     if not INTRADAY_DB.exists():
@@ -372,6 +390,9 @@ def _book_rows():
     llm = _pnl_llm()
     if llm:
         rows.append(dict(llm))
+    tv = _pnl_tv()
+    if tv:
+        rows.append(dict(tv))
     rows += [dict(r) for r in _pnl_intraday()]
     return [_enrich_book(r) for r in rows]
 

@@ -65,6 +65,12 @@ views_research.register(app)
 import api  # noqa: E402
 api.register(app)
 
+# TradingView alert webhook → PAPER signals book. Authenticated by a shared
+# secret (TV_WEBHOOK_SECRET), not a session; validates untrusted input and only
+# ever writes the isolated tv.db paper ledger. No order-placement code.
+import tv_signals  # noqa: E402
+tv_signals.register(app)
+
 
 @app.route("/app")
 @login_required
