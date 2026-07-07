@@ -69,6 +69,24 @@ def _pnl_option_book(db_name, label, note):
         conn.close()
 
 
+def _pnl_llm():
+    """The LLM analyst paper book (simulated). Total P&L = latest mark equity −
+    starting capital; reported as unrealised (mark-to-model open book)."""
+    p = BASE_DIR / "llm.db"
+    if not p.exists():
+        return None
+    conn = sqlite3.connect(f"file:{p}?mode=ro", uri=True)
+    conn.row_factory = sqlite3.Row
+    try:
+        m = conn.execute("SELECT pnl FROM marks ORDER BY cycle_date DESC LIMIT 1").fetchone()
+        if m is None:
+            return None
+        return {"book": "LLM analyst", "realised": 0.0, "unrealised": float(m["pnl"]),
+                "status": "active", "note": "LLM paper book · mark-to-model · no live orders"}
+    finally:
+        conn.close()
+
+
 def _pnl_intraday():
     """Retired ORB + VWAP books — realised, frozen as evidence."""
     if not INTRADAY_DB.exists():
@@ -351,6 +369,9 @@ def _book_rows():
         ob = _pnl_option_book(db, label, "mark-to-model")
         if ob:
             rows.append(dict(ob))
+    llm = _pnl_llm()
+    if llm:
+        rows.append(dict(llm))
     rows += [dict(r) for r in _pnl_intraday()]
     return [_enrich_book(r) for r in rows]
 
@@ -604,13 +625,78 @@ def _command_risk_rows(rk, re):
     return rows
 
 
+VOL_EVENT_THRESHOLD = 0.04   # mirrors the sims' pre-committed threshold
+VOL_WATCH_FRAC      = 0.75   # UI-only "getting close" level (3% day)
+
+
+def _vol_event_status():
+    """Pre-committed vol-event flag for the options books (read-only).
+
+    'event' — a >=4% NIFTY day has occurred while short (the sims' verdict
+    gate is open; judgment criteria are frozen in each DB's precommit table).
+    'watch' — latest mark within 75% of the threshold. 'quiet' — otherwise."""
+    state, latest = "quiet", 0.0
+    for db in ("options.db", "condor.db"):
+        c = _ro(db)
+        if c is None:
+            continue
+        try:
+            if c.execute("SELECT 1 FROM marks WHERE ABS(daily_move) >= ? LIMIT 1",
+                         (VOL_EVENT_THRESHOLD,)).fetchone():
+                state = "event"
+            m = c.execute("SELECT daily_move FROM marks "
+                          "ORDER BY mark_date DESC LIMIT 1").fetchone()
+            if m and m["daily_move"] is not None:
+                latest = max(latest, abs(m["daily_move"]))
+        except sqlite3.Error:
+            pass
+        finally:
+            c.close()
+    if state != "event" and latest >= VOL_EVENT_THRESHOLD * VOL_WATCH_FRAC:
+        state = "watch"
+    return {"state": state, "latest_move": latest,
+            "text": {"event": "EVENT — verdict gate open",
+                     "watch": f"Watch · last move {latest*100:.1f}%",
+                     "quiet": "Quiet · awaiting ≥4% day"}[state]}
+
+
+def _cost_lesson():
+    """The retired intraday books' frozen evidence (intraday.db, read-only):
+    gross edge vs transaction costs vs net — the slippage & cost lesson."""
+    if not INTRADAY_DB.exists():
+        return None
+    c = ro_db(INTRADAY_DB)
+    if c is None:
+        return None
+    try:
+        rows = [{"strategy": r["strategy"], "n": r["n"],
+                 "gross": r["g"] or 0.0, "costs": r["c"] or 0.0,
+                 "net": r["nt"] or 0.0}
+                for r in c.execute(
+                    "SELECT strategy, COUNT(*) n, SUM(gross_pnl) g, "
+                    "SUM(costs) c, SUM(net_pnl) nt FROM trades "
+                    "GROUP BY strategy ORDER BY strategy")]
+    except sqlite3.Error:
+        return None
+    finally:
+        c.close()
+    if not rows:
+        return None
+    gross = sum(r["gross"] for r in rows)
+    costs = sum(r["costs"] for r in rows)
+    net   = sum(r["net"] for r in rows)
+    return {"rows": rows, "gross": gross, "costs": costs, "net": net,
+            "cost_pct_of_gross": (costs / gross * 100) if gross > 0 else None}
+
+
 def _banner_ctx():
     """Shared status-banner context (read-only flags)."""
     re, _ = _research_json("risk_engine.json", "risk_engine.py")
     as_of = (re or {}).get("as_of", "—")
     risk_ok = (re or {}).get("status") == "OK"
     return {"as_of": as_of, "risk_ok": risk_ok,
-            "risk_text": "Normal" if risk_ok else (re or {}).get("status", "—")}
+            "risk_text": "Normal" if risk_ok else (re or {}).get("status", "—"),
+            "vol": _vol_event_status()}
 
 
 def _risk_bundle():
@@ -655,7 +741,7 @@ def command():
                            regime=_regime_label(ov.get("regime")),
                            risk_mini=risk_mini, risk_status=rb["status"],
                            opt_active=opt_active, ret_count=ret_count,
-                           banner=_banner_ctx())
+                           cost_lesson=_cost_lesson(), banner=_banner_ctx())
 
 
 def command_risk():

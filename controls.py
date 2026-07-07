@@ -52,6 +52,7 @@ STRATEGIES = {
     "condor":   {"label": "Options condor",    "script": "condor_sim.py",       "default": True},
     "intraday": {"label": "Intraday ORB+VWAP", "script": "intraday_sim.py",     "default": True},
     "momentum": {"label": "Momentum 12-1",     "script": "backtest_momentum.py", "default": True},
+    "llm":      {"label": "LLM analyst",       "script": "llm_analyst.py",      "default": True},
 }
 TASKS = {
     "prices":   {"label": "Refresh prices",    "script": "fetch_data.py"},

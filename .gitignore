@@ -21,6 +21,7 @@ alerts.db.*
 orders.db
 orders.db.*
 controls.db*
+llm.db*
 jobs/
 # scratch / mount debris (safe to delete from Finder)
 __wt_*
