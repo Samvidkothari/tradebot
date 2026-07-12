@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.tradebot.backup — 17:00 daily snapshot of all SQLite ledgers via
+  backup_ledgers.sh (sqlite3 .backup → backups/YYYY-MM-DD/, 30-day retention).
+  Runs every day (weekends too — cheap, and catches manual weekend runs).
+  Install:  cp deploy/com.tradebot.backup.plist ~/Library/LaunchAgents/
+            launchctl load -w ~/Library/LaunchAgents/com.tradebot.backup.plist
+  Remove:   launchctl unload -w ~/Library/LaunchAgents/com.tradebot.backup.plist
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.tradebot.backup</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/samvid/projects/tradebot/backup_ledgers.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/samvid/projects/tradebot</string>
+
+    <key>StartCalendarInterval</key>
+    <dict><key>Hour</key><integer>17</integer><key>Minute</key><integer>0</integer></dict>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/samvid/projects/tradebot/logs/backup.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/samvid/projects/tradebot/logs/backup.log</string>
+</dict>
+</plist>

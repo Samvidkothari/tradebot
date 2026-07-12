@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.tradebot.watchdog — 16:30 IST Mon–Fri, 45 min after the paper-bot slot.
+  Verifies today's run happened (results/pipeline_run.json), retries once if
+  missing, and posts a macOS notification on any problem. See watchdog.sh.
+  Install:  cp deploy/com.tradebot.watchdog.plist ~/Library/LaunchAgents/
+            launchctl load -w ~/Library/LaunchAgents/com.tradebot.watchdog.plist
+  Remove:   launchctl unload -w ~/Library/LaunchAgents/com.tradebot.watchdog.plist
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.tradebot.watchdog</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/samvid/projects/tradebot/watchdog.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/samvid/projects/tradebot</string>
+
+    <!-- 16:30 local (IST) Mon(1)–Fri(5); launchd runs a missed slot on wake. -->
+    <key>StartCalendarInterval</key>
+    <array>
+        <dict><key>Weekday</key><integer>1</integer><key>Hour</key><integer>16</integer><key>Minute</key><integer>30</integer></dict>
+        <dict><key>Weekday</key><integer>2</integer><key>Hour</key><integer>16</integer><key>Minute</key><integer>30</integer></dict>
+        <dict><key>Weekday</key><integer>3</integer><key>Hour</key><integer>16</integer><key>Minute</key><integer>30</integer></dict>
+        <dict><key>Weekday</key><integer>4</integer><key>Hour</key><integer>16</integer><key>Minute</key><integer>30</integer></dict>
+        <dict><key>Weekday</key><integer>5</integer><key>Hour</key><integer>16</integer><key>Minute</key><integer>30</integer></dict>
+    </array>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/samvid/projects/tradebot/logs/watchdog.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/samvid/projects/tradebot/logs/watchdog.log</string>
+</dict>
+</plist>

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.tradebot.dashboard — keeps the dashboard (http://127.0.0.1:5050) running
+  in the background: starts at login, restarts on crash. No Terminal window.
+  (restart_dashboard.command remains the manual/dev way to run it; stop this
+  agent first if you use it, or the port will be taken.)
+  Install:  cp deploy/com.tradebot.dashboard.plist ~/Library/LaunchAgents/
+            launchctl load -w ~/Library/LaunchAgents/com.tradebot.dashboard.plist
+  Stop:     launchctl unload -w ~/Library/LaunchAgents/com.tradebot.dashboard.plist
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.tradebot.dashboard</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/samvid/projects/tradebot/.venv/bin/python</string>
+        <string>/Users/samvid/projects/tradebot/dashboard.py</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/samvid/projects/tradebot</string>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- Restart if it exits/crashes; wait 10s between respawns. -->
+    <key>KeepAlive</key>
+    <true/>
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+
+    <key>StandardOutPath</key>
+    <string>/Users/samvid/projects/tradebot/logs/dashboard.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/samvid/projects/tradebot/logs/dashboard.log</string>
+</dict>
+</plist>
