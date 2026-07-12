@@ -1,0 +1,16 @@
+{
+  "_README": "PRE-REGISTERED promotion/retirement rules — the automation of strategy lifecycle decisions. Frozen by design: edit only in a reviewed human commit, and NEVER tune a threshold after seeing a result you dislike (that is how overfitting machines are built). The advisor (promotion_advisor.py) evaluates every book daily against these rules and writes its verdicts + evidence to results/promotion_advice.json. With auto_execute=false (the default) verdicts are RECOMMENDATIONS ONLY. Set auto_execute=true to let it flip the dashboard enable/disable flags itself, capped at max_changes_per_run. Code-level RETIRED flags (e.g. options_sim.py) always remain human-only.",
+  "auto_execute": false,
+  "max_changes_per_run": 1,
+
+  "_equity_rules": "For equity-curve strategies (lowvol, momentum, ...): all must pass to be PROMOTE-eligible / stay KEEP.",
+  "min_oos_days": 120,
+  "max_oos_drawdown": -0.20,
+  "min_oos_sharpe": 0.0,
+  "min_walk_forward_positive_frac": 0.6,
+
+  "_options_rules": "For options books judged on their paper ledger evidence.",
+  "min_closed_cycles": 5,
+
+  "_retire_rule": "An ENABLED book breaching max_oos_drawdown, or with a negative OOS total return over a full min_oos_days window, gets a RETIRE verdict."
+}

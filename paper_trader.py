@@ -33,7 +33,9 @@ import yfinance as yf
 
 from lowvol import target_portfolio, vol_scores, VOL_LOOKBACK, WARMUP, TOP_N
 from config import COST_ENTRY, COST_EXIT   # reuse the exact cost model
+import risk_governor  # automated protection: kill switch + daily-loss brake
 from regime_overlay import exposure_factor  # pre-registered defensive overlay
+from varma_riskstate import exposure_factor as varma_exposure_factor  # SHADOW only
 
 # ── Config ────────────────────────────────────────────────────────────────────
 DATA_DIR         = Path(__file__).parent / "data"
@@ -258,6 +260,58 @@ def rebalance(conn, panel, latest_close, run_date, nifty_closes=None):
          "tags": (overlay["regime"] or {}).get("tags", [])}))
     print(f"  Regime overlay: {overlay['reason']}")
 
+    # ── SHADOW: Varma risk-state sizer (SPEC_varma_riskstate.md) ──────────────
+    # Observation ONLY. This computes what the graded sizer WOULD have done and
+    # logs it beside the live overlay for decision-by-decision comparison. It
+    # NEVER affects target_each or any order — real sizing still uses `overlay`
+    # above. Fail-safe: any error leaves the live path untouched.
+    try:
+        if nifty_closes is not None and len(nifty_closes) > 0:
+            shadow = varma_exposure_factor(nifty_closes, breadth_panel=panel)
+        else:
+            shadow = {"factor": None, "stress": False, "risk_score": None,
+                      "reason": "shadow inactive (no NIFTY closes this run)",
+                      "regime": None}
+        meta_set(conn, "last_varma_riskstate", _json.dumps(
+            {"run_date": run_date, "factor": shadow["factor"],
+             "stress": shadow["stress"], "risk_score": shadow.get("risk_score"),
+             "reason": shadow["reason"], "live_factor": overlay["factor"],
+             "delta": (None if shadow["factor"] is None
+                       else round(shadow["factor"] - overlay["factor"], 4)),
+             "tags": (shadow["regime"] or {}).get("tags", [])}))
+        if shadow["factor"] is not None:
+            print(f"  Varma shadow:   {shadow['reason']} "
+                  f"(live {overlay['factor']:.2f} → shadow {shadow['factor']:.2f}, "
+                  f"not applied)")
+    except Exception as e:                              # shadow must never break a run
+        print(f"  Varma shadow:   skipped ({e})")
+
+    # ── SHADOW: governed momentum sleeve (SPEC_momentum_governed.md) ──────────
+    # Observation ONLY, on the same monthly cadence. Computes what a Varma-
+    # governed 12-1 momentum sleeve WOULD hold and at what exposure, and logs it.
+    # This is the forward evidence the SPEC asks for before promotion. It places
+    # no orders and does not touch the live low-vol book. Fail-safe on any error.
+    try:
+        import momentum as _mom
+        if panel is not None and len(panel) > _mom.LOOKBACK:
+            mday = panel.index[-1]
+            mom_names = _mom.target_portfolio(panel, mday, top_n=_mom.TOP_N)
+            mom_factor = (varma_exposure_factor(nifty_closes)["factor"]
+                          if (nifty_closes is not None and len(nifty_closes) > 0)
+                          else 0.75)
+            meta_set(conn, "last_momentum_shadow", _json.dumps(
+                {"run_date": run_date, "exposure_factor": mom_factor,
+                 "n_names": len(mom_names), "top5": mom_names[:5],
+                 "note": "governed-momentum shadow — observation only, not traded"}))
+            print(f"  Momentum shadow: {len(mom_names)} names @ exposure "
+                  f"{mom_factor:.2f} (not applied); top: {', '.join(mom_names[:5])}")
+        else:
+            meta_set(conn, "last_momentum_shadow", _json.dumps(
+                {"run_date": run_date, "exposure_factor": None, "n_names": 0,
+                 "top5": [], "note": "shadow inactive (insufficient history)"}))
+    except Exception as e:                              # shadow must never break a run
+        print(f"  Momentum shadow: skipped ({e})")
+
     target_each    = (total_equity * overlay["factor"]) / TOP_N
 
     desired = {}                                    # symbol -> desired share count
@@ -328,9 +382,24 @@ def main():
             print(f"  ⚠ data fetch failed for {len(failed)}: {', '.join(failed)}\n")
         if panel.empty or len(panel) < WARMUP:
             print("  Insufficient data to rank — aborting rebalance.\n")
+        elif panel.index[-1].date() != date.today():
+            # Freshness guard (CODE_AUDIT_2026-07-10 §A4): today's bar is absent —
+            # an NSE holiday the forward calendar can't know (Diwali, Holi, …) or
+            # a stale upstream. Either way, rebalancing would fill at prices from
+            # a previous session. Defer: last_rebalance_month is only written
+            # inside rebalance(), so tomorrow's run retries automatically.
+            print(f"  No bar for today (last: {panel.index[-1].date()}) — "
+                  f"holiday or stale data; deferring rebalance to next session.\n")
         else:
-            nifty = fetch_live("^NSEI")   # for the regime overlay (fail-safe None)
-            rebalance(conn, panel, latest_close, run_date, nifty_closes=nifty)
+            # Risk governor (automated protection): evaluate limits BEFORE
+            # trading; a kill-switch or daily-loss breach blocks the rebalance.
+            gov = risk_governor.mark(conn, latest_close)
+            allowed, why = risk_governor.allow_rebalance(gov)
+            if not allowed:
+                print(f"  ⛔ Rebalance BLOCKED by risk governor: {why}\n")
+            else:
+                nifty = fetch_live("^NSEI")   # for the regime overlay (fail-safe None)
+                rebalance(conn, panel, latest_close, run_date, nifty_closes=nifty)
     else:
         # Non-rebalance day: only need prices for held names to mark the book.
         held = [r["symbol"] for r in conn.execute("SELECT symbol FROM positions")]
@@ -341,6 +410,16 @@ def main():
             ser = fetch_live(tickers.get(s, f"{s}.NS"))
             if ser is not None and not ser.empty:
                 latest_close[s] = float(ser.iloc[-1])
+        # Governor watches hold days too — the kill switch must not wait for
+        # month-end to notice a drawdown. (Optional auto-liquidation on trip.)
+        gov = risk_governor.mark(conn, latest_close)
+        if gov.get("killed") and gov.get("auto_liquidate"):
+            run_date_ = str(date.today())
+            for p in conn.execute("SELECT * FROM positions").fetchall():
+                px = latest_close.get(p["symbol"])
+                if px:
+                    simulate_sell(conn, p["symbol"], px, run_date_, p["qty"], p)
+            print("  ⛔ Governor auto-liquidation: book moved to cash.\n")
 
     conn.commit()
     print_portfolio(conn, latest_close)
