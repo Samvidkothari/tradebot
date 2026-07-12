@@ -139,6 +139,7 @@ table.dt tfoot td{border-top:1px solid var(--line);border-bottom:0;font-weight:7
   <div class="brand"><div class="mark">t</div><div class="nm">tradebot<small>Paper / Research</small></div></div>
   <div class="navlabel">Trading</div>
   <nav>
+    <a href="/"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>Simple view</a>
     <a href="/command" class="{{ 'on' if active in ('command','monitor','home','pnl','overview') }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>Dashboard</a>
     <a href="/command/portfolio" class="{{ 'on' if active in ('command_portfolio','paper') }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>Portfolio</a>
     <a href="/command/trades" class="{{ 'on' if active in ('command_trades','intraday','options','ticket') }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12h6l2-7 3 14 2-7h5"/></svg>Trades</a>

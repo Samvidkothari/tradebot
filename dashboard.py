@@ -23,6 +23,7 @@ import math
 import os
 import sqlite3
 import time
+import json as _json
 from datetime import date
 
 from dotenv import load_dotenv
@@ -71,6 +72,12 @@ api.register(app)
 import tv_signals  # noqa: E402
 tv_signals.register(app)
 
+# Simple mode — the plain-English home page at "/" (default after login).
+# One screen: money up/down, what happened today, health lights, holdings.
+# The pro cockpit stays at /command behind the "Advanced" link.
+import views_simple  # noqa: E402
+views_simple.register(app)
+
 
 @app.route("/app")
 @login_required
@@ -92,7 +99,7 @@ def login():
         elif hmac.compare_digest(request.form.get("password", ""),
                                  os.getenv("DASHBOARD_PASSWORD", "")):
             session["authed"] = True
-            return redirect(url_for("command"))   # Quiet Terminal is the landing page
+            return redirect(url_for("simple_home"))   # simple mode is the landing page
         else:
             error = "Wrong password."
     return render_template("login.html", error=error, configured=configured)
@@ -122,9 +129,12 @@ def get_kite():
         return None, f"Could not connect to Kite: {e}"
 
 
-@app.route("/")
+@app.route("/live")
 @login_required
 def overview():
+    # Moved from "/" — the plain-English simple home (views_simple) now owns
+    # the root URL. Endpoint name "overview" is unchanged so url_for() and the
+    # nav highlighting keep working.
     kite, err = get_kite()
     holdings, positions = [], []
     total_pnl = total_invested = total_current = 0.0
@@ -209,13 +219,35 @@ def paper():
         values.append(round(cum, 2))
     chart = {"labels": labels, "values": values} if labels else None
 
+    # Risk-state sizing panel: the LIVE overlay vs the Varma SHADOW sizer
+    # (paper_trader logs both to meta each rebalance; shadow is observation only).
+    def _meta_json(key):
+        try:
+            row = conn.execute("SELECT value FROM meta WHERE key = ?", (key,)).fetchone()
+            return _json.loads(row["value"]) if row and row["value"] else None
+        except Exception:
+            return None
+
+    live_ov  = _meta_json("last_regime_overlay")
+    shadow_ov = _meta_json("last_varma_riskstate")
+    mom_shadow = _meta_json("last_momentum_shadow")
+    sizing = None
+    if live_ov or shadow_ov or mom_shadow:
+        lf = (live_ov or {}).get("factor")
+        sf = (shadow_ov or {}).get("factor")
+        sizing = {
+            "live": live_ov, "shadow": shadow_ov, "momentum": mom_shadow,
+            "live_factor": lf, "shadow_factor": sf,
+            "gap": (round(sf - lf, 4) if (lf is not None and sf is not None) else None),
+        }
+
     conn.close()
     equity  = cash + pos_value
     ret_pct = (equity - STARTING_CAPITAL) / STARTING_CAPITAL * 100
     return render_template(
         "paper.html", active="paper", error=None,
         cash=cash, equity=equity, realised=realised, ret_pct=ret_pct,
-        positions=positions, fills=fills, chart=chart,
+        positions=positions, fills=fills, chart=chart, sizing=sizing,
     )
 
 
@@ -577,13 +609,15 @@ if __name__ == "__main__":
         finally:
             c.close()
 
-    # Auto-reload on any .py change so route edits pick up without a manual
-    # restart (templates already hot-reload). The reloader runs two processes: a
-    # supervisor that watches files and a worker that serves — start the price
-    # warmer only in the worker (WERKZEUG_RUN_MAIN) so it isn't launched twice.
+    # Reloader is DEV-ONLY (DASHBOARD_DEV=1): under launchd the file-watcher
+    # supervisor process is wasted overhead and complicates clean restarts.
+    # Dev mode: reloader runs two processes — start the price warmer only in
+    # the worker (WERKZEUG_RUN_MAIN) so it isn't launched twice.
+    # Service mode (default): single process — start the warmer directly.
     # Debugger stays OFF (no Werkzeug console); the server is bound to localhost.
-    if os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+    dev = os.environ.get("DASHBOARD_DEV") == "1"
+    if (not dev) or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
         start_price_refresher(_watched_symbols, interval=180)
 
     print("\n  tradebot dashboard →  http://127.0.0.1:5050\n")
-    app.run(host="127.0.0.1", port=5050, debug=False, use_reloader=True)
+    app.run(host="127.0.0.1", port=5050, debug=False, use_reloader=dev)

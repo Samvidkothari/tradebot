@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>tradebot — Command</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   Quiet Terminal — tradebot command surface
+   Chrome is achromatic graphite. Hue ONLY ever encodes state.
+   ═══════════════════════════════════════════════════════════════ */
+:root{
+  --bg:#0a0b0e; --panel:#101218; --panel-2:#14171f; --elev:#181c25; --elev-2:#1d222d;
+  --line:#222732; --line-soft:#1a1e27;
+  --ink:#eceef3; --ink-2:#aab2c0; --ink-3:#6d7585; --ink-4:#4a505e;
+  --pos:#3fb984;  --pos-bg:rgba(63,185,132,.12);  --pos-line:rgba(63,185,132,.4);
+  --info:#5b9df0; --info-bg:rgba(91,157,240,.12); --info-line:rgba(91,157,240,.4);
+  --warn:#e3b341; --warn-bg:rgba(227,179,65,.13); --warn-line:rgba(227,179,65,.45);
+  --high:#e8843c; --high-bg:rgba(232,132,60,.13); --high-line:rgba(232,132,60,.45);
+  --crit:#e5484d; --crit-bg:rgba(229,72,77,.14); --crit-line:rgba(229,72,77,.5);
+  --mono:"IBM Plex Mono",ui-monospace,monospace;
+  --sans:"IBM Plex Sans",-apple-system,Segoe UI,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-font-smoothing:antialiased}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:13px;line-height:1.45;
+  letter-spacing:-.005em;height:100vh;display:flex;overflow:hidden}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+::selection{background:rgba(91,157,240,.28)}
+.pos{color:var(--pos)} .neg{color:var(--crit)} .neu{color:var(--ink)} .muted{color:var(--ink-3)}
+
+/* ── Sidebar ─────────────────────────────────────────────── */
+aside{width:212px;flex:none;background:var(--panel);border-right:1px solid var(--line);
+  display:flex;flex-direction:column;padding:16px 0 12px}
+.brand{display:flex;align-items:center;gap:10px;padding:2px 18px 16px;margin-bottom:8px;border-bottom:1px solid var(--line)}
+.brand .mark{width:30px;height:30px;border-radius:8px;flex:none;display:grid;place-items:center;
+  background:var(--elev);border:1px solid var(--line);font-family:var(--mono);font-weight:700;font-size:15px;color:var(--ink)}
+.brand .nm{font-weight:600;font-size:15px;letter-spacing:-.02em;line-height:1}
+.brand .nm small{display:block;font-size:9px;font-weight:600;letter-spacing:.18em;color:var(--ink-4);text-transform:uppercase;margin-top:4px}
+.navlabel{padding:13px 18px 5px;font-size:9.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-4)}
+nav{display:flex;flex-direction:column;gap:1px;padding:0 10px}
+nav a{position:relative;display:flex;align-items:center;gap:10px;padding:7px 11px;border-radius:7px;
+  color:var(--ink-3);text-decoration:none;font-size:12.5px;font-weight:500;transition:background .14s,color .14s;cursor:pointer}
+nav a svg{width:16px;height:16px;flex:none;opacity:.85}
+nav a:hover{color:var(--ink);background:rgba(255,255,255,.04)}
+nav a.on{color:var(--ink);background:rgba(255,255,255,.07)}
+nav a.on::before{content:"";position:absolute;left:-10px;top:50%;transform:translateY(-50%);width:2px;height:18px;border-radius:2px;background:var(--ink-2)}
+nav a .ct{margin-left:auto;font-family:var(--mono);font-size:10px;font-weight:600;color:var(--bg);background:var(--high);border-radius:9px;padding:1px 6px;line-height:1.5}
+.side-foot{margin-top:auto;padding:12px 18px 0;border-top:1px solid var(--line-soft);
+  display:flex;align-items:center;justify-content:space-between;color:var(--ink-4);font-size:11px}
+.side-foot b{color:var(--ink-2);font-weight:600}
+
+/* ── Main + banner ───────────────────────────────────────── */
+main{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden}
+.banner{display:flex;align-items:center;gap:18px;height:38px;flex:none;padding:0 22px;
+  border-bottom:1px solid var(--line);background:var(--panel);font-size:12px}
+.banner .mkt{display:flex;align-items:center;gap:8px;font-weight:600}
+.banner .mkt .ring{width:8px;height:8px;border-radius:50%;background:var(--ink-4)}
+.banner .mkt.open .ring{background:var(--pos);box-shadow:0 0 0 0 var(--pos);animation:pulse 2.4s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(63,185,132,.5)}70%{box-shadow:0 0 0 5px rgba(63,185,132,0)}100%{box-shadow:0 0 0 0 rgba(63,185,132,0)}}
+.banner .sep{width:1px;height:16px;background:var(--line)}
+.chips{display:flex;align-items:center;gap:7px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:6px;border:1px solid var(--line);
+  background:var(--elev);font-size:11px;font-weight:500;color:var(--ink-2)}
+.chip .d{width:6px;height:6px;border-radius:50%}
+.chip.ok .d{background:var(--pos)} .chip.ok{color:var(--ink)}
+.chip.info .d{background:var(--info)}
+.chip.warn .d{background:var(--warn)} .chip.warn{border-color:var(--warn-line)}
+.banner .right{margin-left:auto;display:flex;align-items:center;gap:14px;color:var(--ink-3)}
+.banner .clock{font-family:var(--mono);font-size:12.5px;color:var(--ink);font-weight:500}
+.banner .upd{font-size:11px}
+
+.canvas{flex:1;overflow:auto;padding:14px 22px 24px}
+.view{display:none;flex-direction:column;gap:12px}
+.view.active{display:flex;animation:fade .25s ease both}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+/* view header */
+.vhead{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;flex-wrap:wrap}
+.vhead h1{font-size:21px;font-weight:600;letter-spacing:-.02em}
+.vhead .sub{color:var(--ink-3);font-size:12.5px;margin-top:3px}
+.vhead .tools{display:flex;gap:8px}
+
+/* eyebrow divider */
+.eyebrow{display:flex;align-items:center;gap:8px;font-size:10px;font-weight:700;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--ink-4);margin:2px 0 -2px}
+.eyebrow .ln{flex:1;height:1px;background:var(--line-soft)}
+
+/* buttons */
+.mini{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:7px;border:1px solid var(--line);
+  background:var(--elev);color:var(--ink);font-size:11.5px;font-weight:600;cursor:pointer;text-decoration:none;font-family:var(--sans)}
+.mini:hover{border-color:var(--ink-3)} .mini svg{width:13px;height:13px}
+.mini.go{border-color:var(--info-line);color:var(--info)}
+
+/* decision / red-flag strip */
+.flagstrip{display:flex;align-items:center;gap:14px;padding:10px 14px;border-radius:10px;border:1px solid var(--high-line);background:var(--high-bg)}
+.flagstrip.calm{border-color:var(--line);background:var(--panel)}
+.flagstrip.crit{border-color:var(--crit-line);background:var(--crit-bg)}
+.flagstrip .ic{width:28px;height:28px;border-radius:7px;flex:none;display:grid;place-items:center;background:var(--high);color:#1a1205}
+.flagstrip.calm .ic{background:var(--elev);color:var(--pos);border:1px solid var(--line)}
+.flagstrip.crit .ic{background:var(--crit);color:#fff}
+.flagstrip .ic svg{width:16px;height:16px}
+.flagstrip .tx b{font-size:13px;font-weight:600}
+.flagstrip .tx span{display:block;color:var(--ink-2);font-size:11.5px;margin-top:1px}
+.flagstrip .act{margin-left:auto;display:flex;gap:8px}
+
+/* KPI */
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:13px 15px 12px}
+.kpi .top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.kpi .lab{display:flex;align-items:center;gap:5px;font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+.kpi .val{font-family:var(--mono);font-size:25px;font-weight:600;letter-spacing:-.02em;margin-top:9px;line-height:1.05}
+.kpi .val.sm{font-size:20px}
+.kpi .meta{font-size:11px;color:var(--ink-3);margin-top:3px}
+.kpi .meta .mono{color:var(--ink-2)}
+
+/* verdict tag */
+.verdict{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;letter-spacing:.04em;padding:2px 7px;border-radius:20px;text-transform:uppercase}
+.verdict svg{width:11px;height:11px}
+.verdict.normal{color:var(--pos);background:var(--pos-bg)}
+.verdict.watch{color:var(--warn);background:var(--warn-bg)}
+.verdict.act{color:var(--high);background:var(--high-bg)}
+.verdict.crit{color:var(--crit);background:var(--crit-bg)}
+.verdict.info{color:var(--info);background:var(--info-bg)}
+
+/* SIGNATURE — range track */
+.track{position:relative;height:5px;border-radius:3px;background:var(--elev);margin-top:11px}
+.track .band{position:absolute;top:0;bottom:0;border-radius:3px;background:rgba(255,255,255,.07)}
+.track .mark{position:absolute;top:-3px;width:2px;height:11px;border-radius:2px;background:var(--ink-2);transform:translateX(-1px)}
+.track.is-normal .mark{background:var(--pos)} .track.is-watch .mark{background:var(--warn)}
+.track.is-act .mark{background:var(--high)} .track.is-crit .mark{background:var(--crit)}
+.track .lim{position:absolute;top:-2px;width:1px;height:9px;background:var(--crit-line)}
+.trackcap{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9.5px;color:var(--ink-4);margin-top:4px}
+
+/* panels + grids */
+.cols{display:grid;grid-template-columns:1.05fr 1fr 1.1fr;gap:12px;align-items:start}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;align-items:start}
+.span2{grid-column:span 2}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:13px 15px}
+.panel h3{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);display:flex;align-items:center;gap:7px;margin-bottom:11px}
+.panel h3 .badge{margin-left:auto;font-weight:600;letter-spacing:0;text-transform:none;font-size:11px;color:var(--ink-4)}
+
+/* risk rows */
+.risk{display:flex;flex-direction:column;gap:13px}
+.rrow .rhead{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.rrow .rname{font-size:12px;font-weight:500;color:var(--ink-2);display:flex;align-items:center;gap:5px}
+.rrow .rval{font-family:var(--mono);font-size:13px;font-weight:600}
+.rrow .raction{font-size:10.5px;color:var(--ink-3);margin-top:5px}
+.rrow .raction b{color:var(--ink-2);font-weight:600}
+
+/* regime + strategy list */
+.regbig{display:flex;align-items:center;gap:11px;margin-bottom:12px}
+.regbig .glyph{width:40px;height:40px;border-radius:9px;flex:none;display:grid;place-items:center;background:var(--info-bg);color:var(--info)}
+.regbig .glyph svg{width:21px;height:21px}
+.regbig .lab{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.regbig .nm{font-size:17px;font-weight:600;letter-spacing:-.01em;margin-top:1px}
+.regline{font-size:11.5px;color:var(--ink-2);line-height:1.5;margin-bottom:12px}
+.statlist{display:flex;flex-direction:column;gap:9px}
+.statrow{display:flex;align-items:center;justify-content:space-between;font-size:12px}
+.statrow .k{color:var(--ink-3)} .statrow .v{font-family:var(--mono);font-weight:600;color:var(--ink)}
+.strat{display:flex;align-items:center;gap:9px;padding:8px 0;border-top:1px solid var(--line-soft)}
+.strat:first-of-type{border-top:0}
+.strat .nm{font-size:12px;font-weight:500}
+.strat .nm small{display:block;color:var(--ink-4);font-size:10.5px;font-weight:400;margin-top:1px}
+.strat .pill{margin-left:auto}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;border:1px solid transparent;white-space:nowrap}
+.pill svg{width:10px;height:10px}
+.pill.open{color:var(--warn);background:var(--warn-bg)}
+.pill.idle{color:var(--info);background:var(--info-bg)}
+.pill.ret{color:var(--ink-3);background:rgba(255,255,255,.05);border-color:var(--line)}
+.pill.live{color:var(--pos);background:var(--pos-bg)}
+.pill.paper{color:var(--info);background:var(--info-bg)}
+
+/* alerts */
+.alerts{display:flex;flex-direction:column;gap:9px}
+.alert{display:flex;gap:10px;padding:10px 11px;border-radius:9px;border:1px solid var(--line);background:var(--panel-2)}
+.alert .ic{width:24px;height:24px;border-radius:6px;flex:none;display:grid;place-items:center}
+.alert .ic svg{width:14px;height:14px}
+.alert.crit{border-color:var(--crit-line)} .alert.crit .ic{background:var(--crit-bg);color:var(--crit)}
+.alert.high{border-color:var(--high-line)} .alert.high .ic{background:var(--high-bg);color:var(--high)}
+.alert.warn{border-color:var(--warn-line)} .alert.warn .ic{background:var(--warn-bg);color:var(--warn)}
+.alert.info .ic{background:var(--info-bg);color:var(--info)}
+.alert .body{min-width:0;flex:1}
+.alert .ttl{display:flex;align-items:center;gap:7px}
+.alert .ttl b{font-size:12px;font-weight:600}
+.alert .sev{font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:1px 6px;border-radius:4px}
+.alert.crit .sev{color:var(--crit);background:var(--crit-bg)}
+.alert.high .sev{color:var(--high);background:var(--high-bg)}
+.alert.warn .sev{color:var(--warn);background:var(--warn-bg)}
+.alert.info .sev{color:var(--info);background:var(--info-bg)}
+.alert .imp{font-size:11px;color:var(--ink-2);margin-top:3px;line-height:1.5}
+.alert .imp b{color:var(--ink);font-weight:600}
+.alert .when{font-family:var(--mono);font-size:10px;color:var(--ink-4);margin-top:5px}
+.alert .x{align-self:flex-start;color:var(--ink-4);cursor:pointer;background:none;border:0;padding:2px;line-height:0}
+.alert .x:hover{color:var(--ink-2)} .alert .x svg{width:13px;height:13px}
+
+/* tables */
+table.dt{width:100%;border-collapse:collapse}
+table.dt th{font-size:9.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-4);
+  text-align:right;padding:0 10px 8px 0;border-bottom:1px solid var(--line);white-space:nowrap}
+table.dt th:first-child{text-align:left;padding-left:0}
+table.dt th.sortable{cursor:pointer;user-select:none}
+table.dt th.sortable:hover{color:var(--ink-2)}
+table.dt th .ar{opacity:.4;font-size:8px}
+table.dt th.asc .ar,table.dt th.desc .ar{opacity:1;color:var(--ink-2)}
+table.dt td{font-family:var(--mono);font-size:12px;text-align:right;padding:8px 10px 8px 0;border-bottom:1px solid var(--line-soft)}
+table.dt td:first-child{font-family:var(--sans);text-align:left;color:var(--ink);padding-left:0}
+table.dt tr:last-child td{border-bottom:0}
+table.dt tbody tr:hover td{background:rgba(255,255,255,.018)}
+table.dt td .nm{font-weight:500} table.dt td .nm small{display:block;color:var(--ink-4);font-size:10px}
+table.dt tfoot td{border-top:1px solid var(--line);border-bottom:0;font-weight:700;padding-top:9px;color:var(--ink)}
+
+/* allocation bars + donut */
+.alloc{display:flex;flex-direction:column;gap:10px}
+.allocrow{display:grid;grid-template-columns:96px 1fr 46px;align-items:center;gap:10px;font-size:11.5px}
+.allocrow .k{color:var(--ink-2)} .allocrow .v{font-family:var(--mono);text-align:right;color:var(--ink)}
+.bar{height:7px;border-radius:4px;background:var(--elev);overflow:hidden}
+.bar i{display:block;height:100%;border-radius:4px;background:var(--ink-3)}
+.bar i.acc{background:var(--info)}
+.donut{width:120px;height:120px;border-radius:50%;flex:none}
+.legend{display:flex;flex-direction:column;gap:7px;font-size:11.5px}
+.legend .li{display:flex;align-items:center;gap:8px}
+.legend .sw{width:9px;height:9px;border-radius:2px;flex:none}
+.legend .k{color:var(--ink-2)} .legend .v{margin-left:auto;font-family:var(--mono);color:var(--ink)}
+
+/* health rows */
+.health{display:flex;flex-direction:column;gap:8px}
+.hrow{display:flex;align-items:center;gap:9px;font-size:12px}
+.hrow .d{width:7px;height:7px;border-radius:50%;flex:none}
+.hrow .d.ok{background:var(--pos)} .hrow .d.info{background:var(--info)} .hrow .d.warn{background:var(--warn)} .hrow .d.crit{background:var(--crit)}
+.hrow .k{color:var(--ink-2)} .hrow .v{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--ink-3)}
+.hrow .v b{color:var(--ink);font-weight:600}
+
+/* detail rows (trade detail) */
+.detail{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line-soft);border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.detail .d{background:var(--panel);padding:10px 12px}
+.detail .d .k{font-size:9.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-4)}
+.detail .d .v{font-family:var(--mono);font-size:14px;font-weight:600;margin-top:4px}
+.detail .d .v small{font-size:10px;color:var(--ink-3);font-family:var(--sans);font-weight:400}
+
+/* reason blocks */
+.reason{display:flex;gap:10px;padding:11px 13px;border-radius:9px;background:var(--panel-2);border:1px solid var(--line)}
+.reason .ic{width:22px;height:22px;border-radius:6px;flex:none;display:grid;place-items:center;background:var(--info-bg);color:var(--info)}
+.reason .ic svg{width:13px;height:13px}
+.reason b{font-size:11px;font-weight:600;display:block;margin-bottom:2px}
+.reason p{font-size:11.5px;color:var(--ink-2);line-height:1.55}
+
+/* confidence meter */
+.conf{display:flex;align-items:center;gap:9px}
+.conf .meter{flex:1;height:6px;border-radius:4px;background:var(--elev);overflow:hidden}
+.conf .meter i{display:block;height:100%;border-radius:4px}
+.conf .pct{font-family:var(--mono);font-size:12px;font-weight:600}
+
+/* factor chips */
+.factors{display:flex;flex-wrap:wrap;gap:7px}
+.fchip{display:flex;align-items:center;gap:6px;padding:4px 9px;border-radius:7px;border:1px solid var(--line);background:var(--elev);font-size:11px}
+.fchip .k{color:var(--ink-3)} .fchip .v{font-family:var(--mono);font-weight:600}
+
+/* tabs */
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:2px}
+.tab{padding:7px 13px;font-size:12px;font-weight:600;color:var(--ink-3);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+.tab:hover{color:var(--ink-2)} .tab.on{color:var(--ink);border-bottom-color:var(--ink-2)}
+
+/* strategy / research cards */
+.scard{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:14px 16px;display:flex;flex-direction:column;gap:11px}
+.scard .hd{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.scard .hd .t{font-size:14px;font-weight:600}
+.scard .hd .t small{display:block;color:var(--ink-3);font-size:11px;font-weight:400;margin-top:2px}
+.scard .hyp{font-size:11.5px;color:var(--ink-2);line-height:1.55;padding-left:11px;border-left:2px solid var(--line)}
+.metrics4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.metrics4 .m .k{font-size:9.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-4)}
+.metrics4 .m .v{font-family:var(--mono);font-size:15px;font-weight:600;margin-top:3px}
+
+/* pipeline stepper (a real sequence → numbers EARN their place) */
+.pipe{display:flex;align-items:stretch;gap:0}
+.pstep{flex:1;position:relative;padding:11px 13px;background:var(--panel-2);border:1px solid var(--line);border-right:0}
+.pstep:first-child{border-radius:9px 0 0 9px} .pstep:last-child{border-radius:0 9px 9px 0;border-right:1px solid var(--line)}
+.pstep .n{font-family:var(--mono);font-size:10px;color:var(--ink-4);font-weight:600}
+.pstep .s{font-size:12px;font-weight:600;margin-top:3px}
+.pstep .st{font-size:10.5px;margin-top:4px;display:flex;align-items:center;gap:5px;color:var(--ink-3)}
+.pstep .st .d{width:6px;height:6px;border-radius:50%;background:var(--pos)}
+.pstep.done .s{color:var(--ink)} .pstep.pending .st .d{background:var(--ink-4)}
+
+/* journal */
+.jentry{display:flex;gap:12px;padding:13px 0;border-top:1px solid var(--line-soft)}
+.jentry:first-of-type{border-top:0}
+.jentry .date{font-family:var(--mono);font-size:11px;color:var(--ink-3);width:74px;flex:none;padding-top:2px}
+.jentry .c .t{font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px}
+.jentry .c p{font-size:11.5px;color:var(--ink-2);line-height:1.6;margin-top:4px}
+.tag{font-size:9px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:1px 6px;border-radius:4px;background:var(--elev);color:var(--ink-3);border:1px solid var(--line)}
+.tag.win{color:var(--pos);background:var(--pos-bg);border-color:transparent}
+.tag.loss{color:var(--crit);background:var(--crit-bg);border-color:transparent}
+.tag.note{color:var(--info);background:var(--info-bg);border-color:transparent}
+
+/* settings */
+.field{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:11px 0;border-top:1px solid var(--line-soft)}
+.field:first-of-type{border-top:0}
+.field .lbl{font-size:12.5px;font-weight:500}
+.field .lbl small{display:block;color:var(--ink-3);font-size:11px;font-weight:400;margin-top:2px}
+.field .ctl{font-family:var(--mono);font-size:12px;color:var(--ink);display:flex;align-items:center;gap:8px}
+.inp{background:var(--elev);border:1px solid var(--line);border-radius:7px;padding:5px 9px;color:var(--ink);font-family:var(--mono);font-size:12px;width:90px;text-align:right}
+.sw{width:38px;height:21px;border-radius:20px;background:var(--elev);border:1px solid var(--line);position:relative;cursor:pointer;flex:none}
+.sw i{position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;background:var(--ink-3);transition:.18s}
+.sw.on{background:var(--pos-bg);border-color:var(--pos-line)} .sw.on i{left:19px;background:var(--pos)}
+.sw.locked{opacity:.6;cursor:not-allowed}
+
+/* info dot + tooltip */
+.info{display:inline-grid;place-items:center;width:13px;height:13px;border-radius:50%;border:1px solid var(--line);
+  color:var(--ink-4);font-size:9px;font-weight:700;cursor:help;position:relative;font-family:var(--sans)}
+.info:hover,.info:focus{color:var(--ink-2);border-color:var(--ink-3);outline:none}
+.info .tip{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%) translateY(4px);
+  width:236px;background:var(--elev);border:1px solid var(--line);border-radius:9px;padding:10px 11px;z-index:60;
+  box-shadow:0 8px 28px rgba(0,0,0,.55);opacity:0;pointer-events:none;transition:opacity .15s,transform .15s;text-align:left}
+.info:hover .tip,.info:focus .tip{opacity:1;transform:translateX(-50%) translateY(0)}
+.tip b{display:block;font-size:11.5px;font-weight:600;color:var(--ink);margin-bottom:4px}
+.tip p{font-size:11px;color:var(--ink-2);line-height:1.5;margin-bottom:6px}
+.tip dl{display:grid;grid-template-columns:auto 1fr;gap:2px 8px;font-size:10.5px}
+.tip dt{color:var(--ink-4);font-weight:600} .tip dd{color:var(--ink-2);font-family:var(--mono)}
+.tip .arr{position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:var(--line)}
+
+@media (max-width:1180px){
+  .kpis{grid-template-columns:repeat(2,1fr)} .cols,.grid2,.grid3{grid-template-columns:1fr} .span2{grid-column:auto} .detail{grid-template-columns:repeat(2,1fr)}
+}
+@media (max-width:760px){
+  aside{display:none} .kpis,.metrics4{grid-template-columns:1fr} .banner .chips,.banner .upd{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<!-- ── Sidebar ─────────────────────────────────────────── -->
+<aside>
+  <div class="brand"><div class="mark">t</div><div class="nm">tradebot<small>Paper / Research</small></div></div>
+  <div class="navlabel">Trading</div>
+  <nav>
+    <a data-view="dashboard" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>Dashboard</a>
+    <a data-view="portfolio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>Portfolio</a>
+    <a data-view="trades"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12h6l2-7 3 14 2-7h5"/></svg>Trades</a>
+  </nav>
+  <div class="navlabel">Research</div>
+  <nav>
+    <a data-view="strategies"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V5l8 4 8-4v14l-8 4-8-4z"/><path d="M12 9v14"/></svg>Strategies</a>
+    <a data-view="research"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>Research</a>
+    <a data-view="scanner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 17l5-5 4 3 8-9"/><path d="M16 6h5v5"/></svg>Market Scanner</a>
+  </nav>
+  <div class="navlabel">Control</div>
+  <nav>
+    <a data-view="risk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg>Risk Center<span class="ct">1</span></a>
+    <a data-view="reports"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>Reports</a>
+    <a data-view="journal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 3h11l3 3v15H5z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>Journal</a>
+    <a data-view="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 13a7 7 0 000-2l2-1.6-2-3.4-2.3 1a7 7 0 00-1.7-1L14.5 2h-4l-.4 2.4a7 7 0 00-1.7 1l-2.3-1-2 3.4L4.6 11a7 7 0 000 2l-2 1.6 2 3.4 2.3-1a7 7 0 001.7 1l.4 2.4h4l.4-2.4a7 7 0 001.7-1l2.3 1 2-3.4z"/></svg>Settings</a>
+  </nav>
+  <div class="side-foot"><span>Capital <b>₹40.00L</b></span><span>4 books</span></div>
+</aside>
+
+<!-- ── Main ────────────────────────────────────────────── -->
+<main>
+  <div class="banner">
+    <div class="mkt open"><span class="ring"></span>NSE Open</div>
+    <div class="sep"></div>
+    <div class="chips">
+      <span class="chip info"><span class="d"></span>Broker · Read-only</span>
+      <span class="chip warn"><span class="d"></span>Data · 1d stale</span>
+      <span class="chip ok"><span class="d"></span>Research · OK</span>
+      <span class="chip ok"><span class="d"></span>Risk · Normal</span>
+    </div>
+    <div class="right"><span class="upd">Last update <b style="color:var(--ink-2)">12:49 IST</b></span><span class="clock" id="clk">—</span></div>
+  </div>
+
+  <div class="canvas">
+
+  <!-- ════════════ DASHBOARD ════════════ -->
+  <section class="view active" id="view-dashboard">
+    <div class="flagstrip">
+      <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg></div>
+      <div class="tx"><b>1 item needs attention — no critical red flags</b><span>Both options books are awaiting a volatility event; verdict still inconclusive. Nothing breached a hard risk limit.</span></div>
+      <div class="act"><a class="mini go" data-view="risk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 2"/><circle cx="12" cy="12" r="9"/></svg>Open Risk Center</a></div>
+    </div>
+
+    <div class="eyebrow">Standing<span class="ln"></span>as of 26 Jun 2026 · paper</div>
+    <div class="kpis">
+      <div class="kpi"><div class="top"><span class="lab">Net Equity <span class="info" tabindex="0">i<span class="tip"><b>Net Equity (paper)</b><p>Program capital plus combined open and realised P&amp;L across all four books.</p><dl><dt>Base</dt><dd>₹40,00,000</dd><dt>P&amp;L</dt><dd>−₹17,265</dd></dl><span class="arr"></span></span></span></span></div>
+        <div class="val neu">₹39.83<span style="font-size:14px;color:var(--ink-3)">L</span></div><div class="meta">Capital <span class="mono">₹40.00L</span> · deployed <span class="mono">99.6%</span></div></div>
+      <div class="kpi"><div class="top"><span class="lab">Combined P&amp;L <span class="info" tabindex="0">i<span class="tip"><b>Combined P&amp;L</b><p>Realised plus unrealised since inception.</p><dl><dt>Realised</dt><dd>−₹21,509</dd><dt>Unreal.</dt><dd>+₹4,244</dd><dt>Stop</dt><dd>−5.0%</dd></dl><span class="arr"></span></span></span></span><span class="verdict normal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg>Normal</span></div>
+        <div class="val neg">−₹17,265</div><div class="meta">−0.43% of capital · inside −5% stop</div>
+        <div class="track is-normal"><span class="band" style="left:0;width:60%"></span><span class="lim" style="left:100%"></span><span class="mark" style="left:8.6%"></span></div>
+        <div class="trackcap"><span>−5% stop</span><span>flat</span><span>+</span></div></div>
+      <div class="kpi"><div class="top"><span class="lab">Open P&amp;L <span class="info" tabindex="0">i<span class="tip"><b>Open (unrealised) P&amp;L</b><p>Mark-to-model value of the two open options books.</p><dl><dt>Strangle</dt><dd>+₹3,653</dd><dt>Condor</dt><dd>+₹591</dd></dl><span class="arr"></span></span></span></span></div>
+        <div class="val pos">+₹4,244</div><div class="meta">2 open structures · mark 26 Jun</div></div>
+      <div class="kpi"><div class="top"><span class="lab">Open Positions <span class="info" tabindex="0">i<span class="tip"><b>Open Positions</b><p>Distinct live legs across books.</p><dl><dt>Equity</dt><dd>15 names</dd><dt>Options</dt><dd>2 books</dd></dl><span class="arr"></span></span></span></span></div>
+        <div class="val neu">17</div><div class="meta">15 equity · 1 strangle · 1 condor</div></div>
+      <div class="kpi"><div class="top"><span class="lab">Deployable Cash <span class="info" tabindex="0">i<span class="tip"><b>Deployable Cash</b><p>Uncommitted cash in the equity book.</p><dl><dt>Cash</dt><dd>₹13,369</dd><dt>of book</dt><dd>1.3%</dd></dl><span class="arr"></span></span></span></span></div>
+        <div class="val sm neu">₹13,369</div><div class="meta">1.3% of equity book</div></div>
+    </div>
+
+    <div class="cols">
+      <div class="panel">
+        <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="14" height="14"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg>Risk <span class="verdict normal badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg>Normal</span></h3>
+        <div class="risk">
+          <div class="rrow"><div class="rhead"><span class="rname">Drawdown</span><span class="rval pos">−0.4%</span></div>
+            <div class="track is-normal"><span class="band" style="left:0;width:50%"></span><span class="lim" style="left:100%"></span><span class="mark" style="left:4%"></span></div>
+            <div class="trackcap"><span>0%</span><span>5% normal</span><span>10% stop</span></div></div>
+          <div class="rrow"><div class="rhead"><span class="rname">Portfolio Heat</span><span class="rval neu">9.2%</span></div>
+            <div class="track is-normal"><span class="band" style="left:0;width:67%"></span><span class="lim" style="left:100%"></span><span class="mark" style="left:51%"></span></div>
+            <div class="trackcap"><span>0%</span><span>12% target</span><span>18%</span></div></div>
+          <div class="rrow"><div class="rhead"><span class="rname">Max Sector</span><span class="rval" style="color:var(--warn)">31%</span></div>
+            <div class="track is-watch"><span class="band" style="left:0;width:88%"></span><span class="lim" style="left:100%"></span><span class="mark" style="left:88%"></span></div>
+            <div class="trackcap"><span>0%</span><span>—</span><span>35% limit</span></div></div>
+          <div class="rrow"><div class="rhead"><span class="rname">VaR · 1d 95%</span><span class="rval neu">−₹31.8k</span></div>
+            <div class="track is-normal"><span class="band" style="left:0;width:55%"></span><span class="lim" style="left:100%"></span><span class="mark" style="left:34%"></span></div>
+            <div class="trackcap"><span>0</span><span>0.8%</span><span>2% alert</span></div></div>
+        </div>
+        <a class="mini" data-view="risk" style="margin-top:13px">Full Risk Center →</a>
+      </div>
+
+      <div class="panel">
+        <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="14" height="14"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg>Market &amp; Engine</h3>
+        <div class="regbig"><div class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12h6l2-4 2 8 2-4h6"/></svg></div><div><div class="lab">Market Regime</div><div class="nm">Range-bound · Low Vol</div></div></div>
+        <p class="regline">Breadth balanced, NIFTY trendless, realised vol compressed — favourable for the premium-selling books, thin edge for directional ones.</p>
+        <div class="statlist">
+          <div class="statrow"><span class="k">Breadth (&gt; 50DMA)</span><span class="v">54%</span></div>
+          <div class="statrow"><span class="k">Realised vol · 20d</span><span class="v">11.4%</span></div>
+          <div class="statrow"><span class="k">Active strategies</span><span class="v">2 of 4</span></div>
+        </div>
+        <h3 style="margin-top:14px">Strategies</h3>
+        <div class="strat"><div class="nm">Short Strangle<small>NIFTY 23100P / 25000C · 31d</small></div><span class="pill open"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="9"/><path d="M12 8v4"/></svg>Open · Watch</span></div>
+        <div class="strat"><div class="nm">Iron Condor<small>Defined-risk · max loss ₹30,734</small></div><span class="pill open"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="9"/><path d="M12 8v4"/></svg>Open · Watch</span></div>
+        <div class="strat"><div class="nm">Low-Vol Equity<small>15 names · idle 17d</small></div><span class="pill idle">Paper · Idle</span></div>
+        <div class="strat"><div class="nm">Intraday ORB / VWAP<small>Edge didn't survive costs</small></div><span class="pill ret">Retired</span></div>
+      </div>
+
+      <div class="panel">
+        <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="14" height="14"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9z"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>Alerts <span class="badge">4 active</span></h3>
+        <div class="alerts">
+          <div class="alert high"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg></div>
+            <div class="body"><div class="ttl"><b>Options awaiting vol event</b><span class="sev">High</span></div><div class="imp">Verdicts inconclusive; theta accruing. <b>Action:</b> hold to 30 Jul, or close on a ≥4% NIFTY day.</div><div class="when">26 Jun · 12:49</div></div>
+            <button class="x" aria-label="Dismiss"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+          <div class="alert warn"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5M12 16h.01"/></svg></div>
+            <div class="body"><div class="ttl"><b>Low-vol book idle 17 days</b><span class="sev">Warning</span></div><div class="imp">No rebalance since 12 Jun — weights drifting. <b>Action:</b> check the monthly rebalance signal.</div><div class="when">12 Jun · 09:20</div></div>
+            <button class="x" aria-label="Dismiss"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+          <div class="alert warn"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l2-3 3 9 2-12 2 6h5"/></svg></div>
+            <div class="body"><div class="ttl"><b>Market data 1 day stale</b><span class="sev">Warning</span></div><div class="imp">Prices as of 26 Jun. <b>Action:</b> run the data refresh before close.</div><div class="when">29 Jun · 08:00</div></div>
+            <button class="x" aria-label="Dismiss"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+          <div class="alert info"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg></div>
+            <div class="body"><div class="ttl"><b>Intraday book retired</b><span class="sev">Info</span></div><div class="imp">Frozen 26 Jun as evidence. <b>Action:</b> none, archived.</div><div class="when">26 Jun · 16:00</div></div>
+            <button class="x" aria-label="Dismiss"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="panel">
+        <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="14" height="14"><path d="M4 5h16v14H4z"/><path d="M4 10h16M10 5v14"/></svg>Paper Books</h3>
+        <table class="dt"><thead><tr><th>Book</th><th>Realised</th><th>Unrealised</th><th>Total</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td><div class="nm">Low-Vol Equity<small>15 names · idle</small></div></td><td class="neu">₹0</td><td class="neu">—</td><td class="neu">₹0</td><td><span class="pill idle" style="float:right">Idle</span></td></tr>
+            <tr><td><div class="nm">Intraday ORB+VWAP<small>retired</small></div></td><td class="neg">−₹21,509</td><td class="neu">—</td><td class="neg">−₹21,509</td><td><span class="pill ret" style="float:right">Frozen</span></td></tr>
+            <tr><td><div class="nm">Short Strangle<small>exp 30 Jul</small></div></td><td class="neu">₹0</td><td class="pos">+₹3,653</td><td class="pos">+₹3,653</td><td><span class="pill open" style="float:right">Open</span></td></tr>
+            <tr><td><div class="nm">Iron Condor<small>exp 30 Jul</small></div></td><td class="neu">₹0</td><td class="pos">+₹591</td><td class="pos">+₹591</td><td><span class="pill open" style="float:right">Open</span></td></tr>
+          </tbody>
+          <tfoot><tr><td>Combined</td><td class="neg">−₹21,509</td><td class="pos">+₹4,244</td><td class="neg">−₹17,265</td><td></td></tr></tfoot></table>
+      </div>
+      <div class="panel">
+        <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="14" height="14"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>System Health</h3>
+        <div class="health">
+          <div class="hrow"><span class="d ok"></span><span class="k">Engine</span><span class="v"><b>Operational</b></span></div>
+          <div class="hrow"><span class="d warn"></span><span class="k">Market data</span><span class="v">as of <b>26 Jun</b></span></div>
+          <div class="hrow"><span class="d info"></span><span class="k">Broker · Kite</span><span class="v"><b>Read-only</b></span></div>
+          <div class="hrow"><span class="d ok"></span><span class="k">Research pipeline</span><span class="v">ran <b>29 Jun</b></span></div>
+          <div class="hrow"><span class="d ok"></span><span class="k">Order routing</span><span class="v"><b>Disabled</b> · paper</span></div>
+          <div class="hrow"><span class="d ok"></span><span class="k">Last sync</span><span class="v"><b>12:49 IST</b></span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <!-- ════════════ PORTFOLIO ════════════ -->
+  <section class="view" id="view-portfolio">
+    <div class="vhead"><div><h1>Portfolio</h1><div class="sub">Consolidated paper book · marks as of 26 Jun 2026 · hover any number for how it's defined</div></div>
+      <div class="tools"><a class="mini" data-view="trades">Open trades →</a></div></div>
+
+    <div class="kpis">
+      <div class="kpi"><div class="top"><span class="lab">Net Equity <span class="info" tabindex="0">i<span class="tip"><b>Net Equity</b><p>Market value of all positions plus cash, across books.</p><dl><dt>Formula</dt><dd>Σ positions + cash</dd><dt>Base</dt><dd>₹40.00L</dd></dl><span class="arr"></span></span></span></span></div><div class="val neu">₹39.83L</div><div class="meta">−₹17,265 vs capital</div></div>
+      <div class="kpi"><div class="top"><span class="lab">Realised P&amp;L <span class="info" tabindex="0">i<span class="tip"><b>Realised P&amp;L</b><p>Locked-in profit/loss from closed positions.</p><dl><dt>Source</dt><dd>intraday (frozen)</dd><dt>Normal</dt><dd>—</dd></dl><span class="arr"></span></span></span></span></div><div class="val neg">−₹21,509</div><div class="meta">all from retired intraday</div></div>
+      <div class="kpi"><div class="top"><span class="lab">Unrealised P&amp;L <span class="info" tabindex="0">i<span class="tip"><b>Unrealised P&amp;L</b><p>Mark-to-model gain on still-open positions.</p><dl><dt>Strangle</dt><dd>+₹3,653</dd><dt>Condor</dt><dd>+₹591</dd></dl><span class="arr"></span></span></span></span></div><div class="val pos">+₹4,244</div><div class="meta">2 open options books</div></div>
+      <div class="kpi"><div class="top"><span class="lab">Exposure <span class="info" tabindex="0">i<span class="tip"><b>Gross Exposure</b><p>Capital at work as a share of equity. Idle cash lowers it.</p><dl><dt>Now</dt><dd>99.6%</dd><dt>Normal</dt><dd>≤ 100%</dd></dl><span class="arr"></span></span></span></span></div><div class="val sm neu">99.6%</div><div class="meta">no leverage · paper</div></div>
+      <div class="kpi"><div class="top"><span class="lab">Drawdown <span class="info" tabindex="0">i<span class="tip"><b>Current Drawdown</b><p>Decline from peak equity.</p><dl><dt>Now</dt><dd>−0.43%</dd><dt>Normal</dt><dd>≤ 5%</dd><dt>Stop</dt><dd>10%</dd></dl><span class="arr"></span></span></span></span></div><div class="val sm pos">−0.43%</div><div class="meta">well inside limits</div></div>
+    </div>
+
+    <div class="grid3">
+      <div class="panel"><h3>Asset Allocation <span class="info badge" tabindex="0" style="border:1px solid var(--line)">i<span class="tip"><b>Asset Allocation</b><p>Share of capital by book type.</p><span class="arr"></span></span></span></h3>
+        <div style="display:flex;align-items:center;gap:16px">
+          <div class="donut" style="background:conic-gradient(var(--ink-3) 0 25.3%,var(--info) 25.3% 50.4%,var(--warn) 50.4% 75.5%,var(--elev-2) 75.5% 100%)"></div>
+          <div class="legend">
+            <div class="li"><span class="sw" style="background:var(--ink-3)"></span><span class="k">Low-Vol Equity</span><span class="v">25.3%</span></div>
+            <div class="li"><span class="sw" style="background:var(--info)"></span><span class="k">Options · selling</span><span class="v">25.1%</span></div>
+            <div class="li"><span class="sw" style="background:var(--warn)"></span><span class="k">Intraday · frozen</span><span class="v">24.5%</span></div>
+            <div class="li"><span class="sw" style="background:var(--elev-2)"></span><span class="k">Unallocated cash</span><span class="v">25.1%</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="panel"><h3>Sector Allocation <span class="badge">equity book</span></h3>
+        <div class="alloc">
+          <div class="allocrow"><span class="k">Financials</span><div class="bar"><i class="acc" style="width:89%"></i></div><span class="v">31%</span></div>
+          <div class="allocrow"><span class="k">IT</span><div class="bar"><i style="width:63%"></i></div><span class="v">22%</span></div>
+          <div class="allocrow"><span class="k">Energy</span><div class="bar"><i style="width:34%"></i></div><span class="v">12%</span></div>
+          <div class="allocrow"><span class="k">FMCG</span><div class="bar"><i style="width:26%"></i></div><span class="v">9%</span></div>
+          <div class="allocrow"><span class="k">Auto</span><div class="bar"><i style="width:23%"></i></div><span class="v">8%</span></div>
+          <div class="allocrow"><span class="k">Materials</span><div class="bar"><i style="width:20%"></i></div><span class="v">7%</span></div>
+          <div class="allocrow"><span class="k">Others</span><div class="bar"><i style="width:31%"></i></div><span class="v">11%</span></div>
+        </div>
+        <p class="sub" style="margin-top:11px;color:var(--ink-3);font-size:11px">Financials at 31% — within the 35% cap, but the nearest to it.</p>
+      </div>
+      <div class="panel"><h3>Diversification</h3>
+        <div class="risk">
+          <div class="rrow"><div class="rhead"><span class="rname">Portfolio Heat <span class="info" tabindex="0">i<span class="tip"><b>Portfolio Heat</b><p>Annualised volatility of the whole book.</p><dl><dt>Now</dt><dd>9.2%</dd><dt>Target</dt><dd>≤ 12%</dd></dl><span class="arr"></span></span></span></span><span class="rval neu">9.2%</span></div>
+            <div class="track is-normal"><span class="band" style="left:0;width:67%"></span><span class="lim" style="left:100%"></span><span class="mark" style="left:51%"></span></div></div>
+          <div class="rrow"><div class="rhead"><span class="rname">Avg Correlation <span class="info" tabindex="0">i<span class="tip"><b>Average Pairwise Correlation</b><p>Mean correlation between held names — lower is more diversified.</p><dl><dt>Now</dt><dd>0.42</dd><dt>Normal</dt><dd>≤ 0.60</dd></dl><span class="arr"></span></span></span></span><span class="rval neu">0.42</span></div>
+            <div class="track is-normal"><span class="band" style="left:0;width:60%"></span><span class="lim" style="left:100%"></span><span class="mark" style="left:42%"></span></div></div>
+          <div class="rrow"><div class="rhead"><span class="rname">Max Pair <span class="info" tabindex="0">i<span class="tip"><b>Highest Pair Correlation</b><p>The most correlated two names — concentration of co-movement.</p><dl><dt>Now</dt><dd>0.85 (ICICI/HDFC)</dd><dt>Limit</dt><dd>0.85</dd></dl><span class="arr"></span></span></span></span><span class="rval" style="color:var(--warn)">0.85</span></div>
+            <div class="track is-watch"><span class="band" style="left:0;width:100%"></span><span class="lim" style="left:100%"></span><span class="mark" style="left:100%"></span></div></div>
+          <div class="rrow"><div class="rhead"><span class="rname">Effective N <span class="info" tabindex="0">i<span class="tip"><b>Effective Number of Bets</b><p>Concentration-adjusted count of independent positions.</p><dl><dt>Now</dt><dd>9.8</dd><dt>Holdings</dt><dd>15</dd></dl><span class="arr"></span></span></span></span><span class="rval neu">9.8</span></div>
+            <div class="track is-normal"><span class="band" style="left:0;width:100%"></span><span class="mark" style="left:65%"></span></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="14" height="14"><path d="M4 5h16v14H4z"/><path d="M4 10h16M10 5v14"/></svg>Open Positions <span class="badge">low-vol equity · 15 names</span></h3>
+      <table class="dt"><thead><tr><th>Symbol</th><th class="sortable">Qty <span class="ar">▲▼</span></th><th class="sortable">Avg <span class="ar">▲▼</span></th><th class="sortable">Last <span class="ar">▲▼</span></th><th class="sortable">Weight <span class="ar">▲▼</span></th><th class="sortable">P&amp;L <span class="ar">▲▼</span></th><th>Sector</th></tr></thead>
+        <tbody>
+          <tr><td>HDFCBANK</td><td>38</td><td>1,712.40</td><td>1,748.10</td><td>8.1%</td><td class="pos">+₹1,357</td><td>Financials</td></tr>
+          <tr><td>ICICIBANK</td><td>52</td><td>1,242.80</td><td>1,261.00</td><td>7.6%</td><td class="pos">+₹946</td><td>Financials</td></tr>
+          <tr><td>INFY</td><td>41</td><td>1,598.20</td><td>1,572.40</td><td>7.2%</td><td class="neg">−₹1,058</td><td>IT</td></tr>
+          <tr><td>TCS</td><td>17</td><td>3,884.60</td><td>3,902.10</td><td>6.9%</td><td class="pos">+₹298</td><td>IT</td></tr>
+          <tr><td>RELIANCE</td><td>21</td><td>2,946.10</td><td>2,981.40</td><td>6.5%</td><td class="pos">+₹741</td><td>Energy</td></tr>
+          <tr><td>ITC</td><td>132</td><td>462.30</td><td>458.90</td><td>6.4%</td><td class="neg">−₹449</td><td>FMCG</td></tr>
+          <tr><td>HINDUNILVR</td><td>24</td><td>2,512.70</td><td>2,540.00</td><td>6.4%</td><td class="pos">+₹655</td><td>FMCG</td></tr>
+          <tr><td>BHARTIARTL</td><td>43</td><td>1,408.90</td><td>1,431.20</td><td>6.4%</td><td class="pos">+₹959</td><td>Telecom</td></tr>
+        </tbody>
+        <tfoot><tr><td>+ 7 more names</td><td></td><td></td><td></td><td>38.1%</td><td class="pos">+₹2,604</td><td></td></tr></tfoot></table>
+    </div>
+  </section>
+
+  <!-- ════════════ RISK CENTER ════════════ -->
+  <section class="view" id="view-risk">
+    <div class="vhead"><div><h1>Risk Center</h1><div class="sub">Every metric shows its current value, normal range, level, and the action it implies</div></div>
+      <div class="tools"><span class="verdict normal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg>Overall · Normal</span></div></div>
+
+    <div class="flagstrip calm">
+      <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg></div>
+      <div class="tx"><b>No red flags active</b><span>Drawdown, heat, VaR, daily/weekly/monthly loss and margin are all inside limits. One amber: sector concentration is near its cap.</span></div>
+      <div class="act"><span class="pill open">1 watch</span></div>
+    </div>
+
+    <div class="grid3">
+      <div class="panel"><h3>Loss &amp; Drawdown</h3><div class="risk">
+        <div class="rrow"><div class="rhead"><span class="rname">Current Drawdown</span><span class="rval pos">−0.43%</span></div>
+          <div class="track is-normal"><span class="band" style="left:0;width:50%"></span><span class="lim" style="left:100%"></span><span class="mark" style="left:4.3%"></span></div>
+          <div class="trackcap"><span>0%</span><span>5% normal</span><span>10% stop</span></div>
+          <div class="raction"><b>Normal.</b> No action — far from the −10% kill switch.</div></div>
+        <div class="rrow"><div class="rhead"><span class="rname">Daily Loss</span><span class="rval pos">−₹0</span></div>
+          <div class="track is-normal"><span class="band" style="left:0;width:50%"></span><span class="lim" style="left:100%"></span><span class="mark" style="left:2%"></span></div>
+          <div class="trackcap"><span>0</span><span>₹20k soft</span><span>₹40k halt</span></div>
+          <div class="raction"><b>Normal.</b> Flat today — no marks since 26 Jun.</div></div>
+        <div class="rrow"><div class="rhead"><span class="rname">Weekly Loss</span><span class="rval neu">−₹4,210</span></div>
+          <div class="track is-normal"><span class="band" style="left:0;width:55%"></span><span class="lim" style="left:100%"></span><span class="mark" style="left:21%"></span></div>
+          <div class="trackcap"><span>0</span><span>₹40k soft</span><span>₹80k halt</span></div>
+          <div class="raction"><b>Normal.</b> Within the weekly soft cap.</div></div>
+        <div class="rrow"><div class="rhead"><span class="rname">Monthly Loss</span><span class="rval neu">−₹17,265</span></div>
+          <div class="track is-normal"><span class="band" style="left:0;width:60%"></span><span class="lim" style="left:100%"></span><span class="mark" style="left:22%"></span></div>
+          <div class="trackcap"><span>0</span><span>₹80k soft</span><span>₹2L halt</span></div>
+          <div class="raction"><b>Normal.</b> 22% of the soft monthly budget used.</div></div>
+      </div></div>
+
+      <div class="panel"><h3>Concentration &amp; Heat</h3><div class="risk">
+        <div class="rrow"><div class="rhead"><span class="rname">Portfolio Heat</span><span class="rval neu">9.2%</span></div>
+          <div class="track is-normal"><span class="band" style="left:0;width:67%"></span><span class="lim" style="left:100%"></span><span class="mark" style="left:51%"></span></div>
+          <div class="trackcap"><span>0%</span><span>12% target</span><span>18%</span></div>
+          <div class="raction"><b>Normal.</b> Running cool — room to add risk if a signal fires.</div></div>
+        <div class="rrow"><div class="rhead"><span class="rname">Sector Risk · max</span><span class="rval" style="color:var(--warn)">31%</span></div>
+          <div class="track is-watch"><span class="band" style="left:0;width:88%"></span><span class="lim" style="left:100%"></span><span class="mark" style="left:88%"></span></div>
+          <div class="trackcap"><span>0%</span><span>—</span><span>35% limit</span></div>
+          <div class="raction" style="color:var(--warn)"><b>Watch.</b> Financials at 31% — trim before the next add.</div></div>
+        <div class="rrow"><div class="rhead"><span class="rname">Position Concentration</span><span class="rval neu">8.1%</span></div>
+          <div class="track is-normal"><span class="band" style="left:0;width:90%"></span><span class="lim" style="left:100%"></span><span class="mark" style="left:81%"></span></div>
+          <div class="trackcap"><span>0%</span><span>—</span><span>10% limit</span></div>
+          <div class="raction"><b>Normal.</b> Largest name (HDFCBANK) inside the 10% cap.</div></div>
+        <div class="rrow"><div class="rhead"><span class="rname">Correlation Risk</span><span class="rval neu">0.42</span></div>
+          <div class="track is-normal"><span class="band" style="left:0;width:75%"></span><span class="lim" style="left:100%"></span><span class="mark" style="left:42%"></span></div>
+          <div class="trackcap"><span>0</span><span>0.60 soft</span><span>0.80</span></div>
+          <div class="raction"><b>Normal.</b> Avg pair correlation comfortable; one pair (ICICI/HDFC) at the 0.85 cap.</div></div>
+      </div></div>
+
+      <div class="panel"><h3>Market &amp; Liquidity</h3><div class="risk">
+        <div class="rrow"><div class="rhead"><span class="rname">VaR · 1-day 95%</span><span class="rval neu">−₹31.8k</span></div>
+          <div class="track is-normal"><span class="band" style="left:0;width:55%"></span><span class="lim" style="left:100%"></span><span class="mark" style="left:34%"></span></div>
+          <div class="trackcap"><span>0</span><span>0.8% eq</span><span>2% alert</span></div>
+          <div class="raction"><b>Normal.</b> 95% of days should lose less than this. <span class="muted">(sample)</span></div></div>
+        <div class="rrow"><div class="rhead"><span class="rname">Liquidity Risk</span><span class="rval pos">Low</span></div>
+          <div class="track is-normal"><span class="band" style="left:0;width:40%"></span><span class="lim" style="left:100%"></span><span class="mark" style="left:12%"></span></div>
+          <div class="trackcap"><span>liquid</span><span>—</span><span>illiquid</span></div>
+          <div class="raction"><b>Normal.</b> All NIFTY-50 large caps — exits clear in &lt;1 day.</div></div>
+        <div class="rrow"><div class="rhead"><span class="rname">Margin Usage</span><span class="rval neu">18%</span></div>
+          <div class="track is-normal"><span class="band" style="left:0;width:70%"></span><span class="lim" style="left:100%"></span><span class="mark" style="left:18%"></span></div>
+          <div class="trackcap"><span>0%</span><span>60% soft</span><span>80% call</span></div>
+          <div class="raction"><b>Normal.</b> Options margin light; no margin-call risk. <span class="muted">(sample)</span></div></div>
+        <div class="rrow"><div class="rhead"><span class="rname">Gap Risk · overnight</span><span class="rval neu">Low</span></div>
+          <div class="track is-normal"><span class="band" style="left:0;width:45%"></span><span class="lim" style="left:100%"></span><span class="mark" style="left:20%"></span></div>
+          <div class="trackcap"><span>low</span><span>—</span><span>high</span></div>
+          <div class="raction"><b>Normal.</b> Defined-risk condor caps the options gap exposure.</div></div>
+      </div></div>
+    </div>
+  </section>
+  <!-- ════════════ TRADES ════════════ -->
+  <section class="view" id="view-trades">
+    <div class="vhead"><div><h1>Trades</h1><div class="sub">Every position carries its reasoning — entry logic, factor scores, regime, and the historical edge behind it</div></div></div>
+
+    <div class="panel">
+      <h3>Open &amp; Recent <span class="badge">17 open · 2 closed cycles</span></h3>
+      <table class="dt"><thead><tr><th>Instrument</th><th>Strategy</th><th>Side</th><th class="sortable">Entry <span class="ar">▲▼</span></th><th class="sortable">Last <span class="ar">▲▼</span></th><th class="sortable">P&amp;L <span class="ar">▲▼</span></th><th class="sortable">Conf <span class="ar">▲▼</span></th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td><div class="nm">NIFTY Strangle<small>23100P / 25000C</small></div></td><td>Short Strangle</td><td>Sell vol</td><td>12,209</td><td>8,556</td><td class="pos">+₹3,653</td><td>61%</td><td><span class="pill open" style="float:right">Open</span></td></tr>
+          <tr><td><div class="nm">NIFTY Condor<small>defined-risk</small></div></td><td>Iron Condor</td><td>Sell vol</td><td>6,766</td><td>6,175</td><td class="pos">+₹591</td><td>58%</td><td><span class="pill open" style="float:right">Open</span></td></tr>
+          <tr><td><div class="nm">BHARTIARTL<small>NSE</small></div></td><td>Low-Vol Equity</td><td>Long</td><td>1,408.90</td><td>1,431.20</td><td class="pos">+₹959</td><td>72%</td><td><span class="pill idle" style="float:right">Held</span></td></tr>
+          <tr><td><div class="nm">HDFCBANK<small>NSE</small></div></td><td>Low-Vol Equity</td><td>Long</td><td>1,712.40</td><td>1,748.10</td><td class="pos">+₹1,357</td><td>69%</td><td><span class="pill idle" style="float:right">Held</span></td></tr>
+          <tr><td><div class="nm">INFY<small>NSE</small></div></td><td>Low-Vol Equity</td><td>Long</td><td>1,598.20</td><td>1,572.40</td><td class="neg">−₹1,058</td><td>64%</td><td><span class="pill idle" style="float:right">Held</span></td></tr>
+          <tr><td><div class="nm">NIFTY ORB<small>26 Jun · closed</small></div></td><td>Intraday ORB</td><td>Long</td><td>24,812</td><td>24,724</td><td class="neg">−₹2,185</td><td>—</td><td><span class="pill ret" style="float:right">Closed</span></td></tr>
+        </tbody></table>
+    </div>
+
+    <div class="eyebrow">Trade detail<span class="ln"></span>why this position exists</div>
+    <div class="panel">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:14px">
+        <div><div style="font-size:16px;font-weight:600">BHARTIARTL · Long <span class="pill idle" style="margin-left:6px">Held · Low-Vol Equity</span></div>
+          <div class="sub" style="margin-top:3px">Entered on the 12 Jun monthly rebalance · equal-weight low-volatility sleeve</div></div>
+        <div style="text-align:right"><div class="muted" style="font-size:10px;text-transform:uppercase;letter-spacing:.06em">Confidence</div>
+          <div class="conf" style="margin-top:4px;width:150px"><div class="meter"><i style="width:72%;background:var(--pos)"></i></div><span class="pct pos">72%</span></div></div>
+      </div>
+
+      <div class="detail">
+        <div class="d"><div class="k">Entry Price</div><div class="v">₹1,408.90</div></div>
+        <div class="d"><div class="k">Current Price</div><div class="v pos">₹1,431.20 <small>+1.6%</small></div></div>
+        <div class="d"><div class="k">Target</div><div class="v">₹1,520 <small>+7.9%</small></div></div>
+        <div class="d"><div class="k">Stop Loss</div><div class="v neg">₹1,338 <small>−5.0%</small></div></div>
+        <div class="d"><div class="k">Risk</div><div class="v">₹3,047 <small>per lot</small></div></div>
+        <div class="d"><div class="k">Reward</div><div class="v">₹4,775 <small>1.57 : 1</small></div></div>
+        <div class="d"><div class="k">Position Size</div><div class="v">43 sh <small>6.4% wt</small></div></div>
+        <div class="d"><div class="k">Capital Used</div><div class="v">₹60,583</div></div>
+        <div class="d"><div class="k">Holding Period</div><div class="v">~21d <small>to rebalance</small></div></div>
+        <div class="d"><div class="k">Strategy</div><div class="v" style="font-size:12px">Low-Vol Anomaly</div></div>
+        <div class="d"><div class="k">Market Regime</div><div class="v" style="font-size:12px">Range · Low Vol</div></div>
+        <div class="d"><div class="k">Hist. Win Rate</div><div class="v">58% <small>60d backtest</small></div></div>
+      </div>
+
+      <div class="grid2" style="margin-top:13px">
+        <div class="reason"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a7 7 0 00-4 12.7V17h8v-2.3A7 7 0 0012 2zM9 21h6"/></svg></div>
+          <div><b>Why entered</b><p>Ranked top-15 by 60-day realised volatility (lowest) within NIFTY-50. Composite factor score in the 81st percentile; telecom adds breadth to a financials-heavy book.</p></div></div>
+        <div class="reason"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/></svg></div>
+          <div><b>Exit rule</b><p>Held to the next monthly rebalance unless it leaves the low-vol top-15 or breaches the −5% stop. No discretionary exit — the rule decides.</p></div></div>
+      </div>
+
+      <div style="margin-top:13px"><div class="muted" style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Factor scores <span class="info" tabindex="0">i<span class="tip"><b>Factor Scores</b><p>Cross-sectional percentile (0–1) on each factor in the core-4 model; higher is more attractive.</p><span class="arr"></span></span></span></div>
+        <div class="factors">
+          <span class="fchip"><span class="k">low_volatility</span><span class="v pos">0.81</span></span>
+          <span class="fchip"><span class="k">liquidity</span><span class="v pos">0.90</span></span>
+          <span class="fchip"><span class="k">momentum</span><span class="v neu">0.74</span></span>
+          <span class="fchip"><span class="k">trend</span><span class="v neu">0.66</span></span>
+          <span class="fchip" style="border-color:var(--info-line)"><span class="k">composite</span><span class="v" style="color:var(--info)">0.78</span></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════ STRATEGIES ════════════ -->
+  <section class="view" id="view-strategies">
+    <div class="vhead"><div><h1>Strategies</h1><div class="sub">Four books, each with a stated hypothesis and a measured edge — or an honest verdict that there isn't one</div></div></div>
+
+    <div class="grid2">
+      <div class="scard">
+        <div class="hd"><div class="t">Low-Vol Anomaly · 60d<small>Monthly rebalance · 15 lowest-vol NIFTY-50 names, equal weight</small></div><span class="pill paper">Paper · Live</span></div>
+        <div class="hyp">Hypothesis: low-volatility stocks earn higher risk-adjusted returns than the market predicts — the volatility anomaly. Pre-registered (commit 664b492).</div>
+        <div class="metrics4">
+          <div class="m"><div class="k">Win Rate</div><div class="v">58%</div></div>
+          <div class="m"><div class="k">Sharpe <span class="info" tabindex="0">i<span class="tip"><b>Sharpe (OOS)</b><p>Return per unit of volatility, out-of-sample (Period B from 2024-01-01).</p><span class="arr"></span></span></span></div><div class="v pos">0.94</div></div>
+          <div class="m"><div class="k">Max DD</div><div class="v neg">−11.2%</div></div>
+          <div class="m"><div class="k">Edge</div><div class="v">+3.1%<small> ann.</small></div></div>
+        </div>
+        <div class="statlist">
+          <div class="statrow"><span class="k">Supported regimes</span><span class="v" style="font-family:var(--sans);font-weight:500">Range, Risk-off</span></div>
+          <div class="statrow"><span class="k">Deployment stage</span><span class="v" style="font-family:var(--sans)"><span class="pill paper">Paper</span></span></div>
+          <div class="statrow"><span class="k">Last rebalance</span><span class="v">12 Jun 2026</span></div>
+        </div>
+      </div>
+
+      <div class="scard">
+        <div class="hd"><div class="t">Cross-Sectional Momentum · 12-1<small>Top-15 by 12-month return skipping the last month</small></div><span class="pill ret">Shelved</span></div>
+        <div class="hyp">Hypothesis: recent relative winners keep winning over 1–3 months. Pre-registered (commit cd1b698); held out of deployment — edge thinner than low-vol after costs.</div>
+        <div class="metrics4">
+          <div class="m"><div class="k">Win Rate</div><div class="v">53%</div></div>
+          <div class="m"><div class="k">Sharpe</div><div class="v neu">0.41</div></div>
+          <div class="m"><div class="k">Max DD</div><div class="v neg">−18.6%</div></div>
+          <div class="m"><div class="k">Edge</div><div class="v">+0.8%<small> ann.</small></div></div>
+        </div>
+        <div class="statlist">
+          <div class="statrow"><span class="k">Supported regimes</span><span class="v" style="font-family:var(--sans);font-weight:500">Trending</span></div>
+          <div class="statrow"><span class="k">Deployment stage</span><span class="v" style="font-family:var(--sans)"><span class="pill ret">Research only</span></span></div>
+          <div class="statrow"><span class="k">Last review</span><span class="v">28 Jun 2026</span></div>
+        </div>
+      </div>
+
+      <div class="scard">
+        <div class="hd"><div class="t">Short Strangle<small>Sell 4%-OTM NIFTY put + call, monthly expiry</small></div><span class="pill open">Open · Watch</span></div>
+        <div class="hyp">Hypothesis: implied vol trades above realised — collecting premium on both wings earns the spread when NIFTY stays range-bound. Undefined risk; sized small.</div>
+        <div class="metrics4">
+          <div class="m"><div class="k">Open P&amp;L</div><div class="v pos">+₹3,653</div></div>
+          <div class="m"><div class="k">Premium</div><div class="v">₹12,209</div></div>
+          <div class="m"><div class="k">DTE</div><div class="v">31d</div></div>
+          <div class="m"><div class="k">Cycles</div><div class="v">0<small> closed</small></div></div>
+        </div>
+        <div class="statlist">
+          <div class="statrow"><span class="k">Supported regimes</span><span class="v" style="font-family:var(--sans);font-weight:500">Range, Low vol</span></div>
+          <div class="statrow"><span class="k">Verdict</span><span class="v" style="font-family:var(--sans)"><span class="pill open">Awaiting vol event</span></span></div>
+          <div class="statrow"><span class="k">Expiry</span><span class="v">30 Jul 2026</span></div>
+        </div>
+      </div>
+
+      <div class="scard">
+        <div class="hd"><div class="t">Iron Condor<small>Strangle bodies + protective wings · defined risk</small></div><span class="pill open">Open · Watch</span></div>
+        <div class="hyp">Hypothesis: same premium-selling edge as the strangle, but wings cap the tail. Trades some credit for a hard, known maximum loss.</div>
+        <div class="metrics4">
+          <div class="m"><div class="k">Open P&amp;L</div><div class="v pos">+₹591</div></div>
+          <div class="m"><div class="k">Net Credit</div><div class="v">₹6,766</div></div>
+          <div class="m"><div class="k">Max Loss</div><div class="v neg">₹30,734</div></div>
+          <div class="m"><div class="k">DTE</div><div class="v">31d</div></div>
+        </div>
+        <div class="statlist">
+          <div class="statrow"><span class="k">Supported regimes</span><span class="v" style="font-family:var(--sans);font-weight:500">Range, High-vol entry</span></div>
+          <div class="statrow"><span class="k">Verdict</span><span class="v" style="font-family:var(--sans)"><span class="pill open">Awaiting vol event</span></span></div>
+          <div class="statrow"><span class="k">Expiry</span><span class="v">30 Jul 2026</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <!-- ════════════ RESEARCH ════════════ -->
+  <section class="view" id="view-research">
+    <div class="vhead"><div><h1>Research</h1><div class="sub">The after-close pipeline that decides what's worth trading — and proves what isn't</div></div>
+      <div class="tools"><span class="chip ok"><span class="d"></span>Last run 29 Jun · 15:45</span></div></div>
+
+    <div class="panel"><h3>Pipeline <span class="badge">runs 15:45 IST, weekdays</span></h3>
+      <div class="pipe">
+        <div class="pstep done"><div class="n">01</div><div class="s">Fetch data</div><div class="st"><span class="d"></span>48 names · 26 Jun</div></div>
+        <div class="pstep done"><div class="n">02</div><div class="s">Features</div><div class="st"><span class="d"></span>16 factors</div></div>
+        <div class="pstep done"><div class="n">03</div><div class="s">Rank</div><div class="st"><span class="d"></span>core-4 model</div></div>
+        <div class="pstep done"><div class="n">04</div><div class="s">Backtest</div><div class="st"><span class="d"></span>2 pre-reg</div></div>
+        <div class="pstep done"><div class="n">05</div><div class="s">Monte Carlo</div><div class="st"><span class="d"></span>10k paths</div></div>
+        <div class="pstep done"><div class="n">06</div><div class="s">Walk-forward</div><div class="st"><span class="d"></span>6 folds</div></div>
+        <div class="pstep done"><div class="n">07</div><div class="s">Archive</div><div class="st"><span class="d"></span>results/</div></div>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="panel"><h3>Strategy Ledger</h3>
+        <table class="dt"><thead><tr><th>Strategy</th><th>Status</th><th class="sortable">Confidence <span class="ar">▲▼</span></th><th>Stage</th><th>Last review</th></tr></thead>
+          <tbody>
+            <tr><td><div class="nm">Low-Vol Anomaly</div></td><td><span class="pill live">Winning</span></td><td>78%</td><td>Paper</td><td>29 Jun</td></tr>
+            <tr><td><div class="nm">Short Strangle</div></td><td><span class="pill open">Inconclusive</span></td><td>61%</td><td>Paper</td><td>29 Jun</td></tr>
+            <tr><td><div class="nm">Iron Condor</div></td><td><span class="pill open">Inconclusive</span></td><td>58%</td><td>Paper</td><td>29 Jun</td></tr>
+            <tr><td><div class="nm">Momentum 12-1</div></td><td><span class="pill ret">Shelved</span></td><td>34%</td><td>Research</td><td>28 Jun</td></tr>
+            <tr><td><div class="nm">Intraday ORB</div></td><td><span class="pill ret">Failing</span></td><td>—</td><td>Retired</td><td>26 Jun</td></tr>
+            <tr><td><div class="nm">Intraday VWAP</div></td><td><span class="pill ret">Failing</span></td><td>—</td><td>Retired</td><td>26 Jun</td></tr>
+          </tbody></table>
+      </div>
+      <div class="panel"><h3>Factor Performance <span class="badge">information coefficient</span></h3>
+        <table class="dt"><thead><tr><th>Factor</th><th class="sortable">IC <span class="ar">▲▼</span></th><th class="sortable">Decay <span class="ar">▲▼</span></th><th>Trend</th></tr></thead>
+          <tbody>
+            <tr><td>low_volatility</td><td class="pos">0.071</td><td>slow</td><td class="pos">stable</td></tr>
+            <tr><td>liquidity</td><td class="pos">0.044</td><td>slow</td><td class="pos">stable</td></tr>
+            <tr><td>trend</td><td class="neu">0.029</td><td>med</td><td class="neu">flat</td></tr>
+            <tr><td>momentum</td><td class="neu">0.022</td><td>fast</td><td class="neg">decaying</td></tr>
+            <tr><td>reversal</td><td class="neg">−0.011</td><td>fast</td><td class="neg">weak</td></tr>
+          </tbody></table>
+        <p class="sub" style="margin-top:10px;font-size:11px;color:var(--ink-3)">Alpha decay: momentum's IC has halved over 18 months — the main reason the 12-1 book stays shelved.</p>
+      </div>
+    </div>
+
+    <div class="grid3">
+      <div class="panel"><h3>Walk-Forward <span class="badge">low-vol · 6 folds</span></h3>
+        <div class="metrics4" style="grid-template-columns:1fr 1fr"><div class="m"><div class="k">Folds positive</div><div class="v pos">5 / 6</div></div><div class="m"><div class="k">Avg OOS Sharpe</div><div class="v">0.88</div></div><div class="m"><div class="k">Consistency</div><div class="v pos">High</div></div><div class="m"><div class="k">Worst fold</div><div class="v neg">−2.1%</div></div></div>
+        <p class="sub" style="margin-top:10px;font-size:11px;color:var(--ink-3)">Out-of-sample edge holds across folds — the strongest evidence in the program.</p></div>
+      <div class="panel"><h3>Monte Carlo <span class="badge">10k paths</span></h3>
+        <div class="metrics4" style="grid-template-columns:1fr 1fr"><div class="m"><div class="k">Median return</div><div class="v pos">+9.4%</div></div><div class="m"><div class="k">5th pctile</div><div class="v neg">−7.8%</div></div><div class="m"><div class="k">P(profit)</div><div class="v">71%</div></div><div class="m"><div class="k">Max DD p95</div><div class="v neg">−16%</div></div></div>
+        <p class="sub" style="margin-top:10px;font-size:11px;color:var(--ink-3)">Resampled-returns distribution for the low-vol book over a 1-year horizon.</p></div>
+      <div class="panel"><h3>Research Notes</h3>
+        <div class="jentry"><div class="date">29 Jun</div><div class="c"><div class="t">Strangle ≈ condor so far <span class="tag note">note</span></div><p>Both options books inconclusive — need a vol event to separate defined vs undefined risk.</p></div></div>
+        <div class="jentry"><div class="date">28 Jun</div><div class="c"><div class="t">Momentum shelved <span class="tag loss">verdict</span></div><p>12-1 edge below low-vol after costs. Kept in research, not deployed.</p></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════ MARKET SCANNER ════════════ -->
+  <section class="view" id="view-scanner">
+    <div class="vhead"><div><h1>Market Scanner</h1><div class="sub">NIFTY-50 universe · click any column to sort · as of 26 Jun 2026</div></div></div>
+
+    <div class="grid3">
+      <div class="panel"><h3>Market Breadth</h3>
+        <div class="regbig" style="margin-bottom:8px"><div class="glyph" style="background:var(--pos-bg);color:var(--pos)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12h6l2-4 2 8 2-4h6"/></svg></div><div><div class="lab">% above 50DMA</div><div class="nm">54%</div></div></div>
+        <div class="track is-normal"><span class="band" style="left:40%;width:20%"></span><span class="mark" style="left:54%"></span></div><div class="trackcap"><span>bearish</span><span>neutral</span><span>bullish</span></div></div>
+      <div class="panel"><h3>Regime</h3>
+        <div class="regbig" style="margin-bottom:8px"><div class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12h6l2-4 2 8 2-4h6"/></svg></div><div><div class="lab">Classification</div><div class="nm">Range · Low Vol</div></div></div>
+        <p class="regline" style="margin:0">Trendless tape, compressed realised vol — premium sellers favoured, momentum starved.</p></div>
+      <div class="panel"><h3>Sector Rotation <span class="badge">5d</span></h3>
+        <div class="alloc">
+          <div class="allocrow"><span class="k">Energy</span><div class="bar"><i class="acc" style="width:78%"></i></div><span class="v pos">+2.1%</span></div>
+          <div class="allocrow"><span class="k">Financials</span><div class="bar"><i class="acc" style="width:60%"></i></div><span class="v pos">+1.4%</span></div>
+          <div class="allocrow"><span class="k">IT</span><div class="bar"><i style="width:30%"></i></div><span class="v neg">−0.9%</span></div>
+          <div class="allocrow"><span class="k">FMCG</span><div class="bar"><i style="width:22%"></i></div><span class="v neg">−1.3%</span></div>
+        </div></div>
+    </div>
+
+    <div class="panel" data-tabs>
+      <div class="tabs">
+        <div class="tab on" data-tab="mom">Top Momentum</div>
+        <div class="tab" data-tab="brk">Breakouts</div>
+        <div class="tab" data-tab="rs">Relative Strength</div>
+        <div class="tab" data-tab="vol">High Volume</div>
+        <div class="tab" data-tab="vx">Vol Expansion</div>
+      </div>
+      <div data-pane="mom" style="margin-top:12px">
+        <table class="dt"><thead><tr><th>Symbol</th><th class="sortable desc">12-1 Mom <span class="ar">▲▼</span></th><th class="sortable">1M <span class="ar">▲▼</span></th><th class="sortable">Vol z <span class="ar">▲▼</span></th><th>Sector</th></tr></thead><tbody>
+          <tr><td>BHARTIARTL</td><td class="pos">+0.83</td><td class="pos">+6.2%</td><td>0.4</td><td>Telecom</td></tr>
+          <tr><td>RELIANCE</td><td class="pos">+0.71</td><td class="pos">+4.1%</td><td>0.9</td><td>Energy</td></tr>
+          <tr><td>M&amp;M</td><td class="pos">+0.66</td><td class="pos">+5.4%</td><td>1.2</td><td>Auto</td></tr>
+          <tr><td>SBIN</td><td class="pos">+0.58</td><td class="pos">+3.0%</td><td>0.6</td><td>Financials</td></tr>
+          <tr><td>INFY</td><td class="neg">−0.22</td><td class="neg">−2.4%</td><td>0.3</td><td>IT</td></tr>
+        </tbody></table>
+      </div>
+      <div data-pane="brk" style="margin-top:12px;display:none">
+        <table class="dt"><thead><tr><th>Symbol</th><th class="sortable desc">vs 20D high <span class="ar">▲▼</span></th><th class="sortable">Range pos <span class="ar">▲▼</span></th><th>Signal</th></tr></thead><tbody>
+          <tr><td>RELIANCE</td><td class="pos">+0.8%</td><td>98%</td><td>New high</td></tr>
+          <tr><td>SBIN</td><td class="pos">+0.2%</td><td>94%</td><td>Testing</td></tr>
+          <tr><td>M&amp;M</td><td class="neu">−0.4%</td><td>89%</td><td>Coiling</td></tr>
+        </tbody></table>
+      </div>
+      <div data-pane="rs" style="margin-top:12px;display:none">
+        <table class="dt"><thead><tr><th>Symbol</th><th class="sortable desc">RS vs NIFTY <span class="ar">▲▼</span></th><th class="sortable">3M <span class="ar">▲▼</span></th><th>Sector</th></tr></thead><tbody>
+          <tr><td>BHARTIARTL</td><td class="pos">1.18</td><td class="pos">+11%</td><td>Telecom</td></tr>
+          <tr><td>M&amp;M</td><td class="pos">1.12</td><td class="pos">+9%</td><td>Auto</td></tr>
+          <tr><td>ITC</td><td class="neg">0.91</td><td class="neg">−3%</td><td>FMCG</td></tr>
+        </tbody></table>
+      </div>
+      <div data-pane="vol" style="margin-top:12px;display:none">
+        <table class="dt"><thead><tr><th>Symbol</th><th class="sortable desc">Vol × avg <span class="ar">▲▼</span></th><th class="sortable">₹ turnover <span class="ar">▲▼</span></th><th>Note</th></tr></thead><tbody>
+          <tr><td>M&amp;M</td><td class="pos">2.4x</td><td>1,840</td><td>Accumulation</td></tr>
+          <tr><td>SBIN</td><td class="pos">1.9x</td><td>2,210</td><td>Breakout vol</td></tr>
+          <tr><td>RELIANCE</td><td class="neu">1.3x</td><td>3,640</td><td>Steady</td></tr>
+        </tbody></table>
+      </div>
+      <div data-pane="vx" style="margin-top:12px;display:none">
+        <table class="dt"><thead><tr><th>Symbol</th><th class="sortable desc">10/60 vol <span class="ar">▲▼</span></th><th class="sortable">ATR% <span class="ar">▲▼</span></th><th>State</th></tr></thead><tbody>
+          <tr><td>M&amp;M</td><td class="pos">1.42</td><td>2.1%</td><td>Expanding</td></tr>
+          <tr><td>ADANIPORTS</td><td class="pos">1.31</td><td>2.4%</td><td>Expanding</td></tr>
+          <tr><td>HINDUNILVR</td><td class="neu">0.78</td><td>0.9%</td><td>Compressed</td></tr>
+        </tbody></table>
+      </div>
+    </div>
+  </section>
+  <!-- ════════════ REPORTS ════════════ -->
+  <section class="view" id="view-reports">
+    <div class="vhead"><div><h1>Reports</h1><div class="sub">Generated artifacts from the research pipeline · open or export any one</div></div>
+      <div class="tools"><a class="mini">Export all</a></div></div>
+    <div class="panel">
+      <table class="dt"><thead><tr><th>Report</th><th>Type</th><th class="sortable">Generated <span class="ar">▲▼</span></th><th>Verdict</th><th></th></tr></thead>
+        <tbody>
+          <tr><td><div class="nm">Low-Vol backtest<small>pre-registered · commit 664b492</small></div></td><td>Backtest</td><td>29 Jun</td><td><span class="pill live">Winning</span></td><td><a class="mini" style="float:right">Open</a></td></tr>
+          <tr><td><div class="nm">Momentum backtest<small>pre-registered · commit cd1b698</small></div></td><td>Backtest</td><td>29 Jun</td><td><span class="pill ret">Shelved</span></td><td><a class="mini" style="float:right">Open</a></td></tr>
+          <tr><td><div class="nm">Low-Vol tearsheet<small>equity curve · drawdowns · rolling Sharpe</small></div></td><td>Tearsheet</td><td>29 Jun</td><td><span class="muted">—</span></td><td><a class="mini" style="float:right">Open</a></td></tr>
+          <tr><td><div class="nm">Risk report<small>VaR · heat · concentration</small></div></td><td>Risk</td><td>29 Jun</td><td><span class="pill live">Normal</span></td><td><a class="mini" style="float:right">Open</a></td></tr>
+          <tr><td><div class="nm">Attribution<small>factor &amp; sector P&amp;L decomposition</small></div></td><td>Attribution</td><td>29 Jun</td><td><span class="muted">—</span></td><td><a class="mini" style="float:right">Open</a></td></tr>
+          <tr><td><div class="nm">Optimizer allocation<small>constraint-aware target weights</small></div></td><td>Allocation</td><td>29 Jun</td><td><span class="muted">—</span></td><td><a class="mini" style="float:right">Open</a></td></tr>
+          <tr><td><div class="nm">Daily digest<small>all four paper books</small></div></td><td>Digest</td><td>29 Jun</td><td><span class="pill open">−₹17,265</span></td><td><a class="mini" style="float:right">Open</a></td></tr>
+        </tbody></table>
+    </div>
+  </section>
+
+  <!-- ════════════ JOURNAL ════════════ -->
+  <section class="view" id="view-journal">
+    <div class="vhead"><div><h1>Journal</h1><div class="sub">Decisions and discipline — what was done, and why, in your own words</div></div>
+      <div class="tools"><a class="mini"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>New entry</a></div></div>
+    <div class="panel">
+      <div class="jentry"><div class="date">29 Jun</div><div class="c"><div class="t">Held the options books <span class="tag note">discipline</span></div><p>Tempted to close the strangle for the +₹3.6k. Rule says hold to expiry or a vol event — kept it. The point of this book is to learn whether the edge survives a real move.</p></div></div>
+      <div class="jentry"><div class="date">28 Jun</div><div class="c"><div class="t">Shelved momentum <span class="tag loss">verdict</span></div><p>Accepted the data: 12-1 edge is thin after costs. No deployment. Better to run one strategy that works than two that maybe do.</p></div></div>
+      <div class="jentry"><div class="date">26 Jun</div><div class="c"><div class="t">Retired intraday ORB + VWAP <span class="tag loss">verdict</span></div><p>−₹21.5k of paper losses was the cost of finding out the intraday edge doesn't survive slippage. Froze the book as evidence rather than deleting it.</p></div></div>
+      <div class="jentry"><div class="date">12 Jun</div><div class="c"><div class="t">Low-vol rebalance <span class="tag win">action</span></div><p>Equal-weighted into the 15 lowest-vol NIFTY names. Financials heavy at 31% — flagged to watch the sector cap next month.</p></div></div>
+    </div>
+  </section>
+
+  <!-- ════════════ SETTINGS ════════════ -->
+  <section class="view" id="view-settings">
+    <div class="vhead"><div><h1>Settings</h1><div class="sub">Risk limits, data, and connections · paper mode is locked on by design</div></div></div>
+
+    <div class="flagstrip calm">
+      <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg></div>
+      <div class="tx"><b>Order routing is disabled</b><span>This is a research and paper-trading system. No live orders can be placed — the routing switch is intentionally locked off.</span></div>
+      <div class="act"><span class="sw locked"><i></i></span></div>
+    </div>
+
+    <div class="grid2">
+      <div class="panel"><h3>Risk Limits</h3>
+        <div class="field"><div class="lbl">Drawdown stop<small>halt new entries past this</small></div><div class="ctl"><input class="inp" value="10%"></div></div>
+        <div class="field"><div class="lbl">Max position<small>per single name</small></div><div class="ctl"><input class="inp" value="10%"></div></div>
+        <div class="field"><div class="lbl">Sector cap<small>per sector</small></div><div class="ctl"><input class="inp" value="35%"></div></div>
+        <div class="field"><div class="lbl">Daily loss soft cap</div><div class="ctl"><input class="inp" value="₹20,000"></div></div>
+        <div class="field"><div class="lbl">Portfolio heat target</div><div class="ctl"><input class="inp" value="12%"></div></div>
+      </div>
+      <div class="panel"><h3>Data &amp; Connections</h3>
+        <div class="field"><div class="lbl">Market data<small>yfinance · daily + intraday</small></div><div class="ctl"><span class="chip warn"><span class="d"></span>26 Jun</span></div></div>
+        <div class="field"><div class="lbl">Broker · Zerodha Kite<small>read-only holdings &amp; auth</small></div><div class="ctl"><span class="chip info"><span class="d"></span>Read-only</span></div></div>
+        <div class="field"><div class="lbl">Research pipeline<small>auto-run after close</small></div><div class="ctl"><span class="sw on"><i></i></span></div></div>
+        <div class="field"><div class="lbl">Auto-refresh prices<small>warm cache every 3 min</small></div><div class="ctl"><span class="sw on"><i></i></span></div></div>
+        <div class="field"><div class="lbl">Theme<small>graphite · semantic colour only</small></div><div class="ctl">Dark</div></div>
+      </div>
+    </div>
+  </section>
+  <!--VIEWS-END-->
+
+  </div>
+</main>
+
+<script>
+  // sidebar router
+  const views=document.querySelectorAll('.view');
+  const links=document.querySelectorAll('nav a[data-view]');
+  function show(id){
+    views.forEach(v=>v.classList.toggle('active',v.id==='view-'+id));
+    links.forEach(a=>a.classList.toggle('on',a.dataset.view===id));
+    document.querySelector('.canvas').scrollTop=0;
+    if(location.hash!=='#'+id) history.replaceState(null,'','#'+id);
+  }
+  document.querySelectorAll('[data-view]').forEach(el=>el.addEventListener('click',e=>{e.preventDefault();show(el.dataset.view)}));
+  if(location.hash) show(location.hash.slice(1));
+
+  // live IST clock
+  function tick(){const t=new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Kolkata'}));const p=n=>String(n).padStart(2,'0');
+    const c=document.getElementById('clk'); if(c) c.textContent=`${p(t.getHours())}:${p(t.getMinutes())}:${p(t.getSeconds())}`;}
+  tick(); setInterval(tick,1000);
+
+  // dismiss alerts
+  document.addEventListener('click',e=>{const x=e.target.closest('.alert .x'); if(x){const a=x.closest('.alert');a.style.opacity=.35;a.style.pointerEvents='none';}});
+
+  // sortable tables
+  document.querySelectorAll('table.dt').forEach(tb=>{
+    tb.querySelectorAll('th.sortable').forEach((th,ci)=>{
+      const idx=[...th.parentNode.children].indexOf(th);
+      th.addEventListener('click',()=>{
+        const body=tb.tBodies[0]; const rows=[...body.rows];
+        const asc=!th.classList.contains('asc');
+        tb.querySelectorAll('th').forEach(h=>h.classList.remove('asc','desc'));
+        th.classList.add(asc?'asc':'desc');
+        rows.sort((a,b)=>{
+          const pa=parse(a.cells[idx].innerText), pb=parse(b.cells[idx].innerText);
+          if(pa===null||pb===null) return a.cells[idx].innerText.localeCompare(b.cells[idx].innerText)*(asc?1:-1);
+          return (pa-pb)*(asc?1:-1);
+        });
+        rows.forEach(r=>body.appendChild(r));
+      });
+    });
+  });
+  function parse(s){const n=parseFloat(String(s).replace(/[₹,%xkL+\s]/g,'').replace(/−/g,'-'));return isNaN(n)?null:n;}
+
+  // tabs
+  document.querySelectorAll('[data-tabs]').forEach(g=>{
+    const tabs=g.querySelectorAll('.tab'); const panes=g.querySelectorAll('[data-pane]');
+    tabs.forEach(t=>t.addEventListener('click',()=>{
+      tabs.forEach(x=>x.classList.remove('on')); t.classList.add('on');
+      panes.forEach(p=>p.style.display=p.dataset.pane===t.dataset.tab?'':'none');
+    }));
+  });
+  // settings switches (demo)
+  document.querySelectorAll('.sw:not(.locked)').forEach(s=>s.addEventListener('click',()=>s.classList.toggle('on')));
+</script>
+</body>
+</html>

@@ -44,4 +44,5 @@ def test_login_rejects_wrong_and_accepts_right(monkeypatch):
     assert "Wrong password" in bad.get_data(as_text=True)
     good = c.post("/login", data={"password": "unit-test-pw-123"})
     assert good.status_code == 302
-    assert "/command" in good.headers.get("Location", "")   # Quiet Terminal landing
+    loc = good.headers.get("Location", "")
+    assert loc in ("/", "http://localhost/")   # simple home ("/") is the landing page

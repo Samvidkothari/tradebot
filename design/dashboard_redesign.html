@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>tradebot — Command</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ───────────────────────────────────────────────────────────────
+   Quiet Terminal — tradebot command surface
+   Chrome is achromatic. Hue ONLY ever encodes state.
+   ─────────────────────────────────────────────────────────────── */
+:root{
+  /* graphite chrome — no hue */
+  --bg:#0a0b0e; --panel:#101218; --panel-2:#14171f; --elev:#181c25;
+  --line:#222732; --line-soft:#1a1e27;
+  --ink:#eceef3; --ink-2:#aab2c0; --ink-3:#6d7585; --ink-4:#4a505e;
+  /* semantic — the only hues on the page */
+  --pos:#3fb984;  --pos-bg:rgba(63,185,132,.12);  --pos-line:rgba(63,185,132,.4);
+  --info:#5b9df0; --info-bg:rgba(91,157,240,.12); --info-line:rgba(91,157,240,.4);
+  --warn:#e3b341; --warn-bg:rgba(227,179,65,.13); --warn-line:rgba(227,179,65,.45);
+  --high:#e8843c; --high-bg:rgba(232,132,60,.13); --high-line:rgba(232,132,60,.45);
+  --crit:#e5484d; --crit-bg:rgba(229,72,77,.14); --crit-line:rgba(229,72,77,.5);
+  --mono:"IBM Plex Mono",ui-monospace,monospace;
+  --sans:"IBM Plex Sans",-apple-system,Segoe UI,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-font-smoothing:antialiased}
+body{
+  background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:13px;
+  line-height:1.45;letter-spacing:-.005em;height:100vh;display:flex;overflow:hidden;
+}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+::selection{background:rgba(91,157,240,.28)}
+
+/* ── Sidebar ─────────────────────────────────────────────── */
+aside{
+  width:212px;flex:none;background:var(--panel);border-right:1px solid var(--line);
+  display:flex;flex-direction:column;padding:16px 0 12px;
+}
+.brand{display:flex;align-items:center;gap:10px;padding:2px 18px 16px;margin-bottom:8px;border-bottom:1px solid var(--line)}
+.brand .mark{width:30px;height:30px;border-radius:8px;flex:none;display:grid;place-items:center;
+  background:var(--elev);border:1px solid var(--line);font-family:var(--mono);font-weight:700;font-size:15px;color:var(--ink)}
+.brand .nm{font-weight:600;font-size:15px;letter-spacing:-.02em;line-height:1}
+.brand .nm small{display:block;font-size:9px;font-weight:600;letter-spacing:.18em;color:var(--ink-4);text-transform:uppercase;margin-top:4px}
+.navlabel{padding:14px 18px 5px;font-size:9.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-4)}
+nav{display:flex;flex-direction:column;gap:1px;padding:0 10px;overflow-y:auto}
+nav a{position:relative;display:flex;align-items:center;gap:10px;padding:7px 11px;border-radius:7px;
+  color:var(--ink-3);text-decoration:none;font-size:12.5px;font-weight:500;transition:background .14s,color .14s}
+nav a svg{width:16px;height:16px;flex:none;opacity:.85}
+nav a:hover{color:var(--ink);background:rgba(255,255,255,.04)}
+nav a.on{color:var(--ink);background:rgba(255,255,255,.07)}
+nav a.on::before{content:"";position:absolute;left:-10px;top:50%;transform:translateY(-50%);width:2px;height:18px;border-radius:2px;background:var(--ink-2)}
+nav a .ct{margin-left:auto;font-family:var(--mono);font-size:10px;font-weight:600;color:var(--bg);
+  background:var(--high);border-radius:9px;padding:1px 6px;line-height:1.5}
+.side-foot{margin-top:auto;padding:12px 18px 0;border-top:1px solid var(--line-soft);
+  display:flex;align-items:center;justify-content:space-between;color:var(--ink-4);font-size:11px}
+.side-foot b{color:var(--ink-2);font-weight:600}
+
+/* ── Main ────────────────────────────────────────────────── */
+main{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden}
+
+/* status banner — always visible */
+.banner{display:flex;align-items:center;gap:18px;height:38px;flex:none;
+  padding:0 22px;border-bottom:1px solid var(--line);background:var(--panel);font-size:12px}
+.banner .mkt{display:flex;align-items:center;gap:8px;font-weight:600}
+.banner .mkt .ring{width:8px;height:8px;border-radius:50%;background:var(--ink-4);position:relative}
+.banner .mkt.open .ring{background:var(--pos);box-shadow:0 0 0 0 var(--pos);animation:pulse 2.4s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(63,185,132,.5)}70%{box-shadow:0 0 0 5px rgba(63,185,132,0)}100%{box-shadow:0 0 0 0 rgba(63,185,132,0)}}
+.banner .sep{width:1px;height:16px;background:var(--line)}
+.chips{display:flex;align-items:center;gap:7px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:6px;border:1px solid var(--line);
+  background:var(--elev);font-size:11px;font-weight:500;color:var(--ink-2)}
+.chip svg{width:12px;height:12px}
+.chip .d{width:6px;height:6px;border-radius:50%}
+.chip.ok .d{background:var(--pos)} .chip.ok{color:var(--ink)}
+.chip.info .d{background:var(--info)}
+.chip.warn .d{background:var(--warn)} .chip.warn{border-color:var(--warn-line)}
+.banner .right{margin-left:auto;display:flex;align-items:center;gap:14px;color:var(--ink-3)}
+.banner .clock{font-family:var(--mono);font-size:12.5px;color:var(--ink);font-weight:500;letter-spacing:.02em}
+.banner .upd{font-size:11px}
+
+/* scrollable canvas (fits 1440x900; scrolls gracefully if shorter) */
+.canvas{flex:1;overflow:auto;padding:14px 22px 20px;display:flex;flex-direction:column;gap:12px}
+
+/* red-flag / decision strip */
+.flagstrip{display:flex;align-items:center;gap:14px;padding:10px 14px;border-radius:10px;
+  border:1px solid var(--high-line);background:var(--high-bg)}
+.flagstrip.calm{border-color:var(--line);background:var(--panel)}
+.flagstrip .ic{width:28px;height:28px;border-radius:7px;flex:none;display:grid;place-items:center;
+  background:var(--high);color:#1a1205}
+.flagstrip.calm .ic{background:var(--elev);color:var(--pos);border:1px solid var(--line)}
+.flagstrip .ic svg{width:16px;height:16px}
+.flagstrip .tx b{font-size:13px;font-weight:600}
+.flagstrip .tx span{display:block;color:var(--ink-2);font-size:11.5px;margin-top:1px}
+.flagstrip .act{margin-left:auto;display:flex;gap:8px}
+.mini{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:7px;border:1px solid var(--line);
+  background:var(--elev);color:var(--ink);font-size:11.5px;font-weight:600;cursor:pointer;text-decoration:none;font-family:var(--sans)}
+.mini:hover{border-color:var(--ink-3)}
+.mini svg{width:13px;height:13px}
+
+/* section label */
+.eyebrow{display:flex;align-items:center;gap:8px;font-size:10px;font-weight:700;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--ink-4);margin:2px 0 -2px}
+.eyebrow .ln{flex:1;height:1px;background:var(--line-soft)}
+
+/* KPI row */
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:13px 15px 12px;position:relative}
+.kpi .top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.kpi .lab{display:flex;align-items:center;gap:5px;font-size:10.5px;font-weight:600;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--ink-3)}
+.kpi .val{font-family:var(--mono);font-size:25px;font-weight:600;letter-spacing:-.02em;margin-top:9px;line-height:1.05}
+.kpi .val.sm{font-size:20px}
+.kpi .meta{font-size:11px;color:var(--ink-3);margin-top:3px}
+.kpi .meta .mono{color:var(--ink-2)}
+.pos{color:var(--pos)} .neg{color:var(--crit)} .neu{color:var(--ink)}
+
+/* verdict tag */
+.verdict{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;letter-spacing:.04em;
+  padding:2px 7px;border-radius:20px;text-transform:uppercase}
+.verdict svg{width:11px;height:11px}
+.verdict.normal{color:var(--pos);background:var(--pos-bg)}
+.verdict.watch{color:var(--warn);background:var(--warn-bg)}
+.verdict.act{color:var(--high);background:var(--high-bg)}
+.verdict.crit{color:var(--crit);background:var(--crit-bg)}
+.verdict.info{color:var(--info);background:var(--info-bg)}
+
+/* THE SIGNATURE — range track */
+.track{position:relative;height:5px;border-radius:3px;background:var(--elev);margin-top:11px;overflow:visible}
+.track .band{position:absolute;top:0;bottom:0;border-radius:3px;background:rgba(255,255,255,.07)}
+.track .mark{position:absolute;top:-3px;width:2px;height:11px;border-radius:2px;background:var(--ink-2);transform:translateX(-1px)}
+.track.is-normal .mark{background:var(--pos)} .track.is-watch .mark{background:var(--warn)}
+.track.is-act .mark{background:var(--high)} .track.is-crit .mark{background:var(--crit)}
+.track .lim{position:absolute;top:-2px;width:1px;height:9px;background:var(--crit-line)}
+.trackcap{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9.5px;color:var(--ink-4);margin-top:4px}
+
+/* grid: three columns */
+.cols{display:grid;grid-template-columns:1.05fr 1fr 1.1fr;gap:12px;align-items:start}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:13px 15px}
+.panel h3{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);
+  display:flex;align-items:center;gap:7px;margin-bottom:11px}
+.panel h3 .badge{margin-left:auto;font-weight:600;letter-spacing:0;text-transform:none}
+
+/* risk rows */
+.risk{display:flex;flex-direction:column;gap:13px}
+.rrow .rhead{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.rrow .rname{font-size:12px;font-weight:500;color:var(--ink-2);display:flex;align-items:center;gap:5px}
+.rrow .rval{font-family:var(--mono);font-size:13px;font-weight:600}
+
+/* regime */
+.regime{display:flex;flex-direction:column;gap:12px}
+.regbig{display:flex;align-items:center;gap:11px}
+.regbig .glyph{width:40px;height:40px;border-radius:9px;flex:none;display:grid;place-items:center;
+  background:var(--info-bg);color:var(--info)}
+.regbig .glyph svg{width:21px;height:21px}
+.regbig .lab{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.regbig .nm{font-size:17px;font-weight:600;letter-spacing:-.01em;margin-top:1px}
+.regline{font-size:11.5px;color:var(--ink-2);line-height:1.5}
+.statlist{display:flex;flex-direction:column;gap:9px;margin-top:2px}
+.statrow{display:flex;align-items:center;justify-content:space-between;font-size:12px}
+.statrow .k{color:var(--ink-3)} .statrow .v{font-family:var(--mono);font-weight:600;color:var(--ink)}
+.strat{display:flex;align-items:center;gap:9px;padding:7px 0;border-top:1px solid var(--line-soft)}
+.strat:first-of-type{border-top:0}
+.strat .nm{font-size:12px;font-weight:500}
+.strat .nm small{display:block;color:var(--ink-4);font-size:10.5px;font-weight:400;margin-top:1px}
+.strat .pill{margin-left:auto}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;border:1px solid transparent}
+.pill svg{width:10px;height:10px}
+.pill.open{color:var(--warn);background:var(--warn-bg)}
+.pill.idle{color:var(--info);background:var(--info-bg)}
+.pill.ret{color:var(--ink-3);background:rgba(255,255,255,.05);border-color:var(--line)}
+
+/* alerts */
+.alerts{display:flex;flex-direction:column;gap:9px}
+.alert{display:flex;gap:10px;padding:10px 11px;border-radius:9px;border:1px solid var(--line);background:var(--panel-2)}
+.alert .ic{width:24px;height:24px;border-radius:6px;flex:none;display:grid;place-items:center}
+.alert .ic svg{width:14px;height:14px}
+.alert.high{border-color:var(--high-line)} .alert.high .ic{background:var(--high-bg);color:var(--high)}
+.alert.warn{border-color:var(--warn-line)} .alert.warn .ic{background:var(--warn-bg);color:var(--warn)}
+.alert.info .ic{background:var(--info-bg);color:var(--info)}
+.alert .body{min-width:0;flex:1}
+.alert .ttl{display:flex;align-items:center;gap:7px}
+.alert .ttl b{font-size:12px;font-weight:600}
+.alert .sev{font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:1px 6px;border-radius:4px}
+.alert.high .sev{color:var(--high);background:var(--high-bg)}
+.alert.warn .sev{color:var(--warn);background:var(--warn-bg)}
+.alert.info .sev{color:var(--info);background:var(--info-bg)}
+.alert .imp{font-size:11px;color:var(--ink-2);margin-top:3px;line-height:1.5}
+.alert .imp b{color:var(--ink);font-weight:600}
+.alert .when{font-family:var(--mono);font-size:10px;color:var(--ink-4);margin-top:5px}
+.alert .x{align-self:flex-start;color:var(--ink-4);cursor:pointer;background:none;border:0;padding:2px;line-height:0}
+.alert .x:hover{color:var(--ink-2)} .alert .x svg{width:13px;height:13px}
+
+/* books + health bottom row */
+.bottom{display:grid;grid-template-columns:1.5fr 1fr;gap:12px;align-items:start}
+table.books{width:100%;border-collapse:collapse}
+table.books th{font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-4);
+  text-align:right;padding:0 0 8px;border-bottom:1px solid var(--line)}
+table.books th:first-child{text-align:left}
+table.books td{font-family:var(--mono);font-size:12px;text-align:right;padding:8px 0;border-bottom:1px solid var(--line-soft)}
+table.books td:first-child{font-family:var(--sans);text-align:left;color:var(--ink)}
+table.books tr:last-child td{border-bottom:0}
+table.books td .nm{font-weight:500} table.books td .nm small{display:block;color:var(--ink-4);font-size:10px}
+table.books tfoot td{border-top:1px solid var(--line);border-bottom:0;font-weight:700;padding-top:9px;color:var(--ink)}
+.health{display:flex;flex-direction:column;gap:8px}
+.hrow{display:flex;align-items:center;gap:9px;font-size:12px}
+.hrow .d{width:7px;height:7px;border-radius:50%;flex:none}
+.hrow .d.ok{background:var(--pos)} .hrow .d.info{background:var(--info)} .hrow .d.warn{background:var(--warn)}
+.hrow .k{color:var(--ink-2)} .hrow .v{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--ink-3)}
+.hrow .v b{color:var(--ink);font-weight:600}
+
+/* info dot + tooltip (keyboard accessible) */
+.info{display:inline-grid;place-items:center;width:13px;height:13px;border-radius:50%;border:1px solid var(--line);
+  color:var(--ink-4);font-size:9px;font-weight:700;cursor:help;position:relative;font-family:var(--sans)}
+.info:hover,.info:focus{color:var(--ink-2);border-color:var(--ink-3);outline:none}
+.info .tip{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%) translateY(4px);
+  width:232px;background:var(--elev);border:1px solid var(--line);border-radius:9px;padding:10px 11px;z-index:50;
+  box-shadow:0 8px 28px rgba(0,0,0,.55);opacity:0;pointer-events:none;transition:opacity .15s,transform .15s;text-align:left}
+.info:hover .tip,.info:focus .tip{opacity:1;transform:translateX(-50%) translateY(0)}
+.tip b{display:block;font-size:11.5px;font-weight:600;color:var(--ink);margin-bottom:4px}
+.tip p{font-size:11px;color:var(--ink-2);line-height:1.5;margin-bottom:6px}
+.tip dl{display:grid;grid-template-columns:auto 1fr;gap:2px 8px;font-size:10.5px}
+.tip dt{color:var(--ink-4);font-weight:600} .tip dd{color:var(--ink-2);font-family:var(--mono)}
+.tip .arr{position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:var(--line)}
+
+@media (max-width:1180px){
+  .kpis{grid-template-columns:repeat(2,1fr)} .cols{grid-template-columns:1fr} .bottom{grid-template-columns:1fr}
+}
+@media (max-width:760px){
+  aside{display:none} .kpis{grid-template-columns:1fr} .banner .chips,.banner .upd{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<!-- ── Sidebar ─────────────────────────────────────────── -->
+<aside>
+  <div class="brand">
+    <div class="mark">t</div>
+    <div class="nm">tradebot<small>Paper / Research</small></div>
+  </div>
+  <div class="navlabel">Decide</div>
+  <nav>
+    <a class="on" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>Dashboard</a>
+    <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>Portfolio</a>
+    <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12h6l2-7 3 14 2-7h5"/></svg>Trades</a>
+    <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>Research</a>
+    <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V5l8 4 8-4v14l-8 4-8-4z"/><path d="M12 9v14"/></svg>Strategies</a>
+  </nav>
+  <div class="navlabel">Guard</div>
+  <nav>
+    <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg>Risk Center<span class="ct">1</span></a>
+    <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 17l5-5 4 3 8-9"/><path d="M16 6h5v5"/></svg>Market Scanner</a>
+    <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>Reports</a>
+    <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 3h11l3 3v15H5z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>Journal</a>
+    <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 00-.1-1l2-1.6-2-3.4-2.3 1a7 7 0 00-1.7-1L16.5 2h-4l-.4 2.4a7 7 0 00-1.7 1l-2.3-1-2 3.4L5.1 9a7 7 0 000 2l-2 1.6 2 3.4 2.3-1a7 7 0 001.7 1l.4 2.4h4l.4-2.4a7 7 0 001.7-1l2.3 1 2-3.4-2-1.6a7 7 0 00.1-1z"/></svg>Settings</a>
+  </nav>
+  <div class="side-foot"><span>Capital <b>₹40.00L</b></span><span>4 books</span></div>
+</aside>
+
+<!-- ── Main ────────────────────────────────────────────── -->
+<main>
+  <!-- always-visible status banner -->
+  <div class="banner">
+    <div class="mkt open"><span class="ring"></span>NSE Open</div>
+    <div class="sep"></div>
+    <div class="chips">
+      <span class="chip info"><span class="d"></span>Broker · Read-only</span>
+      <span class="chip warn"><span class="d"></span>Data · 1d stale</span>
+      <span class="chip ok"><span class="d"></span>Research · OK</span>
+      <span class="chip ok"><span class="d"></span>Risk · Normal</span>
+    </div>
+    <div class="right">
+      <span class="upd">Last update <b style="color:var(--ink-2)">12:49 IST</b></span>
+      <span class="clock" id="clk">—</span>
+    </div>
+  </div>
+
+  <div class="canvas">
+
+    <!-- decision / red-flag strip (calm default + 1 high-attention item) -->
+    <div class="flagstrip">
+      <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg></div>
+      <div class="tx">
+        <b>1 item needs attention — no critical red flags</b>
+        <span>Both options books are awaiting a volatility event; verdict still inconclusive. Nothing breached a hard risk limit.</span>
+      </div>
+      <div class="act">
+        <a class="mini" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 2"/><circle cx="12" cy="12" r="9"/></svg>Review options</a>
+        <a class="mini" href="#">Risk Center</a>
+      </div>
+    </div>
+
+    <!-- KPI row -->
+    <div class="eyebrow">Standing<span class="ln"></span>as of 26 Jun 2026 · paper</div>
+    <div class="kpis">
+      <div class="kpi">
+        <div class="top"><span class="lab">Net Equity
+          <span class="info" tabindex="0">i<span class="tip"><b>Net Equity (paper)</b><p>Program capital plus combined open and realised P&amp;L across all four paper books.</p><dl><dt>Base</dt><dd>₹40,00,000</dd><dt>P&amp;L</dt><dd>−₹17,265</dd></dl><span class="arr"></span></span></span>
+        </span></div>
+        <div class="val neu">₹39.83<span style="font-size:14px;color:var(--ink-3)">L</span></div>
+        <div class="meta">Capital <span class="mono">₹40.00L</span> · deployed <span class="mono">99.6%</span></div>
+      </div>
+
+      <div class="kpi">
+        <div class="top"><span class="lab">Combined P&amp;L
+          <span class="info" tabindex="0">i<span class="tip"><b>Combined P&amp;L</b><p>Realised plus unrealised across every book, since inception.</p><dl><dt>Realised</dt><dd>−₹21,509</dd><dt>Unreal.</dt><dd>+₹4,244</dd><dt>Stop</dt><dd>−5.0%</dd></dl><span class="arr"></span></span></span>
+        </span><span class="verdict normal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg>Normal</span></div>
+        <div class="val neg">−₹17,265</div>
+        <div class="meta">−0.43% of capital · well inside −5% stop</div>
+        <div class="track is-normal"><span class="band" style="left:0;width:60%"></span><span class="lim" style="left:100%"></span><span class="mark" style="left:8.6%"></span></div>
+        <div class="trackcap"><span>−5% stop ◀</span><span>flat</span><span>▶ +</span></div>
+      </div>
+
+      <div class="kpi">
+        <div class="top"><span class="lab">Open P&amp;L
+          <span class="info" tabindex="0">i<span class="tip"><b>Open (unrealised) P&amp;L</b><p>Mark-to-model value of positions still open — the two options books.</p><dl><dt>Strangle</dt><dd>+₹3,653</dd><dt>Condor</dt><dd>+₹591</dd></dl><span class="arr"></span></span></span>
+        </span></div>
+        <div class="val pos">+₹4,244</div>
+        <div class="meta">2 open structures · mark 26 Jun, awaiting close</div>
+      </div>
+
+      <div class="kpi">
+        <div class="top"><span class="lab">Open Positions
+          <span class="info" tabindex="0">i<span class="tip"><b>Open Positions</b><p>Distinct live legs across books. Equity names plus options structures.</p><dl><dt>Equity</dt><dd>15 names</dd><dt>Options</dt><dd>2 books</dd></dl><span class="arr"></span></span></span>
+        </span></div>
+        <div class="val neu">17</div>
+        <div class="meta">15 low-vol equity · 1 strangle · 1 condor</div>
+      </div>
+
+      <div class="kpi">
+        <div class="top"><span class="lab">Deployable Cash
+          <span class="info" tabindex="0">i<span class="tip"><b>Deployable Cash</b><p>Uncommitted cash in the equity book, available for the next rebalance.</p><dl><dt>Cash</dt><dd>₹13,369</dd><dt>of book</dt><dd>1.3%</dd></dl><span class="arr"></span></span></span>
+        </span></div>
+        <div class="val sm neu">₹13,369</div>
+        <div class="meta">1.3% of equity book · options margin reserved</div>
+      </div>
+    </div>
+
+    <!-- three columns: Risk · Regime+Strategies · Alerts -->
+    <div class="cols">
+
+      <!-- RISK -->
+      <div class="panel">
+        <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="14" height="14"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg>Risk
+          <span class="verdict normal badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg>Normal</span></h3>
+        <div class="risk">
+          <div class="rrow">
+            <div class="rhead"><span class="rname">Drawdown
+              <span class="info" tabindex="0">i<span class="tip"><b>Current Drawdown</b><p>Decline from the program's peak equity.</p><dl><dt>Now</dt><dd>−0.43%</dd><dt>Normal</dt><dd>≤ 5%</dd><dt>Stop</dt><dd>10%</dd><dt>Action</dt><dd>None</dd></dl><span class="arr"></span></span></span>
+            </span><span class="rval pos">−0.4%</span></div>
+            <div class="track is-normal"><span class="band" style="left:0;width:50%"></span><span class="lim" style="left:100%"></span><span class="mark" style="left:4%"></span></div>
+            <div class="trackcap"><span>0%</span><span>5% normal</span><span>10% stop</span></div>
+          </div>
+          <div class="rrow">
+            <div class="rhead"><span class="rname">Portfolio Heat
+              <span class="info" tabindex="0">i<span class="tip"><b>Portfolio Heat</b><p>Annualised volatility of the whole book — how hot the portfolio runs.</p><dl><dt>Now</dt><dd>9.2%</dd><dt>Target</dt><dd>≤ 12%</dd><dt>Action</dt><dd>None</dd></dl><span class="arr"></span></span></span>
+            </span><span class="rval neu">9.2%</span></div>
+            <div class="track is-normal"><span class="band" style="left:0;width:67%"></span><span class="lim" style="left:100%"></span><span class="mark" style="left:51%"></span></div>
+            <div class="trackcap"><span>0%</span><span>12% target</span><span>18%</span></div>
+          </div>
+          <div class="rrow">
+            <div class="rhead"><span class="rname">Max Sector
+              <span class="info" tabindex="0">i<span class="tip"><b>Sector Concentration</b><p>Largest share of the book in any one sector.</p><dl><dt>Now</dt><dd>31% (Fin)</dd><dt>Limit</dt><dd>35%</dd><dt>Action</dt><dd>Watch — near cap</dd></dl><span class="arr"></span></span></span>
+            </span><span class="rval" style="color:var(--warn)">31%</span></div>
+            <div class="track is-watch"><span class="band" style="left:0;width:88%"></span><span class="lim" style="left:100%"></span><span class="mark" style="left:88%"></span></div>
+            <div class="trackcap"><span>0%</span><span>—</span><span>35% limit</span></div>
+          </div>
+          <div class="rrow">
+            <div class="rhead"><span class="rname">VaR · 1d 95%
+              <span class="info" tabindex="0">i<span class="tip"><b>Value at Risk (1-day, 95%)</b><p>Loss the program should not exceed on 95% of days. Sample figure.</p><dl><dt>Now</dt><dd>−₹31.8k</dd><dt>≈</dt><dd>0.8% equity</dd><dt>Action</dt><dd>None</dd></dl><span class="arr"></span></span></span>
+            </span><span class="rval neu">−₹31.8k</span></div>
+            <div class="track is-normal"><span class="band" style="left:0;width:55%"></span><span class="lim" style="left:100%"></span><span class="mark" style="left:34%"></span></div>
+            <div class="trackcap"><span>0</span><span>0.8%</span><span>2% alert</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- REGIME + STRATEGIES -->
+      <div class="panel">
+        <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="14" height="14"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg>Market &amp; Engine</h3>
+        <div class="regime">
+          <div class="regbig">
+            <div class="glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12h6l2-4 2 8 2-4h6"/></svg></div>
+            <div><div class="lab">Market Regime
+              <span class="info" tabindex="0" style="vertical-align:middle">i<span class="tip"><b>Market Regime</b><p>Classification from the regime engine (trend + breadth + volatility). Sample read.</p><dl><dt>Breadth</dt><dd>54% &gt; 50DMA</dd><dt>Trend</dt><dd>Flat</dd><dt>Vol</dt><dd>Low</dd></dl><span class="arr"></span></span></span>
+            </div><div class="nm">Range-bound · Low Vol</div></div>
+          </div>
+          <p class="regline">Breadth balanced, NIFTY trendless, realised vol compressed — favourable for the premium-selling books, thin edge for directional ones.</p>
+          <div class="statlist">
+            <div class="statrow"><span class="k">Breadth (&gt; 50DMA)</span><span class="v">54%</span></div>
+            <div class="statrow"><span class="k">Realised vol · 20d</span><span class="v">11.4%</span></div>
+            <div class="statrow"><span class="k">Active strategies</span><span class="v">2 of 4</span></div>
+          </div>
+          <h3 style="margin-top:14px">Strategies</h3>
+          <div class="strat"><div class="nm">Short Strangle<small>NIFTY 23100P / 25000C · 31d</small></div><span class="pill open"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="9"/><path d="M12 8v4"/></svg>Open · Watch</span></div>
+          <div class="strat"><div class="nm">Iron Condor<small>Defined-risk · max loss ₹30,734</small></div><span class="pill open"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="9"/><path d="M12 8v4"/></svg>Open · Watch</span></div>
+          <div class="strat"><div class="nm">Low-Vol Equity<small>15 names · idle 17d</small></div><span class="pill idle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9 12h6"/></svg>Paper · Idle</span></div>
+          <div class="strat"><div class="nm">Intraday ORB / VWAP<small>Edge didn't survive costs</small></div><span class="pill ret"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/></svg>Retired</span></div>
+        </div>
+      </div>
+
+      <!-- ALERTS -->
+      <div class="panel">
+        <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="14" height="14"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9z"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>Alerts
+          <span class="badge" style="font-size:11px;color:var(--ink-4)">4 active</span></h3>
+        <div class="alerts">
+          <div class="alert high">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg></div>
+            <div class="body">
+              <div class="ttl"><b>Options awaiting vol event</b><span class="sev">High</span></div>
+              <div class="imp">Strangle &amp; condor verdicts inconclusive; theta accruing. <b>Action:</b> hold to 30 Jul expiry, or close on a ≥4% NIFTY day.</div>
+              <div class="when">26 Jun · 12:49</div>
+            </div>
+            <button class="x" aria-label="Dismiss"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+          </div>
+          <div class="alert warn">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5M12 16h.01"/></svg></div>
+            <div class="body">
+              <div class="ttl"><b>Low-vol book idle 17 days</b><span class="sev">Warning</span></div>
+              <div class="imp">No rebalance since 12 Jun — capital parked, weights drifting. <b>Action:</b> check the monthly rebalance signal.</div>
+              <div class="when">12 Jun · 09:20</div>
+            </div>
+            <button class="x" aria-label="Dismiss"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+          </div>
+          <div class="alert warn">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l2-3 3 9 2-12 2 6h5"/></svg></div>
+            <div class="body">
+              <div class="ttl"><b>Market data 1 day stale</b><span class="sev">Warning</span></div>
+              <div class="imp">Prices as of 26 Jun; today's bar not yet fetched. <b>Action:</b> run the data refresh before close.</div>
+              <div class="when">29 Jun · 08:00</div>
+            </div>
+            <button class="x" aria-label="Dismiss"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+          </div>
+          <div class="alert info">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg></div>
+            <div class="body">
+              <div class="ttl"><b>Intraday book retired</b><span class="sev">Info</span></div>
+              <div class="imp">Frozen 26 Jun as evidence — edge didn't survive costs. <b>Action:</b> none, archived.</div>
+              <div class="when">26 Jun · 16:00</div>
+            </div>
+            <button class="x" aria-label="Dismiss"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- bottom: books + health -->
+    <div class="bottom">
+      <div class="panel">
+        <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="14" height="14"><path d="M4 5h16v14H4z"/><path d="M4 10h16M10 5v14"/></svg>Paper Books</h3>
+        <table class="books">
+          <thead><tr><th>Book</th><th>Realised</th><th>Unrealised</th><th>Total</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td><div class="nm">Low-Vol Equity<small>15 names · idle</small></div></td><td class="neu">₹0</td><td class="neu">—</td><td class="neu">₹0</td><td><span class="pill idle" style="float:right">Idle</span></td></tr>
+            <tr><td><div class="nm">Intraday ORB+VWAP<small>retired</small></div></td><td class="neg">−₹21,509</td><td class="neu">—</td><td class="neg">−₹21,509</td><td><span class="pill ret" style="float:right">Frozen</span></td></tr>
+            <tr><td><div class="nm">Short Strangle<small>exp 30 Jul</small></div></td><td class="neu">₹0</td><td class="pos">+₹3,653</td><td class="pos">+₹3,653</td><td><span class="pill open" style="float:right">Open</span></td></tr>
+            <tr><td><div class="nm">Iron Condor<small>exp 30 Jul</small></div></td><td class="neu">₹0</td><td class="pos">+₹591</td><td class="pos">+₹591</td><td><span class="pill open" style="float:right">Open</span></td></tr>
+          </tbody>
+          <tfoot><tr><td>Combined</td><td class="neg">−₹21,509</td><td class="pos">+₹4,244</td><td class="neg">−₹17,265</td><td></td></tr></tfoot>
+        </table>
+      </div>
+      <div class="panel">
+        <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="14" height="14"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>System Health</h3>
+        <div class="health">
+          <div class="hrow"><span class="d ok"></span><span class="k">Engine</span><span class="v"><b>Operational</b></span></div>
+          <div class="hrow"><span class="d warn"></span><span class="k">Market data</span><span class="v">as of <b>26 Jun</b></span></div>
+          <div class="hrow"><span class="d info"></span><span class="k">Broker · Kite</span><span class="v"><b>Read-only</b></span></div>
+          <div class="hrow"><span class="d ok"></span><span class="k">Research pipeline</span><span class="v">ran <b>29 Jun</b></span></div>
+          <div class="hrow"><span class="d ok"></span><span class="k">Order routing</span><span class="v"><b>Disabled</b> · paper</span></div>
+          <div class="hrow"><span class="d ok"></span><span class="k">Last sync</span><span class="v"><b>12:49 IST</b></span></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+  // live clock — IST
+  function tick(){
+    const t=new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Kolkata'}));
+    const p=n=>String(n).padStart(2,'0');
+    document.getElementById('clk').textContent=`${p(t.getHours())}:${p(t.getMinutes())}:${p(t.getSeconds())}`;
+  }
+  tick(); setInterval(tick,1000);
+  // dismiss alerts (demo)
+  document.querySelectorAll('.alert .x').forEach(b=>b.addEventListener('click',e=>{
+    const a=e.currentTarget.closest('.alert'); a.style.opacity=.35; a.style.pointerEvents='none';
+  }));
+</script>
+</body>
+</html>
