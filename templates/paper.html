@@ -30,6 +30,54 @@
       </div>
     </div>
 
+    {% if sizing %}
+    <section>
+      <h2>Risk-State Sizing <span class="readonly">SHADOW</span></h2>
+      <p class="sub">Live defensive overlay vs the Varma graded sizer running in
+        shadow (observation only — the shadow factor is <strong>not</strong> applied
+        to any trade).</p>
+      <div class="cards">
+        <div class="card">
+          <div class="label">Live overlay (applied)</div>
+          <div class="value">{{ "%.2f"|format(sizing.live_factor) if sizing.live_factor is not none else "—" }}×</div>
+        </div>
+        <div class="card">
+          <div class="label">Varma shadow (not applied)</div>
+          <div class="value">{{ "%.2f"|format(sizing.shadow_factor) if sizing.shadow_factor is not none else "—" }}×</div>
+        </div>
+        <div class="card">
+          <div class="label">Gap (shadow − live)</div>
+          {% if sizing.gap is not none %}
+          <div class="value {{ 'red' if sizing.gap < 0 else 'green' if sizing.gap > 0 else '' }}">
+            {{ "+" if sizing.gap > 0 }}{{ "%.2f"|format(sizing.gap) }}
+          </div>
+          {% else %}<div class="value">—</div>{% endif %}
+        </div>
+        <div class="card">
+          <div class="label">Shadow risk state</div>
+          <div class="value">{{ "%.2f"|format(sizing.shadow.risk_score) if sizing.shadow and sizing.shadow.risk_score is not none else "—" }}</div>
+        </div>
+      </div>
+      {% if sizing.shadow and sizing.shadow.reason %}
+      <p class="sub" style="margin-top:.5rem">
+        <strong>Shadow read ({{ sizing.shadow.run_date }}):</strong>
+        {{ sizing.shadow.reason }}
+        {% if sizing.shadow.stress %}<span class="readonly">TAIL BRAKE</span>{% endif %}
+      </p>
+      {% endif %}
+      {% if sizing.live and sizing.live.reason %}
+      <p class="sub"><strong>Live overlay:</strong> {{ sizing.live.reason }}</p>
+      {% endif %}
+      {% if sizing.momentum and sizing.momentum.exposure_factor is not none %}
+      <p class="sub"><strong>Governed-momentum shadow:</strong>
+        {{ sizing.momentum.n_names }} names @ exposure
+        {{ "%.2f"|format(sizing.momentum.exposure_factor) }}× — not traded
+        {% if sizing.momentum.top5 %}(top: {{ sizing.momentum.top5|join(", ") }}){% endif %}
+      </p>
+      {% endif %}
+    </section>
+    {% endif %}
+
     {% if chart %}
     <section>
       <h2>Cumulative Realised P&amp;L</h2>

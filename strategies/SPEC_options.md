@@ -1,4 +1,16 @@
-# SPEC — Forward VRP Short-Strangle PAPER test (NIFTY)
+> ## ⛔ RETIRED 2026-07-08 (human decision — do not revive without a reviewed commit)
+> The naked short strangle carries an **unbounded left tail**. Under the standing
+> veto in `SELF_IMPROVE.md` ("unbounded-tail structures … are auto-rejected
+> regardless of backtest results") and `FUND_BLUEPRINT_2026-07-06.md` ("retire the
+> naked strangle whatever the verdict"), it can never be promoted — so running it
+> further has no purpose. `options_sim.py` now opens **no new cycles**
+> (`RETIRED = True`); any open position winds down to close the ledger. The
+> defined-risk **iron condor** (`SPEC_condor.md` / `condor_sim.py`) is the
+> surviving carry sleeve. The head-to-head this book existed to provide is settled
+> in principle: defined risk is mandatory for any short-premium structure,
+> independent of the calm-month premium comparison. Kept for the audit trail.
+
+# SPEC — Forward VRP Short-Strangle PAPER test (NIFTY)  ·  RETIRED
 
 **Pre-registered:** 2026-06-13, before the options simulator was written.
 Implements the test proposed in `THESIS_options.md`. **Paper-only, model-priced,

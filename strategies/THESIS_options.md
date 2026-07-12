@@ -1,3 +1,8 @@
+> **⛔ Naked short strangle RETIRED 2026-07-08** (unbounded tail; see
+> `SPEC_options.md` banner). The options-edge question this thesis opened is now
+> pursued only through the **defined-risk iron condor** (`THESIS_condor.md` /
+> `SPEC_condor.md`). This thesis is kept for the audit trail.
+
 # THESIS — Is there an options edge for us? (write this BEFORE any structure)
 
 **Written:** 2026-06-13, before any options code. The test of a thesis: *why

@@ -44,6 +44,17 @@ OPEN_MIN_DTE = 21         # v2 (SPEC §v2): open only on a monthly expiry >= 21
                           # calendar days out — no near-worthless stubs
 VOL_EVENT   = 0.04        # |NIFTY daily move| that counts as a volatility event
 
+# ── RETIRED 2026-07-08 (human decision) ───────────────────────────────────────
+# The naked short strangle has an UNBOUNDED left tail. Per the standing veto in
+# SELF_IMPROVE.md ("unbounded-tail structures … are auto-rejected regardless of
+# backtest results") and FUND_BLUEPRINT_2026-07-06.md ("retire the naked strangle
+# whatever the verdict"), it can NEVER be promoted, so it is retired: the sim
+# opens NO new cycles. Any position already open still marks/settles to close the
+# ledger cleanly. The defined-risk iron condor (condor_sim.py) is the surviving
+# carry sleeve. Set RETIRED=False only in a reviewed human commit (never automated).
+RETIRED = True
+# ──────────────────────────────────────────────────────────────────────────────
+
 # Light statutory costs on premium turnover (rupees) — secondary to the spread
 BROKERAGE_CAP = 20.0
 STT_RATE      = 0.000625  # 0.0625% on sell-side option premium
@@ -214,8 +225,14 @@ def step(conn, closes):
 
     cyc = open_cycle(conn)
 
-    # No open position → open a fresh strangle for the next monthly expiry.
+    # No open position → open a fresh strangle for the next monthly expiry —
+    # UNLESS retired (unbounded-tail veto): then open nothing and stand down.
     if cyc is None:
+        if RETIRED:
+            print("  Strangle RETIRED (unbounded tail) — no new cycle opened. "
+                  "Use the iron condor (condor_sim.py).")
+            conn.commit()
+            return today
         open_strangle(conn, today, spot, vol)
         cyc = open_cycle(conn)
         # (a brand-new cycle is also marked below)

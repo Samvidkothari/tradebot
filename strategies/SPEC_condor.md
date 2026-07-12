@@ -18,12 +18,23 @@ width, spread, sizing, and the INCONCLUSIVE-until-a-vol-event verdict gate are
 unchanged. The forward book was reseeded fresh on adoption. Supersedes the v1
 code constant `MIN_DTE = 7`.
 
+**v3 amendment (2026-07-08) — pre-committed quantitative verdict + strangle
+retired (methodology, NOT result-driven).** Two changes, both made BEFORE the
+awaited vol event, so neither is fitted to an outcome:
+1. **The naked strangle is retired** (`SPEC_options.md`, unbounded-tail veto), so
+   §5's head-to-head "vs the strangle on the same days" is no longer available and
+   is **dropped**. The condor is now judged **standalone** as the carry sleeve.
+2. **The §5 verdict is quantified** (was qualitative — this closes the open item
+   from `REVIEW_2026-07-04.md` / the blueprint: "verdict blocked on a ≥4% day with
+   no pre-committed criteria"). The numeric gate is the new **§5a** below. One
+   parameter set, locked; if the condor fails it, the thesis failed.
+
 ## 1. What it is
 
-A monthly **iron condor on NIFTY** — the naked short strangle with its tail
-risk capped by two bought wings. Runs **side-by-side with the existing naked
-strangle on the same days**, to answer one head-to-head question: *does giving
-up the unlimited tail risk cost us the edge after honest costs, or not?*
+A monthly **iron condor on NIFTY** — the (now retired) naked short strangle with
+its tail risk capped by two bought wings. Originally run **side-by-side with the
+strangle**; with the strangle retired it now stands **alone** as the defined-risk
+carry sleeve.
 
 - Each monthly cycle, four legs, hold to monthly expiry, settle at intrinsic:
   - **SELL** 1 OTM put + **SELL** 1 OTM call (the premium-harvesting "bodies")
@@ -89,6 +100,34 @@ up the unlimited tail risk cost us the edge after honest costs, or not?*
   2. **Head-to-head vs the naked strangle on the same days:** how much edge did
      we give up in calm months, and how much disaster did we avoid in the event?
      The condor wins only if the avoided tail is worth the foregone premium.
+
+## 5a. Pre-committed quantitative verdict (v3 — locked 2026-07-08, before any vol event)
+
+Replaces the qualitative §5.2 head-to-head (strangle retired). The condor is
+evaluated **only after** the §5 vol-event gate opens (a cycle held through a
+session with `|NIFTY move| ≥ 4%` or a flagged major-event day). At that point,
+over all **settled** cycles to date (cash-settled at intrinsic, after the harsh
+4-leg spread + statutory costs):
+
+- **PASS** if ALL of:
+  1. **Cumulative net P&L > 0** across all settled cycles (the edge survives the
+     4-leg spread bleed).
+  2. **Win rate ≥ 60%** of settled cycles net-positive (a carry sleeve should win
+     most months).
+  3. **Event cycle survived within its cap:** the loss on the vol-event cycle is
+     `≤` its structural max loss `(WING_PCT − OTM_PCT) × spot × LOT_SIZE −
+     net_premium` (confirms the wings actually capped the tail as designed — the
+     whole reason this structure is eligible).
+  4. **Realized worst-cycle loss ≤ 1.5%** of the ₹1,000,000 paper book (position
+     sized so a capped max-loss event is a survivable dent, not a crater).
+- **FAIL** if cumulative net P&L ≤ 0 after a real vol event, or the event cycle
+  breaches its structural cap (a modeling/mechanics bug, not bad luck).
+- **INCONCLUSIVE** stays until the vol-event gate opens (unchanged from §5) — and
+  additionally until **≥ 6 settled cycles** exist, so the win-rate is not judged
+  on a tiny sample.
+
+No parameter above may change after a vol event is observed. Default verdict is
+reject; promotion (even to semi-automatic) is a human decision per §6.
 
 ## 6. Ledger & autonomy
 
