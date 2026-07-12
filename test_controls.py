@@ -101,6 +101,9 @@ def test_settle_now_closes_and_realises(tmp_path, monkeypatch):
     # options_sim.settle_now closes the open cycle at mark and books the P&L.
     import options_sim as opt
     monkeypatch.setattr(opt, "DB_PATH", tmp_path / "options.db")
+    # The strangle book is RETIRED (2026-07-08) — open_cycle is a no-op in prod.
+    # Un-retire it for this test only: we test settle mechanics, not policy.
+    monkeypatch.setattr(opt, "RETIRED", False)
     conn = opt.db_connect()
     import pandas as pd, numpy as np
     idx = pd.bdate_range("2026-01-01", periods=60)

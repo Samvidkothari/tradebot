@@ -17,7 +17,7 @@ from strategy import generate_signals, FAST_PERIOD, SLOW_PERIOD, TREND_PERIOD
 # Cost model + OOS split now live in config.py (single source of truth);
 # re-exported here so existing `from backtest import COST_*` importers still work.
 from config import (COST_ENTRY, COST_EXIT, COST_ROUNDTRIP,  # noqa: F401
-                    SPLIT_DATE)
+                    SLIPPAGE_PER_SIDE, SPLIT_DATE)
 
 SYMBOLS     = ["RELIANCE", "HDFCBANK", "INFY", "TCS", "ICICIBANK",
                "LT", "SBIN", "BHARTIARTL", "ITC", "HINDUNILVR"]
