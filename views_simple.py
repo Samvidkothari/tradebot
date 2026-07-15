@@ -228,6 +228,41 @@ def _health(today_ctx):
     return lights
 
 
+def _ceinsys_watch() -> dict | None:
+    """Live distance of CEINSYS to its 200-DMA — the watch-list card. Returns a
+    display dict, or None (card hidden) if there's no data / <200 bars yet.
+    Reuses the exact trend-gate logic the n8n alert uses. Fail-soft."""
+    try:
+        import ceinsys_alert
+        df = ceinsys_alert._load()
+        if df is None:
+            return None
+        ev = ceinsys_alert.evaluate(df)
+    except Exception:
+        return None
+    if not ev.get("enough_history"):
+        return None
+
+    above = ev["state"] == "above"
+    pct = ev["pct_vs_sma200"]                       # signed % of price vs 200-DMA
+    plan = ev["plan"]
+    if above:
+        state, label = "green", "Trend gate OPEN — above the 200-day line"
+        detail = (f"₹{ev['close']:.0f} vs ₹{ev['sma200']:.0f}. "
+                  f"Plan: buy ~₹{plan['entry']:.0f}, stop ₹{plan['stop']:.0f}, "
+                  f"target ₹{plan['target']:.0f} ({plan['qty_at_1pct_risk']} shares).")
+    else:
+        state, label = "amber", f"Waiting — {abs(pct):.0f}% below the 200-day line"
+        detail = (f"₹{ev['close']:.0f} now vs ₹{ev['sma200']:.0f} needed. "
+                  "You'll get an alert the day it closes back above the line.")
+    # progress toward the line, clamped to a friendly 0–100 over the last 25% below
+    span = 25.0
+    progress = 100 if above else max(0, min(100, round((span + pct) / span * 100)))
+    return {"state": state, "label": label, "detail": detail,
+            "price": ev["close"], "sma200": ev["sma200"], "pct": pct,
+            "progress": progress}
+
+
 def _holdings():
     """The stocks the main book owns, with friendly up/down vs what it paid."""
     rows = []
@@ -257,6 +292,7 @@ def register(app):
             "simple.html",
             money=money, today=today,
             lights=_health(today), holdings=_holdings(),
+            ceinsys=_ceinsys_watch(),
             inr=inr, date_str=date.today().strftime("%A, %d %B %Y"),
         )
     # Endpoint "simple_home" — "home" is already taken by the /home digest page

@@ -63,6 +63,12 @@ header .links a:hover{color:var(--ink);border-color:var(--faint)}
 .books .row .amt{margin-left:auto;font-weight:600}
 .books .row .amt.up{color:var(--green)} .books .row .amt.down{color:var(--red)}
 .books .row.off{color:var(--faint)}
+.watch .top{display:flex;align-items:center;gap:13px}
+.watch b{font-size:15px} .watch .sub{display:block;color:var(--faint);font-size:12.5px;margin-top:2px}
+.track{margin-top:14px;height:8px;border-radius:6px;background:rgba(255,255,255,.06);overflow:hidden}
+.track .fill{height:100%;border-radius:6px}
+.track .fill.green{background:var(--green)} .track .fill.amber{background:var(--amber)}
+.watch .scale{display:flex;justify-content:space-between;color:var(--faint);font-size:11px;margin-top:5px}
 .note{color:var(--faint);font-size:12px;margin-top:14px;text-align:center}
 @media (max-width:520px){ .hold{grid-template-columns:1fr} .big{font-size:36px} }
 </style>
@@ -111,6 +117,19 @@ header .links a:hover{color:var(--ink);border-color:var(--faint)}
     {% endfor %}
   </div>
 </div>
+
+{% if ceinsys %}
+<div class="card watch">
+  <h2>Ceinsys watch</h2>
+  <div class="top">
+    <div class="dot {{ ceinsys.state }}"></div>
+    <div><b>{{ ceinsys.label }}</b>
+      <span class="sub">{{ ceinsys.detail }}</span></div>
+  </div>
+  <div class="track"><div class="fill {{ ceinsys.state }}" style="width:{{ ceinsys.progress }}%"></div></div>
+  <div class="scale"><span>far below</span><span>200-day line</span></div>
+</div>
+{% endif %}
 
 {% if holdings %}
 <div class="card">

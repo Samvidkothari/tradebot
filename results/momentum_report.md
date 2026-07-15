@@ -1,6 +1,6 @@
 # Cross-Sectional Momentum (12-1) — Backtest Report
 
-Generated: 2026-07-10  
+Generated: 2026-07-14  
 Spec: `strategies/SPEC_momentum.md` (pre-registered, commit cd1b698).  
 Strategy: monthly rebalance into the top 15 NIFTY 50 names by 12-1 momentum (skip most-recent month), equal-weight.  
 Universe: 48 stocks (survivorship-biased — current members only; see spec §2).  
@@ -10,8 +10,8 @@ Lookback 273d (formation 252 + skip 21); round-trip cost ≈0.323%, charged on t
 
 | Metric | Momentum | NIFTY 50 B&H |
 |---|---|---|
-| CAGR | +13.4% | +8.4% |
-| Total return | +62.2% | +36.6% |
+| CAGR | +13.4% | +8.7% |
+| Total return | +62.8% | +38.0% |
 | Max drawdown | -27.2% | -15.8% |
 | Years | 3.9 | 3.9 |
 
@@ -28,8 +28,8 @@ Lookback 273d (formation 252 + skip 21); round-trip cost ≈0.323%, charged on t
 
 | Metric | Momentum | NIFTY 50 B&H |
 |---|---|---|
-| CAGR | +6.6% | +3.9% |
-| Total return | +17.6% | +10.2% |
+| CAGR | +6.8% | +4.3% |
+| Total return | +18.0% | +11.4% |
 | Max drawdown | -27.2% | -15.8% |
 | Years | 2.5 | 2.5 |
 
@@ -45,8 +45,8 @@ Lookback 273d (formation 252 + skip 21); round-trip cost ≈0.323%, charged on t
 
 ## Honest Assessment
 
-- **Full period:** momentum +13.4% CAGR vs NIFTY +8.4% — beat buy-and-hold after all costs.
-- **Out-of-sample (Period B):** momentum +6.6% vs NIFTY +3.9% — held up.
+- **Full period:** momentum +13.4% CAGR vs NIFTY +8.7% — beat buy-and-hold after all costs.
+- **Out-of-sample (Period B):** momentum +6.8% vs NIFTY +4.3% — held up.
 - **Drawdown:** worst momentum drawdown -27.2% vs NIFTY -15.8%.
 - **Activity:** 277 position-changes across 47 monthly rebalances.
 - **Survivorship bias:** today's NIFTY 50 membership applied to the past; a true point-in-time test would likely be somewhat worse (spec §2).

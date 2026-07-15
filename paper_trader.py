@@ -361,6 +361,19 @@ def rebalance(conn, panel, latest_close, run_date, nifty_closes=None):
 
 # ── Main daily run ────────────────────────────────────────────────────────────
 
+def _governor_liquidate(conn, gov, latest_close, run_date):
+    """If the kill switch is ON and auto_liquidate is configured, sell every
+    priceable position (SELLs are risk-reducing and always allowed). Shared by
+    the hold-day path and the blocked-rebalance path so both behave the same."""
+    if not (gov.get("killed") and gov.get("auto_liquidate")):
+        return
+    for p in conn.execute("SELECT * FROM positions").fetchall():
+        px = latest_close.get(p["symbol"])
+        if px:
+            simulate_sell(conn, p["symbol"], px, run_date, p["qty"], p)
+    print("  ⛔ Governor auto-liquidation: book moved to cash.\n")
+
+
 def main():
     run_date = str(date.today())
     this_month = run_date[:7]
@@ -397,6 +410,9 @@ def main():
             allowed, why = risk_governor.allow_rebalance(gov)
             if not allowed:
                 print(f"  ⛔ Rebalance BLOCKED by risk governor: {why}\n")
+                # A blocked rebalance must still honour auto-liquidation —
+                # otherwise a kill on a rebalance day freezes the book invested.
+                _governor_liquidate(conn, gov, latest_close, run_date)
             else:
                 nifty = fetch_live("^NSEI")   # for the regime overlay (fail-safe None)
                 rebalance(conn, panel, latest_close, run_date, nifty_closes=nifty)
@@ -413,13 +429,7 @@ def main():
         # Governor watches hold days too — the kill switch must not wait for
         # month-end to notice a drawdown. (Optional auto-liquidation on trip.)
         gov = risk_governor.mark(conn, latest_close)
-        if gov.get("killed") and gov.get("auto_liquidate"):
-            run_date_ = str(date.today())
-            for p in conn.execute("SELECT * FROM positions").fetchall():
-                px = latest_close.get(p["symbol"])
-                if px:
-                    simulate_sell(conn, p["symbol"], px, run_date_, p["qty"], p)
-            print("  ⛔ Governor auto-liquidation: book moved to cash.\n")
+        _governor_liquidate(conn, gov, latest_close, run_date)
 
     conn.commit()
     print_portfolio(conn, latest_close)

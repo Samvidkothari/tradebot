@@ -73,3 +73,27 @@ def test_missing_book_degrades(tmp_path):
     conn = sqlite3.connect(tmp_path / "empty.db")
     s = rg.mark(conn, {}, LIMITS)
     assert s["ok"] is None and not s["killed"]
+
+
+def test_blocked_rebalance_still_liquidates_when_configured(tmp_path, monkeypatch):
+    """Kill switch + auto_liquidate=true must move the book to cash even on a
+    rebalance day whose rebalance was blocked (regression: the hold-day path
+    liquidated but the blocked-rebalance path froze the book invested)."""
+    import paper_trader as pt
+    conn = _db(tmp_path, cash=0, positions=[("A", 100, 1000.0)])
+    conn.row_factory = sqlite3.Row       # match production connections
+    conn.execute("""CREATE TABLE fills (id INTEGER PRIMARY KEY AUTOINCREMENT,
+        run_date TEXT, symbol TEXT, side TEXT, qty INTEGER, price REAL,
+        cost REAL, cash_delta REAL, realised_pnl REAL)""")
+    # trip the switch: price collapses 30% (limit -20%)
+    rg.mark(conn, {"A": 1000.0}, {**LIMITS, "auto_liquidate": True},
+            today="2026-01-02")
+    s = rg.mark(conn, {"A": 700.0}, {**LIMITS, "auto_liquidate": True},
+                today="2026-01-03")
+    assert s["killed"] and s["auto_liquidate"]
+    assert not rg.allow_rebalance(s)[0]
+    # the shared helper (used by BOTH paths) sells everything priceable
+    pt._governor_liquidate(conn, s, {"A": 700.0}, "2026-01-03")
+    assert conn.execute("SELECT COUNT(*) FROM positions").fetchone()[0] == 0
+    cash = conn.execute("SELECT cash FROM account WHERE id=1").fetchone()[0]
+    assert cash > 0                      # proceeds landed (minus exit costs)
