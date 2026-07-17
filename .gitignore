@@ -14,6 +14,8 @@ options.db
 options.db.*
 condor.db
 condor.db.*
+vwap.db
+vwap.db.*
 journal.db
 journal.db.*
 alerts.db

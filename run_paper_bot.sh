@@ -53,6 +53,12 @@ if is_on condor; then
 else
   echo "----- options (NIFTY iron condor, defined-risk) — DISABLED in dashboard, skipped -----"
 fi
+if is_on vwap; then
+  echo "----- intraday VWAP mean-reversion + Varma sizing (EOD replay sim; cost-gate evidence) -----"
+  "$PY" vwap_sim.py || echo "  (vwap sim failed — non-fatal)"
+else
+  echo "----- intraday VWAP sim — DISABLED in dashboard, skipped -----"
+fi
 echo "----- research automation pipeline (validate → features → factors → backtests → walk-forward · Monte Carlo → reports → summary → archive) -----"
 "$PY" research_pipeline.py --no-fetch   # data already fetched above; runs the full 10-stage chain + writes results/pipeline_run.json, research_summary.md, results/archive/<date>/
 echo "----- promotion advisor (pre-registered lifecycle rules; advise-only unless promotion_rules.json auto_execute=true) -----"
