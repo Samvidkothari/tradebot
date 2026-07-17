@@ -18,8 +18,16 @@ Strategy (evaluated ONLY on closed 15m candles — no intra-bar peeking):
   EXIT     close crosses back over VWAP (target), else the risk stack below.
 
 Ruthless risk stack (checked in this order, every candle):
-  1. Hard stop      0.50% adverse move from entry (gap-aware: fills at the
-                    worse of stop price / candle open on a gap through it).
+  1. Hard stop      0.50% adverse move from entry. Protection is BROKER-SIDE:
+                    a resting SL-M stop order (place_stop_order) is submitted
+                    the moment the entry fills, so live, the EXCHANGE executes
+                    it mid-bar — the 15m loop never leaves you unprotected
+                    waiting for a candle to close. The per-candle check here
+                    is the sim/paper reconciliation of that order: gap-aware,
+                    filling at the worse of stop price / candle open. Do NOT
+                    replace this with 1-minute polling on delayed data — a
+                    polled stop on 15-min-lagged quotes is an illusion of
+                    safety; the resting order is the real thing.
   2. Circuit breaker  day's REALIZED PnL ≤ −2.0% of the day-start balance →
                     flatten, halt all trading until the next session.
   3. Max hold       2 hours (8 candles) → force-close at market.
@@ -164,6 +172,7 @@ class Position:
     entry_ts: datetime
     entry_fee: float
     bars_held: int = 0
+    stop_order_id: str | None = None # resting broker-side SL-M protecting this
 
     @property
     def stop_price(self) -> float:
@@ -224,6 +233,31 @@ async def place_limit_order(symbol: str, side: str, qty: int,
     log.info("ORDER  %-4s %-10s qty=%-5d LIMIT %.2f  [MOCK — no real order]",
              side, symbol, qty, limit_price)
     return {"symbol": symbol, "side": side, "qty": qty, "price": limit_price}
+
+
+_stop_seq = 0
+
+
+async def place_stop_order(symbol: str, side: str, qty: int,
+                           trigger_price: float) -> dict:
+    """MOCK. Real impl: submit a STOP-MARKET (Kite: SL-M) order resting AT THE
+    EXCHANGE so the stop executes mid-bar without this process being awake.
+    Returns an order id for later cancellation."""
+    global _stop_seq
+    await asyncio.sleep(0)
+    _stop_seq += 1
+    oid = f"STOP-{_stop_seq}"
+    log.info("ORDER  %-4s %-10s qty=%-5d SL-M trig %.2f  id=%s  "
+             "[MOCK — no real order]", side, symbol, qty, trigger_price, oid)
+    return {"order_id": oid, "symbol": symbol, "side": side,
+            "qty": qty, "trigger": trigger_price}
+
+
+async def cancel_order(order_id: str) -> None:
+    """MOCK. Real impl: cancel the resting order (e.g. the protective stop,
+    once the position exits by target/time/EOD instead)."""
+    await asyncio.sleep(0)
+    log.info("ORDER  CANCEL %s  [MOCK — no real order]", order_id)
 
 
 # ══ Network discipline: rate limiter + retry with exponential backoff ══════════
@@ -338,12 +372,35 @@ class VwapMeanReversionBot:
         fee = self._fee(qty, fill["price"])
         self.fees_paid += fee
         self.pos = Position(side, qty, fill["price"], c.ts, fee)
-        log.info("ENTER  %-5s qty=%d @ %.2f  stop=%.2f  fee=%.2f",
-                 side, qty, fill["price"], self.pos.stop_price, fee)
+        # Protection goes live IMMEDIATELY: resting broker-side stop, so a
+        # mid-bar crash is handled by the exchange, not the next candle close.
+        try:
+            stop = await with_retry(
+                place_stop_order, self.symbol,
+                "SELL" if side == "LONG" else "BUY",
+                qty, round(self.pos.stop_price, 2), what="stop order")
+            self.pos.stop_order_id = stop.get("order_id")
+        except Exception:
+            log.error("protective stop could NOT be placed — flattening entry")
+            await self._close(c, c.close, "STOP PLACEMENT FAILED — flatten")
+            return
+        log.info("ENTER  %-5s qty=%d @ %.2f  stop=%.2f (resting %s)  fee=%.2f",
+                 side, qty, fill["price"], self.pos.stop_price,
+                 self.pos.stop_order_id, fee)
 
     async def _close(self, c: Candle, exit_price: float, reason: str) -> None:
         p = self.pos
         assert p is not None
+        # Retire the resting protective stop first. On a stop-reason exit the
+        # broker already consumed it; cancelling a filled order is a no-op in
+        # real APIs, so the mock mirrors that unconditionally-safe shape.
+        if p.stop_order_id and "HARD STOP" not in reason:
+            try:
+                await with_retry(cancel_order, p.stop_order_id,
+                                 what="stop cancel")
+            except Exception:
+                log.error("could not cancel resting stop %s — real adapter "
+                          "must reconcile before next entry", p.stop_order_id)
         fill = await with_retry(place_market_order, self.symbol,
                                 "SELL" if p.side == "LONG" else "BUY",
                                 p.qty, exit_price, what="exit order")
@@ -373,8 +430,10 @@ class VwapMeanReversionBot:
             self.pos.bars_held += 1
             p = self.pos
 
-            # 1. Hard stop — gap-aware: if the bar traded through the stop,
-            #    fill at the stop, or at the open if it gapped past it.
+            # 1. Hard stop — this is the sim/paper RECONCILIATION of the
+            #    broker-side SL-M placed at entry: live, the exchange filled
+            #    it mid-bar the moment price touched the trigger. Gap-aware:
+            #    fill at the stop, or at the open if the bar gapped past it.
             stop = p.stop_price
             hit = (c.low <= stop) if p.side == "LONG" else (c.high >= stop)
             if hit:
