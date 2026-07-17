@@ -1,0 +1,45 @@
+# deploy/tradebot.service — the paper-bot scheduler daemon under systemd.
+#
+# Runs scheduler.py 24/7: daily pipeline 15:45 IST + hourly mark/risk passes.
+# Restart=on-failure replaces the macOS watchdog; boot-start via `enable`.
+#
+# Install (as your login user, e.g. "ubuntu" — edit User/paths if different):
+#   sudo cp ~/trading_bot/deploy/tradebot.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now tradebot
+#
+# PAPER ONLY — this schedules simulations; nothing places a real order.
+
+[Unit]
+Description=Tradebot paper-trading scheduler (simulations only)
+After=network-online.target
+Wants=network-online.target
+# If it crash-loops (e.g. bad deploy), stop trying after 5 fails in 10 min
+# rather than hammering data APIs forever.
+StartLimitIntervalSec=600
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/trading_bot
+ExecStart=/home/ubuntu/trading_bot/.venv/bin/python scheduler.py
+
+# The scheduler's cron triggers are timezone-aware, but date.today() calls in
+# the jobs are not — the process MUST live in IST or session/idempotency
+# guards drift after 18:30 UTC. Do not remove this line.
+Environment=TZ=Asia/Kolkata
+# Unbuffered stdout so `journalctl -f` shows prints live, not in 4KB bursts.
+Environment=PYTHONUNBUFFERED=1
+
+Restart=on-failure
+RestartSec=15
+
+# Modest hardening — the bot needs only its own directory and the network.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=read-only
+ReadWritePaths=/home/ubuntu/trading_bot
+
+[Install]
+WantedBy=multi-user.target

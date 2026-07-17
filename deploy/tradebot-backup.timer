@@ -1,0 +1,16 @@
+# deploy/tradebot-backup.timer — daily 17:00 IST ledger snapshot trigger.
+# Pairs with tradebot-backup.service (Ubuntu twin of com.tradebot.backup.plist).
+#
+# Install:
+#   sudo cp ~/trading_bot/deploy/tradebot-backup.{service,timer} /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now tradebot-backup.timer
+
+[Unit]
+Description=Daily tradebot SQLite ledger backup (17:00 IST)
+
+[Timer]
+OnCalendar=*-*-* 17:00:00 Asia/Kolkata
+Persistent=true
+
+[Install]
+WantedBy=timers.target

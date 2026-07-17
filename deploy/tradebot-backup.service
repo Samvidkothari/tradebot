@@ -1,0 +1,11 @@
+# deploy/tradebot-backup.service — oneshot ledger snapshot (run by the timer).
+
+[Unit]
+Description=Tradebot SQLite ledger backup
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/trading_bot
+ExecStart=/bin/bash /home/ubuntu/trading_bot/backup_ledgers.sh
+Environment=TZ=Asia/Kolkata
