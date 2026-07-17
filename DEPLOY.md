@@ -66,6 +66,8 @@ KITE_API_SECRET=xxxx
 DASHBOARD_PASSWORD=xxxx
 DASHBOARD_SECRET_KEY=xxxx
 N8N_RUN_WEBHOOK=https://...
+TELEGRAM_BOT_TOKEN=123456:ABC-...    # optional: push alerts (@BotFather)
+TELEGRAM_CHAT_ID=987654321           # optional: your chat id
 ```
 
 Verify and lock down:

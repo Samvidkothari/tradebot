@@ -175,6 +175,9 @@ def main(report_only: bool = False) -> int:
         async def replay():
             for c in candles:
                 await bot.on_candle(c)
+            # Telegram alerts are queued fire-and-forget; drain them before
+            # the loop closes or the nightly fill alerts would be dropped.
+            await bot.notify.flush()
 
         asyncio.run(replay())
 

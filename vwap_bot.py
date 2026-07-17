@@ -62,6 +62,8 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, time as dtime, timedelta
 from typing import Callable
 
+import notify_telegram
+
 # ── Configuration ─────────────────────────────────────────────────────────────
 SYMBOL            = "RELIANCE"        # NSE symbol (mock feed synthesizes it)
 CANDLE_MINUTES    = 15
@@ -315,6 +317,9 @@ class VwapMeanReversionBot:
         self.nifty_loader = nifty_loader           # None -> load_cached_nifty
         self.varma_factor = 1.0
         self.varma_reason = "not yet read"
+        # Push alerts: fire-and-forget, never blocks a candle, never raises
+        # (notify_telegram contract). No-op unless .env has the two keys.
+        self.notify = notify_telegram.get_notifier()
         self.vwap = SessionVWAP()
         self.pos: Position | None = None
         self.prev: Candle | None = None
@@ -387,6 +392,10 @@ class VwapMeanReversionBot:
         log.info("ENTER  %-5s qty=%d @ %.2f  stop=%.2f (resting %s)  fee=%.2f",
                  side, qty, fill["price"], self.pos.stop_price,
                  self.pos.stop_order_id, fee)
+        self.notify.send(
+            f"🟢 ENTER {side} — {self.symbol}\n"
+            f"qty {qty} @ ₹{fill['price']:.2f}  (stop ₹{self.pos.stop_price:.2f}, "
+            f"varma {self.varma_factor:.0%})  [PAPER]")
 
     async def _close(self, c: Candle, exit_price: float, reason: str) -> None:
         p = self.pos
@@ -422,6 +431,13 @@ class VwapMeanReversionBot:
         log.info("EXIT   %-5s qty=%d @ %.2f  (%s)  gross=%+.2f  net=%+.2f  "
                  "day-realized=%+.2f", p.side, p.qty, fill["price"], reason,
                  gross, net, self.day_realized)
+        icon = ("🛑" if "HARD STOP" in reason else
+                "⛔" if "CIRCUIT" in reason else
+                "🎯" if "TARGET" in reason else "🌇")
+        self.notify.send(
+            f"{icon} EXIT {p.side} — {self.symbol}\n"
+            f"qty {p.qty} @ ₹{fill['price']:.2f}  ({reason})\n"
+            f"net ₹{net:+,.2f} | day ₹{self.day_realized:+,.2f}  [PAPER]")
         self.pos = None
 
     # ── risk stack (order matters; returns True if position was closed) ───────
@@ -449,6 +465,11 @@ class VwapMeanReversionBot:
                         "— trading HALTED until next session",
                         self.day_realized, DAILY_LOSS_PCT * 100,
                         self.day_start_balance)
+            self.notify.send(
+                f"⛔ CIRCUIT BREAKER — {self.symbol}\n"
+                f"day realized ₹{self.day_realized:+,.2f} breached "
+                f"−{DAILY_LOSS_PCT:.0%} of ₹{self.day_start_balance:,.0f}.\n"
+                f"All trading HALTED until next session.  [PAPER]")
             if self.pos:
                 await self._close(c, c.close, "CIRCUIT BREAKER flatten")
 
@@ -516,6 +537,10 @@ class VwapMeanReversionBot:
         finalize), fetch the closed candle through retry/backoff, process."""
         log.info("bot up — %s, %dm candles, fee %.3f%%/side  [MOCK adapters]",
                  self.symbol, CANDLE_MINUTES, FEE_PER_SIDE * 100)
+        self.notify.send(
+            f"🤖 vwap_bot UP — {self.symbol}, {CANDLE_MINUTES}m VWAP "
+            f"mean-reversion\nbalance ₹{self.balance:,.0f}, stop "
+            f"{HARD_STOP_PCT:.1%}, breaker {DAILY_LOSS_PCT:.0%}  [PAPER, mock adapters]")
         while True:
             now = datetime.now()
             nxt = _next_boundary(now)
@@ -618,6 +643,7 @@ async def demo(days: int = 2, seed: int = 7) -> VwapMeanReversionBot:
             if ts.time() > SESSION_CLOSE:
                 break
             await bot.on_candle(feed.next_candle(ts))
+    await bot.notify.flush()          # drain queued alerts before loop closes
     bot.report()
     return bot
 
@@ -635,7 +661,21 @@ def main() -> int:
     if args.demo:
         asyncio.run(demo(args.days, args.seed))
         return 0
-    asyncio.run(VwapMeanReversionBot().run(MockFeed(seed=args.seed)))
+    # Critical-crash guard: anything that escapes the loop (bugs, API auth
+    # death, loop cancellation) alerts BEFORE the process dies. The notifier's
+    # sync path (daemon thread) works here because the event loop is gone.
+    try:
+        asyncio.run(VwapMeanReversionBot().run(MockFeed(seed=args.seed)))
+    except KeyboardInterrupt:
+        notify_telegram.get_notifier().send("🔌 vwap_bot stopped by operator (Ctrl-C)")
+    except Exception as e:
+        log.exception("CRITICAL: bot crashed")
+        notify_telegram.get_notifier().send(
+            f"🚨 CRITICAL — vwap_bot CRASHED\n{type(e).__name__}: {e}\n"
+            f"Process is DOWN; systemd will restart it if deployed per DEPLOY.md.")
+        import time as _t
+        _t.sleep(3)                    # give the daemon thread a beat to deliver
+        raise
     return 0
 
 
