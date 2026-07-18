@@ -37,6 +37,8 @@ import numpy as np
 import pandas as pd
 import yfinance as yf
 
+import notify_telegram  # fail-soft Telegram push (no-op unless .env configured)
+
 # ── Pre-registered parameters (SPEC_condor.md — do not tune to results) ────────
 OTM_PCT     = 0.04        # short (body) strikes 4% OTM
 WING_PCT    = 0.06        # long (wing) strikes 6% OTM  → ~2%-of-spot wing width
@@ -224,6 +226,10 @@ def open_condor(conn, today, spot, vol):
          round(gross_pts * LOT_SIZE, 2), round(entry_spread, 2),
          round(entry_stat, 2), round(premium_net, 2), round(max_loss, 2)))
     conn.commit()
+    notify_telegram.notify(
+        f"🟢 Condor OPEN — NIFTY, expiry {expiry}\n"
+        f"bodies {sp:.0f}P / {sc:.0f}C sold · wings {lp:.0f}P / {lc:.0f}C bought\n"
+        f"net credit {rupees(premium_net)} · max loss capped {rupees(max_loss)}  [PAPER]")
 
 
 def _unwind_cost_pts(sc_v, sp_v, lc_v, lp_v):
@@ -265,6 +271,12 @@ def step(conn, closes):
          round(open_pnl, 2)))
     if abs(move) >= VOL_EVENT:
         conn.execute("UPDATE cycles SET vol_event = 1 WHERE id = ?", (cyc["id"],))
+        # The stress day this sim exists to observe — a >=4% NIFTY move while open.
+        notify_telegram.notify(
+            f"⚡ VOL EVENT — NIFTY {move:+.1%} on {today}, condor OPEN\n"
+            f"bodies {cyc['sp_strike']:.0f}P / {cyc['sc_strike']:.0f}C · "
+            f"mark-to-model P&L {'+' if open_pnl >= 0 else ''}{rupees(open_pnl)} "
+            f"(max loss {rupees(cyc['max_loss'])})  [PAPER]")
 
     # Settle at expiry (intrinsic on all four legs, cash-settled, no spread).
     if today >= expiry:
@@ -285,6 +297,12 @@ def _close(conn, cyc, today, reason, pnl):
         "UPDATE cycles SET status='closed', close_date=?, close_reason=?, settle_pnl=? "
         "WHERE id = ?", (today.isoformat(), reason, round(pnl, 2), cyc["id"]))
     conn.execute("UPDATE account SET cash = cash + ? WHERE id = 1", (pnl,))
+    icon = "🎯" if pnl >= 0 else "🔻"
+    notify_telegram.notify(
+        f"{icon} Condor {reason} — NIFTY\n"
+        f"expiry {cyc['expiry']} · bodies {cyc['sp_strike']:.0f}P / "
+        f"{cyc['sc_strike']:.0f}C\n"
+        f"settled P&L {'+' if pnl >= 0 else ''}{rupees(pnl)}  [PAPER]")
 
 
 def settle_now(conn):

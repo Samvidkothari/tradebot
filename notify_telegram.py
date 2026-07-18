@@ -91,6 +91,17 @@ class TelegramNotifier:
         except Exception as e:                   # rule 2: never raise
             log.warning("telegram: enqueue failed (%s) — alert dropped", e)
 
+    def send_sync(self, text: str) -> None:
+        """Blocking send that COMPLETES delivery before returning — for sync
+        batch scripts (paper_trader / options_sim / condor_sim) that call this
+        then exit immediately. `send()`'s daemon-thread path would race the
+        process exit and lose the message; this one does the POST inline. Same
+        contract: no-op when disabled, never raises (delegates to
+        _post_blocking, which logs and swallows every error)."""
+        if not self.enabled:
+            return
+        self._post_blocking(text[:MAX_LEN])
+
     # ── background delivery ───────────────────────────────────────────────────
     async def _drain(self) -> None:
         loop = asyncio.get_running_loop()
@@ -154,6 +165,14 @@ def get_notifier() -> TelegramNotifier:
         _notifier = TelegramNotifier(os.getenv("TELEGRAM_BOT_TOKEN"),
                                      os.getenv("TELEGRAM_CHAT_ID"))
     return _notifier
+
+
+def notify(text: str) -> None:
+    """Module-level convenience for synchronous batch scripts: deliver `text`
+    to Telegram and block until it's sent (or gracefully dropped). No-op unless
+    .env has both keys; never raises. Async loops should use
+    get_notifier().send() (fire-and-forget) instead."""
+    get_notifier().send_sync(text)
 
 
 def _discover_chat_id(token: str) -> None:

@@ -69,5 +69,7 @@ echo "----- n8n run report (email digest via n8n; fail-soft, needs N8N_RUN_WEBHO
 "$PY" notify_n8n.py || echo "  (n8n notify failed — non-fatal)"
 echo "----- CEINSYS 200-DMA reclaim watch (edge-triggered n8n alert; fail-soft) -----"
 "$PY" ceinsys_alert.py || echo "  (ceinsys alert failed — non-fatal)"
+echo "----- Telegram daily status heartbeat (one ping even on a quiet day; fail-soft) -----"
+"$PY" heartbeat.py || echo "  (heartbeat failed — non-fatal)"
 echo "================ paper-bot run complete ================"
 echo

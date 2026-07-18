@@ -36,6 +36,7 @@ from config import COST_ENTRY, COST_EXIT   # reuse the exact cost model
 import risk_governor  # automated protection: kill switch + daily-loss brake
 from regime_overlay import exposure_factor  # pre-registered defensive overlay
 from varma_riskstate import exposure_factor as varma_exposure_factor  # SHADOW only
+import notify_telegram  # fail-soft Telegram push (no-op unless .env configured)
 
 # ── Config ────────────────────────────────────────────────────────────────────
 DATA_DIR         = Path(__file__).parent / "data"
@@ -374,6 +375,40 @@ def _governor_liquidate(conn, gov, latest_close, run_date):
     print("  ⛔ Governor auto-liquidation: book moved to cash.\n")
 
 
+def _equity(conn, latest_close):
+    """Cash + mark-to-market holdings value (LTP, falling back to avg cost)."""
+    cash = get_cash(conn)
+    holdings = sum(p["qty"] * latest_close.get(p["symbol"], p["avg_price"])
+                   for p in conn.execute("SELECT * FROM positions").fetchall())
+    return cash + holdings
+
+
+def _notify_run(conn, run_date, latest_close, headline):
+    """Push one end-of-run Telegram summary: what happened today (headline),
+    the fills booked, and where the book stands. Reads today's fills straight
+    from the DB (each is tagged with run_date), so it stays decoupled from the
+    rebalance/mark logic. Fail-soft: no-op unless .env has the Telegram keys."""
+    rows = conn.execute(
+        "SELECT side, COUNT(*) n FROM fills WHERE run_date = ? GROUP BY side",
+        (run_date,)).fetchall()
+    fills = {r["side"]: r["n"] for r in rows}
+    realised = conn.execute(
+        "SELECT COALESCE(SUM(realised_pnl), 0) r FROM fills "
+        "WHERE run_date = ? AND side = 'SELL'", (run_date,)).fetchone()["r"]
+    equity = _equity(conn, latest_close)
+    ret = equity - STARTING_CAPITAL
+    trade_line = (f"{fills.get('BUY', 0)} BUY / {fills.get('SELL', 0)} SELL"
+                  if fills else "no fills")
+    msg = (f"📊 Low-vol paper book — {run_date}\n"
+           f"{headline}\n"
+           f"Fills: {trade_line}\n"
+           f"Equity {rupees(equity)} ({'+' if ret >= 0 else ''}{ret / STARTING_CAPITAL:.2%})")
+    if fills.get("SELL"):
+        msg += f"\nRealised today {'+' if realised >= 0 else ''}{rupees(realised)}"
+    msg += "  [PAPER]"
+    notify_telegram.notify(msg)
+
+
 def main():
     run_date = str(date.today())
     this_month = run_date[:7]
@@ -387,6 +422,7 @@ def main():
     print(f"Strategy: low-volatility anomaly "
           f"({VOL_LOOKBACK}d realized vol, hold {TOP_N} lowest, monthly)\n")
 
+    headline = "Hold day (no rebalance)"   # overwritten below as the run decides
     if is_rebal:
         why = "first-ever run" if last_month is None else f"new month (last: {last_month})"
         print(f"REBALANCE DAY ({why}) — fetching {len(tickers)} stocks...\n")
@@ -395,6 +431,7 @@ def main():
             print(f"  ⚠ data fetch failed for {len(failed)}: {', '.join(failed)}\n")
         if panel.empty or len(panel) < WARMUP:
             print("  Insufficient data to rank — aborting rebalance.\n")
+            headline = "⚠ Rebalance aborted — insufficient data to rank"
         elif panel.index[-1].date() != date.today():
             # Freshness guard (CODE_AUDIT_2026-07-10 §A4): today's bar is absent —
             # an NSE holiday the forward calendar can't know (Diwali, Holi, …) or
@@ -403,6 +440,7 @@ def main():
             # inside rebalance(), so tomorrow's run retries automatically.
             print(f"  No bar for today (last: {panel.index[-1].date()}) — "
                   f"holiday or stale data; deferring rebalance to next session.\n")
+            headline = "Rebalance deferred — no fresh bar (holiday/stale data)"
         else:
             # Risk governor (automated protection): evaluate limits BEFORE
             # trading; a kill-switch or daily-loss breach blocks the rebalance.
@@ -413,9 +451,14 @@ def main():
                 # A blocked rebalance must still honour auto-liquidation —
                 # otherwise a kill on a rebalance day freezes the book invested.
                 _governor_liquidate(conn, gov, latest_close, run_date)
+                headline = (f"⛔ Rebalance BLOCKED by risk governor: {why}"
+                            + (" — book auto-liquidated to cash"
+                               if gov.get("killed") and gov.get("auto_liquidate")
+                               else ""))
             else:
                 nifty = fetch_live("^NSEI")   # for the regime overlay (fail-safe None)
                 rebalance(conn, panel, latest_close, run_date, nifty_closes=nifty)
+                headline = "🔁 Monthly rebalance to 15 lowest-vol names"
     else:
         # Non-rebalance day: only need prices for held names to mark the book.
         held = [r["symbol"] for r in conn.execute("SELECT symbol FROM positions")]
@@ -430,9 +473,12 @@ def main():
         # month-end to notice a drawdown. (Optional auto-liquidation on trip.)
         gov = risk_governor.mark(conn, latest_close)
         _governor_liquidate(conn, gov, latest_close, run_date)
+        if gov.get("killed") and gov.get("auto_liquidate"):
+            headline = "⛔ Risk governor kill switch — book auto-liquidated to cash"
 
     conn.commit()
     print_portfolio(conn, latest_close)
+    _notify_run(conn, run_date, latest_close, headline)
     conn.close()
 
 
